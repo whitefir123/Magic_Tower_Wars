@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- 
+    ========================================================================
+    Content Security Policy (CSP) - 已临时移除
+    ========================================================================
+    为了修复 Supabase SDK 加载问题，已暂时移除 CSP 限制
+    后续可以重新配置更宽松的 CSP 策略
+    ========================================================================
+  -->
+  <title>魔法塔 RPG - 游戏界面</title>
+  <link rel="stylesheet" href="./src/css/main.css" />
+  <link rel="stylesheet" href="./mobile-adapt.css" />
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Spectral:wght@400;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Spectral:wght@400;700&display=swap" /></noscript>
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y8qjTQAAAAASUVORK5CYII=" />
+  <style>
+    /* 游戏页面专用样式 */
+    body {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #main-ui {
+      width: 1940px;
+      height: 900px;
+      display: flex;
+      flex-direction: row;
+      transform-origin: right center;
+    }
+  </style>
+</head>
+<body>
+  <!-- 游戏加载界面 -->
+  <div id="gameplay-loading-overlay" class="loading-overlay-screen">
+    <div class="loader"></div>
+    <div class="loading-bar-container">
+      <div class="loading-bar-fill" style="width: 0%"></div>
+    </div>
+    <div class="loading-percent">0%</div>
+    <div class="loading-tips-container">
+      <span class="tip-label">提示:</span>
+      <span class="loading-tip-text">加载游戏界面...</span>
+    </div>
+    <div class="loading-chase-container">
+      <div class="loading-skeleton"></div>
+      <div class="loading-butterfly"></div>
+    </div>
+  </div>
+
+  <!-- 主游戏UI -->
+  <div id="main-ui">
+    <div id="left-column">
+      <div id="relic-bar">
+        <div class="relic-slot"></div><div class="relic-slot"></div><div class="relic-slot"></div>
+        <div class="relic-slot"></div><div class="relic-slot"></div><div class="relic-slot"></div>
+      </div>
+      <div id="canvas-wrapper">
+        <canvas id="gameCanvas" width="1200" height="800"></canvas>
+        <div id="skill-bar">
+          <!-- Skill slots will be generated here by JavaScript -->
+        </div>
+        <div id="level-splash" class="level-splash">第 2 层</div>
+
+        <div id="system-log-container">
+          <div id="log-panel"><div class="log-entry log-entry-init">&gt; 系统已初始化...</div></div>
+        </div>
+      </div>
+    </div>
+    <div id="right-sidebar">
+      <div class="hp-section">
+        <div class="hp-container">
+          <div class="hp-bar-inner"><div class="hp-fill hp-fill-full" id="hp-visual-fill"></div></div>
+          <div class="hp-text-overlay"><span id="ui-hp">100</span> / <span id="ui-hp-max">100</span></div>
+        </div>
+        <div class="level-header">Level <span id="ui-lvl">1</span></div>
+        <div class="xp-section">
+          <div class="xp-bar-bg"><div id="xp-fill"></div></div>
+          <div class="xp-text">经验 <b><span id="ui-xp">0</span></b> / <b><span id="ui-xp-max">50</span></b></div>
+        </div>
+        <div class="rage-section">
+          <div class="rage-bar-bg"><div id="rage-fill"></div></div>
+          <div class="rage-text">怒气 <span id="rage-text">0%</span></div>
+        </div>
+      </div>
+      <div class="panel-header">角色属性</div>
+      <div class="panel-container stats-panel">
+        <div class="stats-content">
+          <div class="stat-row"><span class="stat-name">物攻</span><span class="stat-val" id="ui-patk">15</span></div>
+          <div class="stat-row"><span class="stat-name">魔攻</span><span class="stat-val" id="ui-matk">0</span></div>
+          <div class="stat-row"><span class="stat-name">物防</span><span class="stat-val" id="ui-pdef">5</span></div>
+          <div class="stat-row"><span class="stat-name">魔防</span><span class="stat-val" id="ui-mdef">0</span></div>
+          <div class="stat-row"><span class="stat-name">暴击率</span><span class="stat-val" id="ui-crit">20%</span></div>
+          <div class="stat-row"><span class="stat-name">金币</span><span class="stat-val stat-gold" id="ui-gold">0</span></div>
+          <div class="stat-row"><span class="stat-name">钥匙</span><span class="stat-val" id="ui-keys">1</span></div>
+          <div class="stat-row">
+            <span class="stat-name">灵魂水晶</span>
+            <span class="stat-val" id="ui-soul-crystals">0</span>
+          </div>
+        </div>
+      </div>
+      <div class="panel-header">装备栏</div>
+      <div class="panel-container equip-panel">
+        <div class="equip-content">
+          <div class="equip-socket" data-slot="HELM" title="Helm"></div><div class="equip-socket" data-slot="WEAPON" title="Weapon"></div><div class="equip-socket" data-slot="ARMOR" title="Armor"></div>
+          <div class="equip-socket" data-slot="BOOTS" title="Boots"></div><div class="equip-socket" data-slot="RING" title="Ring"></div><div class="equip-socket" data-slot="AMULET" title="Amulet"></div>
+        </div>
+      </div>
+      <div class="btn-actions">
+        <button id="btn-ultimate" class="btn-core btn-sidebar" disabled onclick="game.activateUltimate()">必杀技</button>
+        <button class="btn-core btn-sidebar" onclick="window.game.saveGame()">保存</button>
+        <button class="btn-core btn-sidebar" onclick="window.game.loadGame()">读取</button>
+        <button class="btn-core btn-sidebar" onclick="window.game.endGame(false)">退出 / 重置</button>
+      </div>
+      <div id="debug-content"></div>
+    </div>
+    <!-- 游戏图标容器 - 位于地图和右侧面板之间 -->
+    <div id="game-icons-container">
+      <img id="backpack-icon" src="https://i.postimg.cc/kgCXFC1B/beibaotubiao1.png" alt="背包" class="backpack-icon" />
+    </div>
+  </div>
+
+  <!-- 符文强化界面 -->
+  <div id="draft-overlay" class="modal-overlay">
+    <h2 id="draft-title" class="modal-title">升级</h2>
+    <div class="card-container" id="draft-cards"></div>
+    <div class="draft-actions" style="margin-top: 30px; display: flex; gap: 20px; justify-content: center;">
+      <button id="draft-reroll-btn" class="btn-core" onclick="if(window.game && window.game.roguelike) window.game.roguelike.reroll()">刷新 (50G)</button>
+      <button id="draft-recycle-btn" class="btn-core" onclick="if(window.game && window.game.roguelike) window.game.roguelike.recycle()">放弃 (获得20G)</button>
+    </div>
+  </div>
+  <div id="shrine-overlay" class="modal-overlay hidden">
+    <h2 id="shrine-title" class="modal-title">圣殿</h2>
+    <div class="card-container" id="shrine-cards"></div>
+  </div>
+
+  <!-- 背包和商店界面 -->
+  <div id="inventory-overlay" class="modal-overlay hidden">
+    <h2 class="modal-title-small">背包</h2>
+    <div class="inventory-wrap">
+      <div class="inventory-titles">
+        <div class="inv-equip-title">装备栏</div>
+        <div class="inv-list-title">背包物品（容量 20）</div>
+      </div>
+      <div class="inventory-layout">
+        <div class="inventory-left">
+          <div class="inv-equip-grid">
+            <div class="equip-socket inv-equip" data-slot="HELM"></div>
+            <div class="equip-socket inv-equip" data-slot="WEAPON"></div>
+            <div class="equip-socket inv-equip" data-slot="ARMOR"></div>
+            <div class="equip-socket inv-equip" data-slot="BOOTS"></div>
+            <div class="equip-socket inv-equip" data-slot="RING"></div>
+            <div class="equip-socket inv-equip" data-slot="AMULET"></div>
+          </div>
+        </div>
+        <div class="inventory-right">
+          <div class="inv-grid">
+            <div class="inv-slot" data-index="0"></div><div class="inv-slot" data-index="1"></div><div class="inv-slot" data-index="2"></div><div class="inv-slot" data-index="3"></div><div class="inv-slot" data-index="4"></div>
+            <div class="inv-slot" data-index="5"></div><div class="inv-slot" data-index="6"></div><div class="inv-slot" data-index="7"></div><div class="inv-slot" data-index="8"></div><div class="inv-slot" data-index="9"></div>
+            <div class="inv-slot" data-index="10"></div><div class="inv-slot" data-index="11"></div><div class="inv-slot" data-index="12"></div><div class="inv-slot" data-index="13"></div><div class="inv-slot" data-index="14"></div>
+            <div class="inv-slot" data-index="15"></div><div class="inv-slot" data-index="16"></div><div class="inv-slot" data-index="17"></div><div class="inv-slot" data-index="18"></div><div class="inv-slot" data-index="19"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-core btn-modal-close" onclick="window.game.closeInventory()">关闭背包</button>
+  </div>
+
+  <!-- 商店界面 -->
+  <div id="shop-overlay" class="modal-overlay hidden">
+    <h2 class="modal-title-shop">地精商店</h2>
+    <div class="flex-center">
+      <button class="btn-core btn-transaction" onclick="game.buy('atk')">购买 攻击 +3<br/>价格: <span id="price-atk">200</span> 金币</button>
+      <button class="btn-core btn-transaction" onclick="game.buy('def')">购买 防御 +3<br/>价格: <span id="price-def">200</span> 金币</button>
+      <button class="btn-core btn-transaction" onclick="game.buy('hp')">购买 治疗 +200HP<br/>价格: <span id="price-hp">100</span> 金币</button>
+      <button class="btn-core btn-transaction" onclick="game.buy('key')">购买 钥匙 +1<br/>价格: <span id="price-key">500</span> 金币</button>
+    </div>
+    <button class="btn-core btn-modal-close" style="margin-top:25px;" onclick="game.closeShop()">关闭商店</button>
+  </div>
+
+  <!-- 死亡界面 -->
+  <div id="leaderboard-overlay" class="modal-overlay hidden">
+    <div id="game-over-content">
+      <h2 id="go-title">你已死亡</h2>
+      <div class="stats-grid">
+        <div class="stat-item"><span>游戏时间:</span> <span id="go-time">00:00</span></div>
+        <div class="stat-item"><span>到达层数:</span> <span id="go-floor">1</span></div>
+        <div class="stat-item"><span>击杀怪物:</span> <span id="go-kills">0</span></div>
+        <div class="stat-item"><span>总经验值:</span> <span id="go-xp">0</span></div>
+        <div class="stat-item"><span>最终金币:</span> <span id="go-gold">0</span></div>
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button id="btn-retry-game" class="btn-core btn-system btn-system-primary">重试</button>
+        <button class="btn-core btn-system" onclick="window.game?.fadeOutAndReload('index.html')">返回主菜单</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tooltip 和 Item Action Menu - 必须在 body 直接子元素以避免 transform 影响 -->
+  <div id="tooltip" class="hidden"></div>
+  <div id="item-action-menu" class="hidden">
+    <div class="action-menu-item" data-action="use">使用/装备</div>
+    <div class="action-menu-item" data-action="discard">丢弃</div>
+    <div class="action-menu-item" data-action="cancel">取消</div>
+  </div>
+
+  <!-- Supabase SDK（CDN UMD 构建版本，用于全球排行榜） -->
+  <script 
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"
+    onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js'"
+  ></script>
+  
+  <!-- 核心游戏脚本 -->
+  <script type="module" src="./src/main.js"></script>
+
+  <!-- 加载界面管理器 -->
+  <script>
+    /**
+     * 加载背景图常量
+     */
+    const LOADING_BACKGROUNDS = [
+      'https://i.postimg.cc/0y72N33X/loadingbackground1.png',
+      'https://i.postimg.cc/cCDTwXzg/loadingbackground2.png',
+      'https://i.postimg.cc/t4bt70J3/loadingbackground3.png'
+    ];
+
+    window.LoadingOverlayManager = {
+      overlays: {
+        gameplay: {
+          id: 'gameplay-loading-overlay',
+          barSelector: '.loading-bar-fill',
+          percentSelector: '.loading-percent',
+          tipSelector: '.loading-tip-text',
+          visible: false,
+          isLoading: false,
+          loadingStartTime: 0,
+          minDisplayTime: 500
+        }
+      },
+      currentOverlay: 'gameplay',
+      loadProgress: { gameplay: 0 },
+      resourcesLoadingComplete: false,
+      gameInitializationComplete: false,
+
+      init: function() {
+        console.log('🎬 游戏页面加载界面管理器已初始化');
+        this.setupEventListeners();
+        this.startGameplayLoading();
+      },
+
+      startGameplayLoading: function() {
+        this.showOverlay('gameplay', '加载游戏界面...');
+        this.overlays.gameplay.isLoading = true;
+        this.overlays.gameplay.loadingStartTime = Date.now();
+        console.log('⏳ 游戏加载界面已启动');
+      },
+
+      setupEventListeners: function() {
+        const self = this;
+
+        window.addEventListener('gameInitialized', () => {
+          console.log('🎮 游戏初始化完成');
+          self.gameInitializationComplete = true;
+          self.setProgress(100, 'gameplay');
+          self.setTip('游戏已就绪', 'gameplay');
+          self.checkAndHideOverlay('gameplay');
+        });
+
+        window.addEventListener('loadingProgress', (e) => {
+          const progress = e.detail?.progress || 0;
+          self.setProgress(progress, 'gameplay');
+        });
+
+        // 模拟加载进度
+        let progress = 0;
+        const interval = setInterval(() => {
+          if (!self.overlays.gameplay.isLoading) {
+            clearInterval(interval);
+            return;
+          }
+          progress += Math.random() * 30;
+          if (progress > 90) progress = 90;
+          self.setProgress(Math.floor(progress), 'gameplay');
+        }, 300);
+      },
+
+      checkAndHideOverlay: function(overlayType) {
+        const config = this.overlays[overlayType];
+        if (!config) return;
+
+        if (config.isLoading) {
+          console.log(`⏳ [${overlayType}] 仍在加载中，暂不隐藏`);
+          return;
+        }
+
+        const displayedTime = Date.now() - config.loadingStartTime;
+        const remainingTime = Math.max(0, config.minDisplayTime - displayedTime);
+
+        if (remainingTime > 0) {
+          console.log(`⏳ [${overlayType}] 等待 ${remainingTime}ms 后隐藏`);
+          setTimeout(() => {
+            this.hideOverlay(overlayType);
+          }, remainingTime);
+        } else {
+          this.hideOverlay(overlayType);
+        }
+      },
+
+      showOverlay: function(overlayType = 'gameplay', tip = '加载中...') {
+        const config = this.overlays[overlayType];
+        if (!config) return;
+
+        const overlay = document.getElementById(config.id);
+        if (!overlay) return;
+
+        // 设置随机背景（在显示之前）
+        this.setRandomBackground(config.id);
+
+        overlay.classList.remove('hidden');
+        config.visible = true;
+        this.currentOverlay = overlayType;
+
+        this.setProgress(0, overlayType);
+        this.setTip(tip, overlayType);
+
+        console.log(`✅ 显示加载界面: ${overlayType}`);
+      },
+
+      /**
+       * 设置随机背景
+       * @param {string} overlayId - 加载界面元素ID
+       */
+      setRandomBackground: function(overlayId) {
+        const overlay = document.getElementById(overlayId);
+        if (!overlay) return;
+
+        // 防御性检查：确保背景图数组不为空
+        if (!LOADING_BACKGROUNDS || LOADING_BACKGROUNDS.length === 0) {
+          console.warn('⚠️ 加载背景图数组为空，跳过背景设置');
+          return;
+        }
+
+        // 查找或创建背景层
+        let bgLayer = overlay.querySelector('.loading-bg-layer');
+        if (!bgLayer) {
+          bgLayer = document.createElement('div');
+          bgLayer.className = 'loading-bg-layer';
+          // 插入到最前面，作为背景
+          overlay.insertBefore(bgLayer, overlay.firstChild);
+        }
+
+        // 确保初始透明度为0（防御性编程）
+        bgLayer.style.opacity = '0';
+        bgLayer.style.backgroundImage = 'none'; // 先清空，避免显示旧图片
+
+        // 随机选择一张图片
+        const randomBg = LOADING_BACKGROUNDS[Math.floor(Math.random() * LOADING_BACKGROUNDS.length)];
+        
+        // 预加载图片以避免闪烁
+        const img = new Image();
+        img.onerror = () => {
+          console.warn(`⚠️ 背景图加载失败: ${randomBg}`);
+          // 加载失败时保持透明，不显示背景
+        };
+        img.onload = () => {
+          // 使用 requestAnimationFrame 确保浏览器先渲染背景图，再执行淡入过渡
+          requestAnimationFrame(() => {
+            bgLayer.style.backgroundImage = `url('${randomBg}')`;
+            // 再次使用 requestAnimationFrame 确保背景图已渲染后再淡入
+            requestAnimationFrame(() => {
+              bgLayer.style.opacity = '1';
+            });
+          });
+        };
+        img.src = randomBg;
+        
+        // 处理图片已缓存的情况：如果图片已经加载完成，立即设置背景
+        if (img.complete && img.naturalWidth > 0) {
+          bgLayer.style.backgroundImage = `url('${randomBg}')`;
+          requestAnimationFrame(() => {
+            bgLayer.style.opacity = '1';
+          });
+        }
+      },
+
+      hideOverlay: function(overlayType = 'gameplay') {
+        const config = this.overlays[overlayType];
+        if (!config) return;
+
+        const overlay = document.getElementById(config.id);
+        if (!overlay) return;
+
+        overlay.classList.add('hidden');
+        config.visible = false;
+
+        console.log(`✅ 隐藏加载界面: ${overlayType}`);
+      },
+
+      setProgress: function(progress, overlayType = 'gameplay') {
+        progress = Math.max(0, Math.min(100, progress));
+        this.loadProgress[overlayType] = progress;
+
+        const config = this.overlays[overlayType];
+        if (!config) return;
+
+        const overlay = document.getElementById(config.id);
+        if (!overlay || overlay.classList.contains('hidden')) return;
+
+        const barElement = overlay.querySelector(config.barSelector);
+        if (barElement) {
+          barElement.style.width = progress + '%';
+        }
+
+        const percentElement = overlay.querySelector(config.percentSelector);
+        if (percentElement) {
+          percentElement.textContent = progress + '%';
+        }
+      },
+
+      setTip: function(tip, overlayType = 'gameplay') {
+        const config = this.overlays[overlayType];
+        if (!config) return;
+
+        const overlay = document.getElementById(config.id);
+        if (!overlay || overlay.classList.contains('hidden')) return;
+
+        const tipElement = overlay.querySelector(config.tipSelector);
+        if (tipElement) {
+          tipElement.textContent = tip;
+        }
+      },
+
+      isVisible: function(overlayType = 'gameplay') {
+        return this.overlays[overlayType]?.visible || false;
+      },
+
+      getProgress: function(overlayType = 'gameplay') {
+        return this.loadProgress[overlayType] || 0;
+      },
+
+      hideAllOverlays: function() {
+        Object.keys(this.overlays).forEach(overlayType => {
+          this.hideOverlay(overlayType);
+        });
+        console.log('✅ 所有加载界面已隐藏');
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      // ⚠️ 已禁用：现在使用 src/ui/LoadingUI.js 中的 LoadingUI 类来管理加载界面
+      // LoadingUI 类在 main.js 的 init() 方法中被初始化，包含提示词轮播功能
+      // window.LoadingOverlayManager.init();
+    });
+  </script>
+
+  <!-- CanvasSprite 类 -->
+  <script>
+    class CanvasSprite {
+      constructor(container, imgUrl, cols, rows, fps){
+        this.container = container; if(!container) return;
+        this.cols = cols; this.rows = rows; this.fps = fps;
+        this.frame = 0; this.totalFrames = cols * rows; this.running = false;
+        this.img = new Image(); this.img.decoding = 'async'; this.img.src = imgUrl;
+        this.dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+        this.canvas = document.createElement('canvas');
+        this.canvas.style.position = 'absolute';
+        this.canvas.style.left = '0';
+        this.canvas.style.top = '0';
+        this.canvas.style.width = this.container.clientWidth + 'px';
+        this.canvas.style.height = this.container.clientHeight + 'px';
+        this.container.style.position = this.container.style.position || 'relative';
+        this.container.style.backgroundImage = 'none';
+        this.container.appendChild(this.canvas);
+        this.ctx = this.canvas.getContext('2d');
+        this.ctx.imageSmoothingEnabled = false;
+        this.lastTime = 0;
+        this.acc = 0;
+        this.frameDur = 1000 / fps;
+        this._onResize = () => this.resize();
+        window.addEventListener('resize', this._onResize);
+        this.img.onload = () => { this.resize(); this.start(); };
+      }
+      resize(){
+        const w = this.container.clientWidth;
+        const h = this.container.clientHeight;
+        this.canvas.width = Math.max(1, Math.floor(w * this.dpr));
+        this.canvas.height = Math.max(1, Math.floor(h * this.dpr));
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+        this.srcW = Math.floor(this.img.naturalWidth / this.cols);
+        this.srcH = Math.floor(this.img.naturalHeight / this.rows);
+        const srcAspect = this.srcW / this.srcH;
+        const containerAspect = w / h;
+        let dstW, dstH;
+        if (srcAspect > containerAspect) {
+          dstW = w;
+          dstH = w / srcAspect;
+        } else {
+          dstH = h;
+          dstW = h * srcAspect;
+        }
+        this.dstW = dstW;
+        this.dstH = dstH;
+        this.dstX = (w - dstW) / 2;
+        this.dstY = (h - dstH) / 2;
+      }
+      start(){ if(!this.running){ this.running = true; this.lastTime = performance.now(); this.tick(this.lastTime); } }
+      stop(){ if(this.running){ this.running = false; cancelAnimationFrame(this.raf); window.removeEventListener('resize', this._onResize); } }
+      tick(now){
+        if(!this.running) return;
+        const dt = now - this.lastTime; this.lastTime = now; this.acc += dt;
+        while(this.acc >= this.frameDur){ this.acc -= this.frameDur; this.frame = (this.frame + 1) % this.totalFrames; }
+        this.draw();
+        this.raf = requestAnimationFrame(this.tick.bind(this));
+      }
+      draw(){
+        if(!this.img.complete || !this.img.naturalWidth || !this.img.naturalHeight) return;
+        const natW = this.img.naturalWidth;
+        const natH = this.img.naturalHeight;
+        const col = this.frame % this.cols;
+        const row = Math.floor(this.frame / this.cols);
+        const sx = Math.round(col * natW / this.cols);
+        const sx2 = Math.round((col + 1) * natW / this.cols);
+        const sy = Math.round(row * natH / this.rows);
+        const sy2 = Math.round((row + 1) * natH / this.rows);
+        const sWidth = Math.max(1, sx2 - sx);
+        const sHeight = Math.max(1, sy2 - sy);
+        const w = this.container.clientWidth;
+        const h = this.container.clientHeight;
+        this.ctx.clearRect(0, 0, w, h);
+        this.ctx.drawImage(this.img, sx, sy, sWidth, sHeight, this.dstX, this.dstY, this.dstW, this.dstH);
+      }
+    }
+    window.CanvasSprite = CanvasSprite;
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const idSkel = document.querySelector('.loading-skeleton');
+        const idBfly = document.querySelector('.loading-butterfly');
+        if (idSkel && !idSkel.__sprite) {
+          console.log('🦴 初始化游戏加载界面小骷髅动画');
+          idSkel.__sprite = new CanvasSprite(idSkel, 'https://i.postimg.cc/MGft6mWh/xiaokuloujiazai1.png', 4, 1, 5);
+        }
+        if (idBfly && !idBfly.__sprite) {
+          console.log('🦋 初始化游戏加载界面蝴蝶动画');
+          idBfly.__sprite = new CanvasSprite(idBfly, 'https://i.postimg.cc/DyjfRzTx/hudie1.png', 4, 1, 16/3);
+        }
+      }, 100);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+/* ========================================================================
+   移动端适配样式 (Mobile Adaptation Styles)
+   ======================================================================== */
+
+/* 禁止页面滚动与回弹 */
+html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+}
+
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+}
+
+/* 禁止长按选中与菜单（全局） */
+html,
+body,
+#main-ui,
+#char-select-screen,
+#main-menu {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* 排除 input 标签，允许其正常选中 */
+input {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* 优化点击延迟 - 按钮 */
+button {
+  touch-action: manipulation;
+}
+
+/* 优化点击延迟 - 游戏主容器 */
+#main-ui {
+  touch-action: manipulation;
+}
+

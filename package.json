@@ -1,0 +1,14 @@
+{
+  "name": "magic-tower-rpg",
+  "version": "1.0.0",
+  "description": "魔法塔 RPG - 黑暗幻想 UI",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "keywords": ["rpg", "game", "tower"],
+  "author": "",
+  "license": "MIT"
+}
+

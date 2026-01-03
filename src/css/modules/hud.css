@@ -1,0 +1,621 @@
+/* ========================================================================
+   GAME HUD - In-game Interface Elements
+   ======================================================================== */
+
+/* ========================================================================
+   TOP BAR - Relic Slots
+   ======================================================================== */
+#relic-bar { 
+  height: 80px; 
+  background: linear-gradient(to bottom, #1a1510, #0a0a0a); 
+  border-bottom: none !important; 
+  display: flex; 
+  align-items: center; 
+  padding: 0 30px; 
+  gap: 15px; 
+  box-shadow: none !important; 
+  z-index: 5;
+  border: none !important;
+}
+
+.relic-slot { 
+  width: 40px; 
+  height: 40px; 
+  background: rgba(0, 0, 0, 0.5); 
+  border: 1px solid #444; 
+  border-radius: 4px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  overflow: hidden; 
+  transition: transform 0.2s;
+  box-shadow: none !important;
+}
+
+.relic-slot:hover {
+  transform: scale(1.1);
+  z-index: 10;
+}
+
+/* 稀有度边框 */
+.relic-slot.rare { 
+  border-color: #ffd700; 
+  box-shadow: 0 0 5px #ffd700; 
+}
+
+.relic-slot.epic { 
+  border-color: #9b59b6; 
+  box-shadow: 0 0 5px #9b59b6; 
+}
+
+.relic-slot.legendary { 
+  border-color: #ff4500; 
+  box-shadow: 0 0 8px #ff4500; 
+}
+
+.relic-slot.cursed { 
+  border-color: #ff0000; 
+  box-shadow: inset 0 0 10px #500; 
+}
+
+.relic-slot.filled { 
+  border-color: transparent; 
+  color: var(--accent-gold); 
+  box-shadow: none; 
+  transform: translateY(-2px); 
+}
+
+/* ========================================================================
+   SYSTEM LOG - Bottom Left
+   ======================================================================== */
+#system-log-container { 
+  position:absolute; 
+  bottom:6px; 
+  left:160px; 
+  width:450px; 
+  height:200px; 
+  background: linear-gradient(180deg, rgba(10,10,12,0.9), rgba(10,10,12,0.6)); 
+  border:none; 
+  border-left:none; 
+  padding:15px; 
+  overflow-y:auto; 
+  font-size:1rem; 
+  pointer-events:none; 
+  z-index:20; 
+  border-radius: 0; 
+  opacity:0; 
+  transition: opacity 0.5s ease-in-out; 
+}
+
+#log-panel { 
+  font-family: var(--font-body); 
+  line-height:1.5; 
+  text-shadow: 1px 1px 2px black; 
+}
+
+.log-entry { 
+  margin-bottom:4px; 
+  border-bottom:1px solid rgba(255,255,255,0.05); 
+  padding-bottom:2px; 
+}
+
+.log-combat { 
+  color:#e74c3c; 
+  font-weight:bold; 
+}
+
+.log-gain { 
+  color:#2ecc71; 
+}
+
+.log-info { 
+  color:#3498db; 
+}
+
+.log-ultimate { 
+  color:#f1c40f; 
+  font-weight:bold; 
+  letter-spacing: .5px; 
+  text-transform: uppercase; 
+}
+
+.log-entry-init {
+  color: #aaa;
+}
+
+/* ========================================================================
+   RIGHT SIDEBAR HUD - HP, Rage, XP, Stats, Equipment
+   ======================================================================== */
+
+/* HP Section */
+.hp-section { 
+  width:100%; 
+  margin-bottom:10px; 
+  display:flex; 
+  flex-direction: column; 
+  align-items: center; 
+  grid-column: 2; 
+}
+
+.hp-container { 
+  position:relative; 
+  width:85%; 
+  height:100px !important; 
+  margin:10px auto 5px auto; 
+  display:flex; 
+  justify-content:center; 
+  align-items:center; 
+  filter: none;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.hp-container::after { 
+  content:""; 
+  position:absolute; 
+  inset:0; 
+  background: url('https://i.postimg.cc/J7B7Bx3p/xueliangcao1.png') no-repeat center center; 
+  background-size: 100% 100%; 
+  z-index:2; 
+  pointer-events:none; 
+}
+
+.hp-bar-inner { 
+  position:absolute; 
+  top:20px; 
+  bottom:20px; 
+  left:25px; 
+  right:25px; 
+  background:transparent; 
+  border-radius:40px; 
+  overflow:hidden; 
+  z-index:1; 
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.hp-fill { 
+  height:100%; 
+  width:100%; 
+  background: url('https://i.postimg.cc/2jH1Vc1f/hp-liquid-1764572717577.jpg') repeat-x left center/auto 100%; 
+  transition: width .3s cubic-bezier(.25,.1,.25,1); 
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.hp-text-overlay { 
+  position:relative; 
+  z-index:3; 
+  font-family: var(--font-header); 
+  color:#fff; 
+  font-size:1.8rem; 
+  font-weight:bold; 
+  text-shadow: 0 2px 4px #000, 0 0 10px #800; 
+  margin-top:-2px; 
+}
+
+.hp-fill-full {
+  width: 100%;
+}
+
+/* Rage Section */
+.rage-section { 
+  width:80%; 
+  display:flex; 
+  flex-direction:column; 
+  gap:2px; 
+  position: relative; 
+  z-index: 10; 
+}
+
+.rage-bar-bg { 
+  width:100%; 
+  height:8px; 
+  background: #000; 
+  border:none !important; 
+  border-radius:0; 
+  transition: all 0.2s ease;
+  box-shadow: none !important;
+  position: relative;
+  z-index: 10;
+}
+
+#rage-fill { 
+  height:100%; 
+  width:0%; 
+  background: linear-gradient(90deg, #ff8c00, #ff0000); 
+  transition: all 0.2s ease; 
+  position: relative; 
+  z-index: 10; 
+}
+
+.rage-text { 
+  text-align:right; 
+  font-size:.8rem; 
+  color:#ffffff; 
+  transition: all 0.2s ease; 
+  position: relative; 
+  z-index: 10; 
+}
+
+/* 怒气满值时的样式 */
+.rage-section.full .rage-bar-bg { 
+  border: none !important; 
+  box-shadow: none !important; 
+}
+
+.rage-section.full #rage-fill { 
+  box-shadow: none !important; 
+}
+
+.rage-section.full .rage-text { 
+  color: #ff0000; 
+  font-weight: bold; 
+}
+
+/* LEVEL header between HP and XP */
+.level-header { 
+  width:80%; 
+  margin:6px auto 10px auto; 
+  text-align:center; 
+  color:var(--accent-gold); 
+  font-family:var(--font-header); 
+  font-size:1.4rem; 
+  letter-spacing:1px; 
+  text-shadow:0 2px 4px #000; 
+}
+
+/* XP Section */
+.xp-section { 
+  width:80%; 
+  margin:0 auto 5px auto; 
+  display:flex; 
+  flex-direction:column; 
+  gap:2px; 
+  position: relative; 
+  z-index: 10; 
+}
+
+.xp-bar-bg { 
+  width:100%; 
+  height:8px; 
+  background: #000; 
+  border:none !important; 
+  border-radius:0;
+  box-shadow: none !important;
+  position: relative;
+  z-index: 10;
+}
+
+#xp-fill { 
+  height:100%; 
+  width:0%; 
+  background: linear-gradient(90deg, #ffd700, #f39c12); 
+  transition: width .3s cubic-bezier(.25,.1,.25,1); 
+  position: relative; 
+  z-index: 11; 
+}
+
+.xp-text { 
+  text-align:right; 
+  font-size:.8rem; 
+  color:#caa82a; 
+  position: relative; 
+  z-index: 12; 
+}
+
+/* ========================================================================
+   PANELS - Stats & Equipment
+   ======================================================================== */
+
+/* Panel Headers */
+.panel-header { 
+  width:100%; 
+  text-align:center; 
+  font-family: var(--font-header); 
+  color: var(--accent-gold); 
+  font-size:1.2rem; 
+  text-transform: uppercase; 
+  letter-spacing:2px; 
+  text-shadow: 0 2px 5px black; 
+  margin-bottom:10px; 
+  align-self: center; 
+  border: none !important; 
+  box-shadow: none !important; 
+}
+
+/* Panel Container */
+.panel-container {
+  width:92%; 
+  margin:0 auto 15px auto;
+  background-size: 100% 100%; 
+  background-repeat: no-repeat;
+  padding: 30px 45px !important; 
+  position: relative; 
+  box-shadow: none !important;
+  min-height: 200px; 
+  border: none !important;
+  z-index: 2;
+}
+
+/* Stats Content Layout */
+.stats-content { 
+  display:grid; 
+  grid-template-columns: 1fr 1fr; 
+  column-gap:60px; 
+  row-gap:12px; 
+  padding:30px 12px; 
+  justify-items: center; 
+  position: relative; 
+  z-index: 3; 
+}
+
+.stat-row { 
+  display:grid; 
+  grid-template-columns: 1fr auto; 
+  align-items:center; 
+  column-gap:48px; 
+  padding:6px 0; 
+  border-bottom:none !important; 
+}
+
+.stat-row:last-child { 
+  border-bottom:none !important; 
+}
+
+.stat-name { 
+  color: rgba(90, 58, 26, 1); 
+  font-size:.95rem; 
+  font-weight:600; 
+  font-family: var(--font-header); 
+  letter-spacing:.2px; 
+}
+
+.stat-val { 
+  color:#000; 
+  font-family: var(--font-header); 
+  font-size:1.15rem; 
+  text-shadow:1px 1px 2px black; 
+  text-align:right; 
+  font-variant-numeric: tabular-nums; 
+  letter-spacing:.3px; 
+  min-width:2ch; 
+}
+
+.stat-gold { 
+  color: var(--accent-gold); 
+  text-shadow: 0 0 5px rgba(255,215,0,.5); 
+}
+
+/* Panel specific sizes */
+.stats-panel { 
+  padding-top: 72px; 
+  margin-top: -38px; 
+  min-height: 320px; 
+  padding-bottom: 24px;
+  background: url('https://i.postimg.cc/SNb51xWY/zhaungbeipanel1.png') no-repeat center/100% 100% !important;
+}
+
+.equip-panel { 
+  min-height: 260px; 
+  padding-bottom: 28px;
+  background: url('https://i.postimg.cc/SNb51xWY/zhaungbeipanel1.png') no-repeat center/100% 100% !important;
+}
+
+.equip-panel .equip-content { 
+  margin-top: 24px; 
+}
+
+/* 拉近装备栏与角色属性的间距 */
+#right-sidebar .stats-panel + .panel-header { 
+  margin-top: -12px; 
+  margin-bottom: 6px; 
+}
+
+#right-sidebar .panel-header + .equip-panel { 
+  margin-top: -30px; 
+}
+
+/* Equipment Sockets */
+.equip-content { 
+  display:grid; 
+  grid-template-columns: repeat(3, 1fr); 
+  justify-items:center; 
+  gap:10px; 
+  margin-top: 12px; 
+  position: relative; 
+  z-index: 3; 
+  width: 100%; 
+  max-width: 280px; 
+  margin-left: auto; 
+  margin-right: auto; 
+  transform: translateY(var(--equip-slot-offset-y, -12px)); 
+  will-change: transform; 
+}
+
+.equip-socket { 
+  width:70px; 
+  height:70px; 
+  background:url('https://i.postimg.cc/9MC9ZxXb/zhuangbeicao1.png') no-repeat center/contain; 
+  display:flex; 
+  align-items:center; 
+  justify-content:center; 
+  filter: none; 
+  transition: transform .1s;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.equip-socket:hover { 
+  transform: scale(1.1); 
+  filter: brightness(1.2); 
+}
+
+/* ========================================================================
+   SKILL BAR - Bottom Center
+   ======================================================================== */
+
+#skill-bar {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  z-index: 1000;
+  pointer-events: auto;
+  isolation: isolate;
+  width: auto;
+  height: auto;
+  min-width: 300px;
+  min-height: 80px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+
+.skill-slot {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  min-height: 72px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(100, 100, 100, 0.5);
+  border-radius: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+  z-index: 1;
+  isolation: isolate;
+  flex-shrink: 0;
+  visibility: visible;
+  opacity: 1;
+}
+
+.skill-slot:hover {
+  border-color: transparent;
+  background: rgba(0, 0, 0, 0.8);
+  box-shadow: none;
+}
+
+.skill-slot.on-cooldown {
+  opacity: 0.6;
+  border-color: #444;
+}
+
+/* ✅ FIX: 技能预备状态高亮效果 */
+.skill-slot.skill-active {
+  border-color: #ffd700 !important;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 
+              0 0 40px rgba(255, 215, 0, 0.4),
+              inset 0 0 20px rgba(255, 215, 0, 0.2) !important;
+  background: rgba(255, 215, 0, 0.1) !important;
+  animation: skill-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skill-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 
+                0 0 40px rgba(255, 215, 0, 0.4),
+                inset 0 0 20px rgba(255, 215, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 215, 0, 1), 
+                0 0 60px rgba(255, 215, 0, 0.6),
+                inset 0 0 30px rgba(255, 215, 0, 0.3);
+  }
+}
+
+/* Frame element inside slot (behind icon) */
+.skill-frame {
+  position: absolute;
+  inset: -6px;
+  background-image: url('https://i.postimg.cc/N0TsnqBF/jinengkuang1.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 1;
+  pointer-events: none;
+  border: none !important;
+  box-shadow: none !important;
+  image-rendering: pixelated;
+}
+
+/* Skill icon inside slot */
+.skill-slot .skill-icon {
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  display: block;
+  background-image: url('https://i.postimg.cc/pLKsSmNP/yingxiongjinengtubiao1.png');
+  background-size: 300% 300%;
+  background-repeat: no-repeat;
+  background-position: 0% 0%;
+  image-rendering: pixelated;
+  border: 1px solid rgba(150, 150, 150, 0.3);
+  border-radius: 2px;
+  position: relative;
+  z-index: 2;
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.5);
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Cooldown overlay - fills from bottom to top */
+.cooldown-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 0%;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 2px;
+  transition: height 0.1s linear;
+  z-index: 3;
+  pointer-events: none;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Key hint text in corner */
+.skill-key-hint {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-family: var(--font-header);
+  font-size: 0.65rem;
+  color: #888;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.3px;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.skill-slot.on-cooldown .skill-key-hint {
+  color: #555;
+}
+
+/* ========================================================================
+   FPS COUNTER - Top Left
+   ======================================================================== */
+#fps-counter {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #00ff00;
+  font-family: monospace;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  z-index: 1000002;
+  pointer-events: none;
+  display: none;
+}

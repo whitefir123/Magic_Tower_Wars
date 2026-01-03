@@ -1,0 +1,237 @@
+/* ========================================================================
+   TOOLTIP & MENU COMPONENTS
+   ======================================================================== */
+
+/* Tooltip */
+#tooltip { 
+  position: fixed; 
+  z-index: 1000000; /* 提高到最高层级，确保在所有元素之上（包括加载界面） */
+  min-width: 200px; 
+  max-width: 280px; /* ✅ v2.0: 稍微增加最大宽度以容纳套装信息 */
+  max-height: 80vh; /* ✅ v2.0: 限制最大高度，防止溢出屏幕 */
+  overflow-y: auto; /* ✅ v2.0: 内容过多时显示滚动条 */
+  overflow-x: hidden;
+  background: rgba(10,10,12,0.95); 
+  border: 1px solid #8b7355; 
+  border-left: 4px solid #d4af37; 
+  color: #ddd; 
+  font-family: var(--font-body); 
+  font-size: .95rem; 
+  padding: 10px 12px; 
+  pointer-events: none; 
+  box-shadow: 0 10px 30px rgba(0,0,0,0.7); 
+  display: none; /* 默认隐藏 */
+  /* ✅ v2.0: 自定义滚动条样式 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.5) rgba(0, 0, 0, 0.3);
+}
+
+/* ✅ v2.0: Webkit 浏览器滚动条样式 */
+#tooltip::-webkit-scrollbar {
+  width: 6px;
+}
+
+#tooltip::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+#tooltip::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.5);
+  border-radius: 3px;
+}
+
+#tooltip::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.7);
+}
+
+#tooltip .tt-name { 
+  color:#ffd700; 
+  font-family: var(--font-header); 
+  margin-bottom:6px; 
+  font-size:1.05rem; 
+}
+
+#tooltip .tt-type { 
+  color:#aaa; 
+  font-family: var(--font-body); 
+  margin-bottom:4px; 
+  font-size:0.85rem; 
+}
+
+#tooltip .tt-stat { 
+  color:#fff; 
+}
+
+/* ✅ V2.0: 属性显示格式样式 */
+#tooltip .tt-stat .val-main {
+  color: #ffd700; /* 主数值高亮颜色 */
+  font-weight: bold;
+}
+
+#tooltip .tt-stat .val-sub {
+  color: #aaa; /* 副说明颜色（更暗） */
+  font-size: 0.85em; /* 字体更小 */
+  margin-left: 4px;
+}
+
+#tooltip .tt-stat .val-bonus {
+  color: #00ffff; /* 词缀加成颜色（青色） */
+  font-weight: normal;
+}
+
+/* ✅ v2.0: 词缀显示样式 */
+#tooltip .tt-affix {
+  margin-top: 4px;
+  font-size: 0.9em;
+}
+
+#tooltip .tt-affix.tt-prefix {
+  color: #4a9eff; /* 前缀：蓝色 */
+}
+
+#tooltip .tt-affix.tt-suffix {
+  color: #ff6b9d; /* 后缀：粉色 */
+}
+
+/* ✅ v2.0: 传奇特效样式（暗金色，醒目） */
+#tooltip .tt-unique-effect {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 2px solid #8b7355;
+  border-bottom: 2px solid #8b7355;
+  padding-bottom: 8px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(139, 115, 85, 0.05) 100%);
+}
+
+#tooltip .tt-unique-title {
+  color: #d4af37; /* 暗金色 */
+  font-weight: bold;
+  font-size: 1.05em;
+  margin-bottom: 4px;
+  text-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
+}
+
+#tooltip .tt-unique-desc {
+  color: #ffd700; /* 金色 */
+  font-size: 0.9em;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+/* ✅ v2.0: 套装信息样式 */
+#tooltip .tt-set-info {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 2px solid #8b7355;
+  font-size: 0.9em;
+}
+
+#tooltip .tt-set-header {
+  color: #ffd700;
+  font-weight: bold;
+  font-size: 1.0em;
+  margin-bottom: 8px;
+}
+
+#tooltip .tt-set-effect {
+  margin-top: 6px;
+  padding: 4px 0;
+  line-height: 1.4;
+}
+
+#tooltip .tt-set-effect-active {
+  color: #00ff00; /* 已激活：绿色 */
+}
+
+#tooltip .tt-set-effect-inactive {
+  color: #888; /* 未激活：灰色 */
+  opacity: 0.6;
+}
+
+#tooltip .tt-set-piece-count {
+  font-weight: bold;
+  margin-right: 4px;
+}
+
+#tooltip .tt-set-effect-text {
+  color: inherit;
+}
+
+/**
+ * Z-Index 层级体系 (Global Z-Index Hierarchy)
+ * ===========================================
+ * 1000001: Context Menu (#item-action-menu) - 最高优先级，确保右键菜单在所有元素之上
+ * 1000000: Tooltip - 提示框，在大部分元素之上
+ *  999999: Loading Screen - 加载界面
+ *  999998: Leaderboard - 排行榜
+ *   50000: Toast (Achievement) - 成就提示
+ *   30000: Modal - 模态对话框
+ *   20000: Full-screen UI (Talent Tree, Leaderboard) - 全屏UI
+ *   10000: Overlay (Inventory, Shop, Forge, Gambler, Bestiary) - 弹窗UI
+ *    5000: HUD - 游戏界面HUD
+ *       0: Game Canvas - 游戏画布
+ */
+
+/* Item Action Menu */
+#item-action-menu { 
+  position: fixed;
+  z-index: 1000001; /* 最高层级：右键上下文菜单，确保在所有元素之上 */
+  background: rgba(10, 10, 12, 0.98);
+  border: 2px solid #8b7355;
+  border-radius: 4px;
+  display: none; /* 默认隐藏 */
+  min-width: 160px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+  padding:8px 0; 
+}
+
+.action-menu-item { 
+  padding:10px 16px; 
+  color:#ddd; 
+  font-family: var(--font-body); 
+  font-size:0.95rem; 
+  cursor:pointer; 
+  transition: all 0.15s ease; 
+  border-bottom:1px solid rgba(255,255,255,0.05); 
+}
+
+.action-menu-item:last-child { 
+  border-bottom:none; 
+}
+
+.action-menu-item:hover { 
+  background:rgba(255,215,0,0.15); 
+  color:#ffd700; 
+  padding-left:20px; 
+}
+
+.action-menu-item[data-action="discard"]:hover { 
+  background:rgba(231,76,60,0.15); 
+  color:#e74c3c; 
+}
+
+/* 错误提示 Toast 样式 */
+.error-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 16px 24px;
+  background: rgba(26, 20, 16, 0.95);
+  border: 2px solid #ff6b6b;
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  z-index: 10000;
+  opacity: 0;
+  transform: translateX(400px);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  max-width: 400px;
+  word-wrap: break-word;
+}
+
+.error-toast.show {
+  opacity: 1;
+  transform: translateX(0);
+}

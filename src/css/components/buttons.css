@@ -1,0 +1,669 @@
+/* ========================================================================
+   BUTTON COMPONENTS - All button styles
+   ======================================================================== */
+
+/* 按钮容器 */
+.btn-actions { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 0px; 
+  padding-top: 0px; 
+  padding-bottom: 0px; 
+  align-items: center; 
+  width: 166px;
+  height: 360px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+/* Backpack Icon Styles */
+.backpack-icon {
+  width: 80px;
+  height: 80px;
+  aspect-ratio: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  filter: none;
+  image-rendering: pixelated;
+  position: relative;
+  z-index: 101; /* 确保在最上层 */
+  pointer-events: auto; /* 确保可以接收鼠标事件 */
+}
+
+.backpack-icon:hover {
+  transform: scale(1.15);
+  filter: brightness(1.3);
+}
+
+.backpack-icon:active {
+  transform: scale(0.9);
+  filter: brightness(0.9);
+}
+
+/* ========================================================================
+   按钮样式系统 - 场景专用类
+   ======================================================================== */
+
+/* 基类：所有按钮共有的基础属性 */
+.btn-core {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  color: #eaeaea;
+  background: transparent;
+  aspect-ratio: calc(var(--btn-ratio-w) / var(--btn-ratio-h));
+  width: 132px;
+  height: auto;
+  padding: 0 var(--btn-px, 32px);
+  white-space: nowrap;
+  border: none !important;
+  outline: none !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  font-family: var(--font-header);
+  font-size: 1rem;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px black;
+  transition: filter .15s ease, transform .1s ease;
+  text-transform: none;
+  overflow: visible;
+  clip-path: none;
+  z-index: 1; /* ✅ FIX: 确保按钮在模态框内容之上 */
+  isolation: isolate; /* ✅ FIX: 创建新的堆叠上下文，确保按钮文本显示在 ::before 之上 */
+}
+
+.btn-core::before {
+  content: '';
+  position: absolute;
+  inset: -100%;
+  background: url('https://i.postimg.cc/HWKMcMBL/anniu3.png') center / contain no-repeat transparent;
+  pointer-events: none;
+  z-index: -1; /* ✅ FIX: 改为 -1，确保在按钮文本之下（按钮文本作为元素内容，z-index 默认为 auto，在堆叠上下文中会显示在 ::before 之上） */
+  transform: none;
+  transition: filter .15s ease;
+}
+
+.btn-core:hover::before {
+  filter: brightness(1.06);
+}
+
+.btn-core:hover {
+  color: #fff;
+}
+
+.btn-core:active {
+  transform: translateY(2px);
+}
+
+.btn-core:disabled::before {
+  filter: brightness(0.6);
+}
+
+.btn-core:disabled {
+  color: #666;
+  cursor: not-allowed;
+}
+
+/* 彻底移除所有可能的线框/阴影 */
+.btn-core,
+.btn-core:hover,
+.btn-core:focus,
+.btn-core:active,
+.btn-core:disabled {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+/* ✅ FIX: 确保按钮文本在素材框之上 */
+/* 按钮文本作为按钮的直接内容，会自然显示在 ::before (z-index: 0) 之上 */
+/* 因为按钮本身有 position: relative 和 z-index: 1 */
+/* 但为了确保在所有情况下都正确，我们明确设置按钮内容的层级 */
+
+/* 为按钮的直接子元素（如果有）设置层级，确保它们也在素材框之上 */
+.btn-core > *,
+.btn-system > *,
+.btn-sidebar > *,
+.btn-transaction > *,
+.btn-modal-close > *,
+.btn-rpg > *,
+.btn-ult > * {
+  position: relative;
+  z-index: 2; /* 确保子元素在素材框之上 */
+}
+
+/* ✅ FIX: 确保按钮文本节点正确显示 */
+/* 由于按钮文本是文本节点（不是元素），无法直接设置样式 */
+/* 但按钮本身有 position: relative 和 z-index: 1，文本会自然显示在 ::before 之上 */
+/* 如果文本仍然被遮挡，可能是因为按钮的 z-index 不够高，或者有其他元素遮挡 */
+/* 解决方案：确保按钮有足够高的 z-index，并且按钮内容有正确的显示顺序 */
+/* 关键：按钮文本作为按钮的直接内容，在同一个堆叠上下文中，会自然显示在 ::before 之上 */
+/* 但如果 ::before 的 z-index 是 0，而按钮本身没有明确的 z-index，可能会导致问题 */
+/* 因此我们确保按钮有 z-index: 1，而 ::before 有 z-index: 0，这样文本就会显示在 ::before 之上 */
+
+/* 右侧面板按钮 */
+.btn-sidebar {
+  color: #eaeaea;
+  background: transparent;
+  aspect-ratio: calc(var(--btn-ratio-w) / var(--btn-ratio-h));
+  width: 166px;
+  height: auto;
+  padding: 0 var(--btn-px, 32px);
+  white-space: nowrap;
+  border-radius: 0;
+  box-shadow: none !important;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px black;
+  text-transform: none;
+  overflow: visible;
+  clip-path: none;
+  margin-top: 55px;
+  margin-bottom: 55px;
+  isolation: isolate; /* ✅ FIX: 创建新的堆叠上下文，确保按钮文本显示在 ::before 之上 */
+}
+
+.btn-sidebar::before {
+  content: '';
+  position: absolute;
+  inset: -100%;
+  background: url('https://i.postimg.cc/HWKMcMBL/anniu3.png') center / contain no-repeat transparent;
+  pointer-events: none;
+  z-index: -1; /* ✅ FIX: 改为 -1，确保在按钮文本之下 */
+  transform: none;
+  transition: filter .15s ease;
+}
+
+.btn-sidebar:hover::before {
+  filter: brightness(1.06);
+}
+
+.btn-sidebar:hover {
+  color: #fff;
+}
+
+.btn-sidebar:active {
+  transform: translateY(2px);
+}
+
+.btn-sidebar:disabled::before {
+  filter: brightness(0.6);
+}
+
+.btn-sidebar:disabled {
+  color: #666;
+  cursor: not-allowed;
+}
+
+/* 按钮在按钮容器中居中 */
+.btn-actions .btn-sidebar {
+  align-self: center;
+  width: 166px;
+  max-width: 100%;
+}
+
+/* 必杀技按钮特定样式 */
+#btn-ultimate {
+  margin-top: 24px;
+  margin-bottom: 24px;
+}
+
+/* 交易按钮 - 用于商店、赌徒 */
+.btn-transaction {
+  color: #eaeaea;
+  background: transparent;
+  aspect-ratio: calc(var(--btn-ratio-w) / var(--btn-ratio-h));
+  width: 240px;
+  height: auto;
+  padding: 0 var(--btn-px, 32px);
+  white-space: nowrap;
+  border-radius: 0;
+  box-shadow: none !important;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px black;
+  text-transform: none;
+  overflow: visible;
+  clip-path: none;
+  isolation: isolate; /* ✅ FIX: 创建新的堆叠上下文，确保按钮文本显示在 ::before 之上 */
+}
+
+.btn-transaction::before {
+  content: '';
+  position: absolute;
+  inset: -100%;
+  background: url('https://i.postimg.cc/HWKMcMBL/anniu3.png') center / contain no-repeat transparent;
+  pointer-events: none;
+  z-index: -1; /* ✅ FIX: 改为 -1，确保在按钮文本之下 */
+  transform: none;
+  transition: filter .15s ease;
+}
+
+.btn-transaction:hover::before {
+  filter: brightness(1.06);
+}
+
+.btn-transaction:hover {
+  color: #fff;
+}
+
+.btn-transaction:active {
+  transform: translateY(2px);
+}
+
+.btn-transaction:disabled::before {
+  filter: brightness(0.6);
+}
+
+.btn-transaction:disabled {
+  color: #666;
+  cursor: not-allowed;
+}
+
+/* 弹窗关闭按钮 - 用于背包、图鉴底部 */
+.btn-modal-close {
+  color: #eaeaea;
+  background: transparent;
+  aspect-ratio: calc(var(--btn-ratio-w) / var(--btn-ratio-h));
+  width: 143px;
+  height: 62px;
+  padding: 0 var(--btn-px, 32px);
+  margin-top: 0px;
+  white-space: nowrap;
+  border-radius: 0;
+  box-shadow: none !important;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px black;
+  text-transform: none;
+  overflow: visible;
+  clip-path: none;
+  isolation: isolate; /* ✅ FIX: 创建新的堆叠上下文，确保按钮文本显示在 ::before 之上 */
+}
+
+.btn-modal-close::before {
+  content: '';
+  position: absolute;
+  inset: -100%;
+  background: url('https://i.postimg.cc/HWKMcMBL/anniu3.png') center / contain no-repeat transparent;
+  pointer-events: none;
+  z-index: -1; /* ✅ FIX: 改为 -1，确保在按钮文本之下 */
+  transform: none;
+  transition: filter .15s ease;
+}
+
+.btn-modal-close:hover::before {
+  filter: brightness(1.06);
+}
+
+.btn-modal-close:hover {
+  color: #fff;
+}
+
+.btn-modal-close:active {
+  transform: translateY(2px);
+}
+
+.btn-modal-close:disabled::before {
+  filter: brightness(0.6);
+}
+
+.btn-modal-close:disabled {
+  color: #666;
+  cursor: not-allowed;
+}
+
+/* 系统操作按钮 - 用于死亡界面、昵称弹窗 */
+.btn-system {
+  color: #eaeaea;
+  background: transparent;
+  aspect-ratio: calc(var(--btn-ratio-w) / var(--btn-ratio-h));
+  width: 132px;
+  height: auto;
+  padding: 0 var(--btn-px, 32px);
+  white-space: nowrap;
+  border-radius: 0;
+  box-shadow: none !important;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px black;
+  text-transform: none;
+  overflow: visible;
+  clip-path: none;
+  position: relative; /* ✅ FIX: 确保按钮有定位上下文 */
+  z-index: 1; /* ✅ FIX: 确保按钮在模态框内容之上 */
+  isolation: isolate; /* ✅ FIX: 创建新的堆叠上下文，确保按钮文本显示在 ::before 之上 */
+}
+
+.btn-system::before {
+  content: '';
+  position: absolute;
+  inset: -100%;
+  background: url('https://i.postimg.cc/HWKMcMBL/anniu3.png') center / contain no-repeat transparent;
+  pointer-events: none;
+  z-index: -1; /* ✅ FIX: 改为 -1，确保在按钮文本之下 */
+  transform: none;
+  transition: filter .15s ease;
+}
+
+.btn-system:hover::before {
+  filter: brightness(1.06);
+}
+
+.btn-system:hover {
+  color: #fff;
+}
+
+.btn-system:active {
+  transform: translateY(2px);
+}
+
+.btn-system:disabled::before {
+  filter: brightness(0.6);
+}
+
+.btn-system:disabled {
+  color: #666;
+  cursor: not-allowed;
+}
+
+/* 系统主按钮 - 移除默认绿色背景，使用按钮素材框 */
+.btn-system-primary {
+  background: transparent !important; /* ✅ FIX: 移除绿色背景，使用 ::before 伪元素的按钮素材框 */
+}
+
+/* 保留原有的 .btn-rpg 作为备用 */
+.btn-rpg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  color: #eaeaea;
+  background: transparent;
+  aspect-ratio: calc(var(--btn-ratio-w) / var(--btn-ratio-h));
+  width: 132px;
+  height: 47px;
+  padding: 0 var(--btn-px, 32px);
+  white-space: nowrap;
+  border: none !important;
+  outline: none !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  font-family: var(--font-header);
+  font-size: 1rem;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px black;
+  transition: filter .15s ease, transform .1s ease;
+  text-transform: none;
+  overflow: visible;
+  clip-path: none;
+  isolation: isolate; /* ✅ FIX: 创建新的堆叠上下文，确保按钮文本显示在 ::before 之上 */
+}
+
+.btn-rpg::before {
+  content: '';
+  position: absolute;
+  inset: -100%;
+  background: url('https://i.postimg.cc/HWKMcMBL/anniu3.png') center / contain no-repeat transparent;
+  pointer-events: none;
+  z-index: -1; /* ✅ FIX: 改为 -1，确保在按钮文本之下 */
+  transform: none;
+  transition: filter .15s ease;
+}
+
+.btn-rpg {
+  position: relative;
+  z-index: 1;
+}
+
+.btn-actions .btn-rpg { 
+  align-self: center; 
+  width: 166px;
+  max-width: 100%;
+}
+
+.btn-rpg:hover::before { 
+  filter: brightness(1.06);
+}
+.btn-rpg:hover { 
+  color: #fff;
+}
+
+.btn-rpg:active { 
+  transform: translateY(2px);
+}
+
+.btn-rpg,
+.btn-rpg:hover,
+.btn-rpg:focus,
+.btn-rpg:active,
+.btn-rpg:disabled {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+.btn-rpg:disabled::before {
+  filter: brightness(0.6);
+}
+.btn-rpg:disabled {
+  color: #666;
+  cursor: not-allowed;
+}
+
+.btn-rpg.btn-reset {
+  margin-top: 57px;
+  margin-bottom: 57px;
+}
+
+/* 必杀技按钮 */
+.btn-ult {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  color: #eaeaea;
+  background: transparent;
+  aspect-ratio: calc(var(--btn-ratio-w) / var(--btn-ratio-h));
+  width: calc(var(--btn-w) * var(--btn-bg-scale));
+  height: auto;
+  padding: 0 calc(var(--btn-px, 32px) * min(1, var(--btn-bg-scale)));
+  white-space: nowrap;
+  border: none !important;
+  outline: none !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  font-family: var(--font-header);
+  font-size: 1rem;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px black;
+  transition: filter .15s ease, transform .1s ease;
+  text-transform: none;
+  overflow: visible;
+  clip-path: none;
+  isolation: isolate; /* ✅ FIX: 创建新的堆叠上下文，确保按钮文本显示在 ::before 之上 */
+}
+
+.btn-ult::before {
+  content: '';
+  position: absolute;
+  inset: -100%;
+  background: url('https://i.postimg.cc/HWKMcMBL/anniu3.png') center / contain no-repeat transparent;
+  pointer-events: none;
+  z-index: -1; /* ✅ FIX: 改为 -1，确保在按钮文本之下 */
+  transform: none;
+  transition: filter .15s ease;
+}
+
+.btn-ult:disabled {
+  color: #666;
+  cursor: not-allowed;
+}
+
+.btn-ult:disabled::before {
+  filter: brightness(0.6);
+}
+
+.btn-ult:hover::before {
+  filter: brightness(1.06);
+}
+
+.btn-ult:hover {
+  color: #fff;
+}
+
+.btn-ult:active {
+  transform: translateY(2px);
+}
+
+/* 主菜单按钮 */
+.btn-menu {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  height: 90px;
+  padding: 0;
+  font-family: var(--font-header);
+  font-size: 1.2rem;
+  font-weight: bold;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #fff;
+  background: url('https://i.postimg.cc/HWKMcMBL/anniu3.png') no-repeat center/contain;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: none;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-menu:hover:not(.disabled) {
+  background-image: url('https://i.postimg.cc/HWKMcMBL/anniu3.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  color: var(--accent-gold);
+  filter: brightness(1.15) drop-shadow(0 0 20px rgba(255, 215, 0, 0.4));
+  transform: translateY(-2px);
+}
+
+.btn-menu:active:not(.disabled) {
+  transform: translateY(4px);
+  filter: brightness(0.95);
+}
+
+.btn-menu.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  color: #666;
+  filter: brightness(0.8);
+}
+
+/* Return Button - 角色选择界面返回按钮 */
+.btn-return-to-menu {
+  position: absolute;
+  bottom: -60px;
+  left: 100px;
+  width: 150px;
+  height: 150px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 20;
+}
+
+.btn-return-to-menu img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  transition: all 0.2s ease;
+}
+
+.btn-return-to-menu:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+.btn-return-to-menu:active {
+  transform: scale(0.95);
+  filter: brightness(0.9);
+}
+
+/* Return Button Text Style */
+.btn-return-text {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-header);
+  font-size: 0.9rem;
+  color: #ffffff;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+  pointer-events: none;
+  font-weight: 600;
+}
+
+.btn-return-to-menu::after {
+  content: '返回';
+  position: absolute;
+  bottom: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-header);
+  font-size: 1rem;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+  pointer-events: none;
+  font-weight: 600;
+  z-index: 21;
+}
+
+/* Retry Button - 错误重试按钮 */
+.btn-retry {
+  padding: 14px 32px;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  font-family: var(--font-header);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn-retry:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.btn-retry:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+}

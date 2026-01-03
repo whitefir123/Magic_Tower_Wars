@@ -1,0 +1,354 @@
+/* ========================================================================
+   LOADING SCREEN COMPONENTS
+   ======================================================================== */
+
+#loading-overlay, .loading-overlay-screen { 
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  z-index: 999999;
+  transition: opacity 0.8s ease-in-out;
+  opacity: 1;
+  pointer-events: auto;
+  overflow: hidden; /* 裁剪背景层溢出，防止滚动条 */
+}
+
+/* 显示状态 - 电影级过渡 */
+.loading-overlay-screen.overlay-active {
+  opacity: 1;
+  transition: opacity 0.8s ease-in-out;
+  pointer-events: auto;
+}
+
+/* 淡出状态 - 电影级过渡 */
+.loading-overlay-screen.overlay-exit {
+  opacity: 0;
+  pointer-events: none !important; /* 🔴 关键：立即释放点击穿透，防止过渡期间无法操作 */
+}
+
+.loading-overlay-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+  display: none;
+}
+
+.loading-overlay-screen {
+  display: flex;
+}
+
+.loader { 
+  border:3px solid #333; 
+  border-top:3px solid var(--accent-gold); 
+  border-radius:50%; 
+  width:60px; 
+  height:60px; 
+  animation: spin 1s linear infinite; 
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+@keyframes spin { 
+  0%{ transform: rotate(0);} 
+  100%{ transform: rotate(360deg);} 
+}
+
+/* ========================================================================
+   Loading Progress Bar (Refined Assets)
+   ======================================================================== */
+
+.loading-bar-container {
+  width: 520px;  /* 放大尺寸 */
+  max-width: 90vw; /* 响应式：确保在极窄屏幕下不会溢出 */
+  height: 71px;  /* 调整高度以匹配比例 */
+  padding: 10px 14px; /* 控制内胆位置，防止溢出边框 */
+  
+  /* 移除原背景，改为透明 */
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  
+  position: relative;
+  z-index: 10; /* 显式设置层级，确保在背景层和遮罩层之上 */
+  overflow: visible; /* 允许边框阴影溢出 */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: 0px;
+}
+
+/* 使用伪元素放置边框，层级为 2 */
+.loading-bar-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('https://i.postimg.cc/kGydx3N7/loadingkuang1.png') no-repeat center center;
+  background-size: 100% 100%;
+  z-index: 2; /* 在进度条之上 */
+  pointer-events: none;
+}
+
+/* 添加一个流光动画效果，让纹理看起来在流动 */
+@keyframes bar-flow {
+  0% { background-position: 0 0; }
+  100% { background-position: 100px 0; }
+}
+
+#loading-bar-fill, .loading-bar-fill {
+  height: 33px;
+  width: 0%;
+  position: relative;
+  z-index: 1; /* 在边框之下 */
+  
+  border-radius: 12px; /* 圆角适应 */
+  
+  /* 保持原有的纹理和动画逻辑 */
+  background: url('https://i.postimg.cc/v8hPNvPw/loadingquality3.png') repeat-x left center;
+  background-size: auto 100%;
+  transition: width 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-shadow: 0 0 15px rgba(255, 180, 0, 0.5); /* 增强发光 */
+  filter: brightness(1.2) contrast(1.1);
+  
+  animation: bar-flow 2s linear infinite;
+}
+
+#loading-percent, .loading-percent {
+  margin-top: 15px;
+  font-family: var(--font-header);
+  font-size: 1.2rem;
+  color: var(--accent-gold);
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Hide main UI until loading is complete */
+#main-ui {
+  display: none !important;
+}
+/* 只要有 loaded 或 scene-active 类，都强制显示 */
+#main-ui.loaded,
+#main-ui.scene-active {
+  display: flex !important;
+}
+
+#char-select-screen {
+  display: none !important;
+}
+
+#char-select-screen.loaded,
+#char-select-screen.scene-transition {
+  display: block !important;
+}
+
+/* Loading Tips Container - Bottom Left */
+.loading-tips-container {
+  position: absolute;
+  bottom: 80px;
+  left: 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-header);
+  font-size: 1.1rem;
+  width: auto;
+  min-width: 411px;
+  max-width: 90vw;
+  height: 59px;
+  animation: fadeInTip 0.5s ease-in-out;
+}
+
+.tip-label {
+  color: var(--accent-gold);
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+#loading-tip-text, .loading-tip-text {
+  color: #aaa;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  height: 15px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  opacity: 1;
+  transition: opacity 0.25s ease-in-out;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+@keyframes fadeInTip {
+  0% { opacity: 0; transform: translateX(-10px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* Loading Chase Container - Bottom Right */
+.loading-chase-container {
+  position: absolute;
+  bottom: 0;
+  right: 20px;
+  width: auto;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0px;
+}
+
+#loading-butterfly, .loading-butterfly {
+  width: 128px;
+  height: 64px;
+  aspect-ratio: 2 / 1;
+  background-image: url('https://i.postimg.cc/kXKPYW3B/hudie1.png');
+  background-size: 400% 100%;
+  background-repeat: no-repeat;
+  background-position: 0% 0%;
+  image-rendering: pixelated;
+  /* 帧切换改由 JS 控制，仅保留位移动画 */
+  animation: butterfly-move 3s ease-in-out infinite;
+  position: relative;
+  z-index: 2;
+  margin-left: -32px;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+#loading-butterfly canvas, .loading-butterfly canvas {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#loading-skeleton, .loading-skeleton {
+  width: 128px;
+  height: 64px;
+  aspect-ratio: 2 / 1;
+  background-image: url('https://i.postimg.cc/v8K6Xkwy/gulaidekulou1.png');
+  background-size: 400% 100%;
+  background-repeat: no-repeat;
+  background-position: 0% 0%;
+  image-rendering: pixelated;
+  /* 帧切换改由 JS 控制，不进行位移动画 */
+  position: relative;
+  z-index: 1;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+#loading-skeleton canvas, .loading-skeleton canvas {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 蝴蝶和骷髅的动画 - 仅控制位移，帧切换由 JS 控制 */
+@keyframes butterfly-move {
+  0%, 100% {
+    transform: translateX(-40px) translateY(-25px);
+  }
+  50% {
+    transform: translateX(0px) translateY(-30px);
+  }
+}
+
+@keyframes skeleton-chase {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(60px);
+  }
+}
+
+/* ========================================================================
+   Dynamic Background System
+   ======================================================================== */
+
+/* 背景层容器 - 绝对定位在最底层 */
+.loading-bg-layer {
+  position: absolute;
+  inset: -5%; /* 稍微延伸出边界，防止动画缩放时露底 */
+  width: 110%;
+  height: 110%;
+  z-index: 0; /* 最底层 */
+  
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  
+  /* Ken Burns 呼吸效果动画 */
+  animation: ken-burns 30s ease-in-out infinite alternate;
+  
+  /* 初始透明度为0，通过JS加载完成后设为1，实现淡入效果 */
+  opacity: 0; 
+  transition: opacity 1s ease-in-out;
+}
+
+/* 确保所有前景内容都在背景之上 */
+.loader, 
+.loading-bar-container, 
+.loading-percent {
+  position: relative;
+  z-index: 10; /* 提升层级 */
+}
+
+/* 提示和动画容器保持绝对定位，但确保层级在背景之上 */
+.loading-tips-container, 
+.loading-chase-container {
+  z-index: 10; /* 提升层级，但保持原有的绝对定位 */
+}
+
+/* Ken Burns 动画关键帧 */
+@keyframes ken-burns {
+  0% {
+    transform: scale(1.0) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.1) translate(-1%, -1%);
+  }
+  100% {
+    transform: scale(1.0) translate(1%, 1%);
+  }
+}
+
+/* ========================================================================
+   Atmospheric Vignette Overlay (Static Lens Effect)
+   ======================================================================== */
+#loading-overlay::after,
+.loading-overlay-screen::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5 !important; /* 位于背景(0)之上，但位于内容(10)之下 */
+  pointer-events: none;
+  
+  /* 复合径向渐变：实现中心透亮、四周压暗的效果 */
+  background: radial-gradient(
+    circle at center,
+    rgba(0, 0, 0, 0.2) 0%,    /* 中心：轻微遮罩，保留背景细节 */
+    rgba(0, 0, 0, 0.5) 50%,   /* 中间：加深，确保文字可读 */
+    rgba(0, 0, 0, 0.95) 100%  /* 边缘：深沉暗角，营造氛围 */
+  ) !important;
+  
+  /* 添加轻微的噪点纹理增加复古/暗黑质感 (可选，使用混合模式) */
+  box-shadow: inset 0 0 100px rgba(0,0,0,0.8) !important;
+}

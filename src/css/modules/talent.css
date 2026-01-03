@@ -1,0 +1,304 @@
+/* ========================================================================
+   天赋树UI样式 (Talent Tree UI Styles)
+   ======================================================================== */
+
+/* 天赋树全屏覆盖层 */
+.talent-tree-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 20000; /* ✅ FIX: 提升到全屏UI层级（与Modal同级，确保在普通Overlay之上） */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-image: url('https://i.postimg.cc/2jwf0wrt/startpanel1.png') !important;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
+  background-color: transparent;
+}
+
+/* 天赋树 Header 区域 - 统一顶部栏 */
+.talent-tree-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 40px;
+  background-image: url('https://i.postimg.cc/nVqsFR8j/xingtukuang2.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: transparent;
+  border: none;
+  z-index: 10;
+  position: relative;
+  flex-shrink: 0;
+  width: 252px;
+  height: 108px;
+  text-align: left;
+}
+
+.talent-tree-header h2 {
+  margin: 0;
+  color: #ffd700;
+  font-size: 28px;
+  font-family: var(--font-header);
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+  letter-spacing: 2px;
+}
+
+.talent-tree-header p {
+  margin: 5px 0 0 0;
+  color: #aaa;
+  font-size: 14px;
+  font-family: var(--font-body);
+}
+
+/* 天赋树主容器 - Canvas 和节点容器 */
+.talent-tree-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: transparent; /* 透明背景，让 overlay 的背景图片显示 */
+  z-index: 0; /* Canvas 层 */
+}
+
+/* Canvas 层 - 绘制连接线，位于最底层，背景透明 */
+.talent-tree-container canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  background-color: transparent;
+}
+
+/* 节点容器 - DOM 节点，位于 Canvas 之上 */
+.talent-node-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center center;
+  pointer-events: none;
+  z-index: 10; /* DOM 节点层 */
+}
+
+/* 统计面板 - 位于上层 */
+.talent-stats-panel {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background-image: url('https://i.postimg.cc/DwtjkRfk/xingtukuang1.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 23px 20px;
+  color: #fff;
+  min-width: 250px;
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 20; /* UI 面板层 */
+  box-shadow: none;
+  height: 146px;
+  width: 219px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+/* 天赋树节点动画增强 */
+/* 天赋树节点 - 移除默认边框和背景，只显示圆形素材图片 */
+.talent-node {
+  will-change: transform;
+  border: none !important;
+  background-color: transparent !important;
+  border-radius: 50% !important;
+  position: relative;
+  /* 发光效果由 ::before 伪元素实现，位于素材图片下方 */
+}
+
+/* 发光层 - 位于节点素材下方，纯粹的发光球体 */
+.talent-node::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: none;
+  z-index: -1; /* 确保在素材图片下方 */
+  opacity: 0;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+/* 已解锁节点的发光效果 - 从内而外散发光芒的纯粹发光球体 */
+.talent-node.talent-node-allocated::before {
+  opacity: 1;
+  box-shadow: 0 0 20px -12px var(--glow-color, #ffd700), 0 0 30px -8px var(--glow-color, #ffd700); /* 从内而外散发光芒，无边框 */
+}
+
+/* Hover 时增强发光效果 */
+.talent-node.talent-node-allocated.talent-node-hover::before {
+  box-shadow: 0 0 25px -10px var(--glow-color, #ffd700), 0 0 35px -6px var(--glow-color, #ffd700); /* hover 时增强发光 */
+}
+
+.talent-node:hover {
+  animation: talentNodePulse 1s infinite;
+  border: none !important;
+  background-color: transparent !important;
+}
+
+.talent-node.active,
+.talent-node:active {
+  border: none !important;
+  background-color: transparent !important;
+}
+
+@keyframes talentNodePulse {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.3);
+  }
+}
+
+/* 天赋树统计面板滚动条样式 */
+.talent-stats-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.talent-stats-panel::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+}
+
+.talent-stats-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 215, 0, 0.5);
+  border-radius: 3px;
+}
+
+.talent-stats-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 215, 0, 0.7);
+}
+
+/* 天赋树工具提示增强 */
+.talent-tooltip {
+  animation: tooltipFadeIn 0.2s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 灵魂水晶显示 - 位于 Header 区域 */
+.talent-sc-display {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  font-size: 20px;
+  color: rgba(255, 255, 255, 1);
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  z-index: 20;
+  position: relative;
+  text-align: center;
+  justify-content: flex-start;
+  height: 32px;
+}
+
+.talent-sc-display img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+  padding-left: 0px;
+}
+
+.talent-sc-display span {
+  color: rgba(255, 255, 255, 1);
+  width: 138px;
+}
+
+/* 天赋树关闭按钮 - 从 header 中脱离，使用绝对定位 */
+.talent-close-btn {
+  width: 50px;
+  height: 50px;
+  background: url('https://i.postimg.cc/Hkg88mzY/chacha.png') no-repeat center/contain;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 30;
+  position: absolute;
+  top: 20px;
+  right: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0;
+  text-indent: -9999px;
+  overflow: hidden;
+}
+
+.talent-close-btn:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+.talent-close-btn:active {
+  transform: scale(0.95);
+}
+
+/* 响应式调整 */
+@media (max-width: 1600px) {
+  .talent-stats-panel {
+    min-width: 200px !important;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .talent-tree-header {
+    flex-direction: column !important;
+    gap: 15px;
+  }
+  
+  .talent-stats-panel {
+    position: relative !important;
+    bottom: auto !important;
+    right: auto !important;
+    margin: 20px auto;
+  }
+}
+
+/* 天赋节点发光效果增强 - 根节点和关键节点使用动画发光 */
+.talent-node-root.talent-node-allocated::before,
+.talent-node-keystone.talent-node-allocated::before {
+  animation: nodeGlow 2s ease-in-out infinite;
+}
+
+@keyframes nodeGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px -10px var(--glow-color, #ffffff), 0 0 25px -6px var(--glow-color, #ffffff); /* 纯粹的从内而外散发光芒的发光球体 */
+  }
+  50% {
+    box-shadow: 0 0 25px -8px var(--glow-color, #ffffff), 0 0 35px -4px var(--glow-color, hsl(0, 0%, 100%)), 0 0 45px -2px var(--glow-color, #ffd700); /* 增强的纯粹发光球体 */
+  }
+}
+

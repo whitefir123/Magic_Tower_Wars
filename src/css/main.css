@@ -1,0 +1,26 @@
+/* Main Entry Point */
+@import './_variables.css';
+@import './_base.css';
+
+/* Layout */
+@import './_layout.css';
+
+/* Components */
+@import './components/buttons.css';
+@import './components/loading.css';
+@import './components/tooltip.css';
+@import './components/modal.css';
+
+/* Modules */
+@import './modules/hud.css';
+@import './modules/menu.css';
+@import './modules/inventory.css';
+@import './modules/bestiary.css';
+@import './modules/shop.css';
+@import './modules/talent.css';
+@import './modules/leaderboard.css';
+@import './modules/settings.css';
+@import './modules/achievements.css';
+
+@import './_legacy.css'; /* 暂时保留旧代码，逐步移除 */
+

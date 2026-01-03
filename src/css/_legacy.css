@@ -1,0 +1,86 @@
+/* ==========================================================================
+   LEGACY CSS - Temporary File
+   
+   This file contains remaining utility styles during the refactoring process.
+   As the CSS refactoring completes, this file should become empty and be removed.
+   
+   Refactoring Status:
+   ✓ Variables and base styles → _variables.css, _base.css
+   ✓ Main layout → _layout.css
+   ✓ Buttons → components/buttons.css
+   ✓ Loading screen → components/loading.css
+   ✓ Tooltips and menus → components/tooltip.css
+   ✓ Modals → components/modal.css
+   ✓ HUD elements → modules/hud.css
+   ✓ Main menu and character selection → modules/menu.css
+   ✓ Inventory system → modules/inventory.css
+   ✓ Bestiary → modules/bestiary.css
+   ✓ Shop, Gambler, Draft/Shrine → modules/shop.css
+   ✓ Talent tree → modules/talent.css
+   ✓ Leaderboard and death screen → modules/leaderboard.css
+   ✓ Settings panel → modules/settings.css
+   ✓ Achievements → modules/achievements.css
+   
+   ========================================================================== */
+
+/* ========================================================================
+   UTILITY CLASSES
+   ======================================================================== */
+
+/* 隐藏元素 */
+.hidden {
+  display: none !important;
+}
+
+/* 按钮样式 */
+.btn-wide {
+  width: 240px;
+}
+
+/* 弹性容器 */
+.flex-center {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 620px;
+}
+
+/* 背景图片样式 */
+.ror-run-config-bg {
+  background-image: url('https://i.postimg.cc/fTv3sWB2/chooseheropanel1.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* 日志条目 */
+.log-entry-init {
+  color: #aaa;
+}
+
+/* 血条填充 */
+.hp-fill-full {
+  width: 100%;
+}
+
+/* ========================================================================
+   LOADING SCREEN VISIBILITY CONTROL
+   ======================================================================== */
+
+/* Hide main UI until loading is complete */
+#main-ui {
+  display: none !important;
+}
+
+#main-ui.loaded {
+  display: flex !important;
+}
+
+#char-select-screen {
+  display: none !important;
+}
+
+#char-select-screen.loaded {
+  display: block !important;
+}

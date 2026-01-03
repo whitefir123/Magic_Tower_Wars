@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- 
+    ========================================================================
+    Content Security Policy (CSP) - 已临时移除
+    ========================================================================
+    为了修复 Supabase SDK 加载问题，已暂时移除 CSP 限制
+    后续可以重新配置更宽松的 CSP 策略
+    ========================================================================
+  -->
+  <title>魔法塔 RPG - 黑暗幻想 UI</title>
+  <!-- 
+    ========================================================================
+    健壮屏幕缩放系统 (Robust Screen Scaling System)
+    ========================================================================
+    
+    功能: 确保游戏 UI 在任何屏幕尺寸上保持完美的宽高比和布局
+    
+    设计分辨率 (Design Resolution): 1380x900px
+    缩放方法 (Scaling Method): Letterboxing (保持宽高比，两侧/上下留黑边)
+    
+    核心实现:
+    1. CSS (style.css):
+       - body: width: 100vw; height: 100vh; (全屏容器)
+       - #main-ui: position: absolute; transform-origin: center center;
+       - 支持 transform: scale() 动态缩放
+    
+    2. JavaScript (src/main.js):
+       - setupScreenScaling(): 初始化缩放系统
+       - handleResize(): 计算最优缩放因子并应用
+       - 公式: scale = Math.min(windowWidth/1380, windowHeight/900)
+       - 事件: window.onresize 自动调整
+    
+    3. 资源优化 (Asset Quality):
+       - canvas: image-rendering: pixelated; (防止模糊)
+       - 所有精灵图: image-rendering: pixelated;
+    
+    测试场景:
+    - 笔记本 (1920x1080): scale ≈ 1.2
+    - 大显示器 (3840x2160): scale ≈ 2.4
+    - 小屏幕 (1024x768): scale ≈ 0.73
+    
+    ======================================================================== 
+  -->
+  <!-- 关键资源：核心样式表（同步加载） -->
+  <link rel="stylesheet" href="./src/css/main.css" />
+  <link rel="stylesheet" href="./mobile-adapt.css" />
+  
+  <!-- 非关键资源：Google Fonts（异步加载） -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Spectral:wght@400;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Spectral:wght@400;700&display=swap" /></noscript>
+  
+  <!-- 网站图标 -->
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y8qjTQAAAAASUVORK5CYII=" />
+</head>
+<body>
+  <!-- GLOBAL LOADING OVERLAY - Must be first child of body for proper z-index stacking -->
+  <div id="loading-overlay">
+    <div class="loader"></div>
+    <div class="loading-bar-container">
+      <div id="loading-bar-fill" style="width: 0%"></div>
+    </div>
+    <div id="loading-percent">0%</div>
+    <div class="loading-tips-container">
+      <span class="tip-label">提示:</span>
+      <span id="loading-tip-text">加载中...</span>
+    </div>
+    <div class="loading-chase-container">
+      <div id="loading-skeleton"></div>
+      <div id="loading-butterfly"></div>
+    </div>
+  </div>
+
+  <!-- CHARACTER SELECT LOADING OVERLAY -->
+  <div id="char-select-loading-overlay" class="loading-overlay-screen hidden">
+    <div class="loader"></div>
+    <div class="loading-bar-container">
+      <div class="loading-bar-fill" style="width: 0%"></div>
+    </div>
+    <div class="loading-percent">0%</div>
+    <div class="loading-tips-container">
+      <span class="tip-label">提示:</span>
+      <span class="loading-tip-text">加载英雄选择界面...</span>
+    </div>
+    <div class="loading-chase-container">
+      <div class="loading-skeleton"></div>
+      <div class="loading-butterfly"></div>
+    </div>
+  </div>
+
+  <!-- GAMEPLAY LOADING OVERLAY -->
+  <div id="gameplay-loading-overlay" class="loading-overlay-screen hidden">
+    <div class="loader"></div>
+    <div class="loading-bar-container">
+      <div class="loading-bar-fill" style="width: 0%"></div>
+    </div>
+    <div class="loading-percent">0%</div>
+    <div class="loading-tips-container">
+      <span class="tip-label">提示:</span>
+      <span class="loading-tip-text">加载游戏界面...</span>
+    </div>
+    <div class="loading-chase-container">
+      <div class="loading-skeleton"></div>
+      <div class="loading-butterfly"></div>
+    </div>
+  </div>
+
+  <!-- Character Selection Screen - Risk of Rain 2 HUD Style -->
+  <div id="char-select-screen" class="hidden">
+    <div class="ror-bg"></div>
+    
+    <!-- Center Preview Sprite (Clean, no overlay text) -->
+    <div class="ror-center-preview">
+      <div id="ror-preview-sprite" class="ror-preview-sprite"></div>
+    </div>
+
+    <!-- Top-Left: Character Strip -->
+    <div class="ror-char-strip">
+      <!-- Characters will be generated here by JavaScript -->
+    </div>
+
+    <!-- Bottom-Left: Character Details Card -->
+    <div class="ror-char-details">
+      <!-- Return Button -->
+      <button id="btn-return-to-menu" class="btn-return-to-menu" onclick="window.game?.returnToMainMenu()" title="返回主菜单">
+        <img src="https://i.postimg.cc/HWKMcMBL/anniu3.png" alt="返回" />
+        <span class="btn-return-text">返回</span>
+      </button>
+      
+      <h2 id="ror-char-name" class="ror-detail-name">选择角色</h2>
+      <div class="ror-stats-row">
+        <span id="ror-hp" class="ror-stat-item">HP: 100</span>
+        <span id="ror-speed" class="ror-stat-item">攻击: 10</span>
+      </div>
+      
+      <!-- Skills Grid: 3 skill icons + descriptions -->
+      <div class="ror-skills-grid">
+        <div class="ror-skill-item">
+          <div class="skill-icon" id="skill-icon-0"></div>
+          <div class="skill-text-wrapper">
+            <div class="skill-label" id="skill-label-0">被动</div>
+            <div class="skill-desc" id="skill-desc-0">...</div>
+          </div>
+        </div>
+        <div class="ror-skill-item">
+          <div class="skill-icon" id="skill-icon-1"></div>
+          <div class="skill-text-wrapper">
+            <div class="skill-label" id="skill-label-1">主动</div>
+            <div class="skill-desc" id="skill-desc-1">...</div>
+          </div>
+        </div>
+        <div class="ror-skill-item">
+          <div class="skill-icon" id="skill-icon-2"></div>
+          <div class="skill-text-wrapper">
+            <div class="skill-label" id="skill-label-2">必杀技</div>
+            <div class="skill-desc" id="skill-desc-2">...</div>
+          </div>
+        </div>
+      </div>
+      
+      <div id="ror-lore" class="ror-lore">点击左上角的角色图标开始冒险...</div>
+    </div>
+
+    <!-- Right Panel: Run Configuration -->
+    <div class="ror-run-config ror-run-config-bg">
+      <img class="ror-panel-bg" src="https://i.postimg.cc/fTv3sWB2/chooseheropanel1.png" alt="panel-bg" />
+      
+      <!-- Daily Challenge Info Container -->
+      <div class="daily-run-info hidden">
+        <h3 class="ror-config-header" id="daily-date-header">每日挑战</h3>
+        
+        <div class="daily-section">
+          <div class="daily-row" id="daily-modifiers-container">
+          </div>
+          <div class="daily-row" id="daily-relic-container">
+          </div>
+        </div>
+
+        <div class="daily-leaderboard-section">
+          <h3 class="ror-config-header">🏆 今日榜首</h3>
+          <div class="daily-top3-list" id="daily-top3-list">
+            <div class="loading-text">加载中...</div>
+          </div>
+        </div>
+      </div>
+      
+      <h3 class="ror-config-header" id="ascension-level-header">噩梦层级</h3>
+      <div class="ror-diff-selector">
+        <button class="ror-btn-arrow" onclick="game.changeAscensionLevel(-1)">◀</button>
+        <div class="ror-diff-display" id="ror-diff-display" title="">
+          <span id="ror-diff-name">1</span>
+          <div class="ror-diff-desc" id="ror-diff-desc" style="font-size: 0.7em; color: #aaa; margin-top: 4px;">标准成长</div>
+          <div class="ror-diff-tooltip" id="ror-diff-tooltip" style="display: none; position: absolute; background: rgba(0,0,0,0.9); color: #fff; padding: 8px; border-radius: 4px; z-index: 1000; font-size: 0.85em; max-width: 200px; pointer-events: none;"></div>
+        </div>
+        <button class="ror-btn-arrow" onclick="game.changeAscensionLevel(1)">▶</button>
+      </div>
+
+      <div class="ror-config-section">
+        <h3 class="ror-config-header">设置</h3>
+        <label class="ror-toggle">
+          <input type="checkbox" id="chk-fog" checked title="启用战争迷雾"> 启用战争迷雾
+        </label>
+        <label class="ror-toggle">
+          <input type="checkbox" id="chk-lighting" checked title="启用动态光照"> 启用动态光照
+        </label>
+      </div>
+
+      <div class="ror-ready-section">
+        <button class="ror-btn-ready" onclick="game.startGameWithRedirect()">
+          <img class="ready-img" src="https://i.postimg.cc/P551FVmq/anniu2.png" alt="Start" />
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Menu Overlay -->
+  <div id="main-menu" class="main-menu-overlay">
+    <div class="menu-bg"></div>
+    <div class="menu-content">
+      <!-- Left Sidebar -->
+      <div class="menu-sidebar">
+        <!-- Main Group (Primary Level) -->
+        <div id="menu-group-main" class="menu-group active">
+          <div class="menu-buttons">
+            <button id="btn-start-game" class="btn-menu btn-start">
+              <span>开始游戏</span>
+              <div id="menu-mascot" class="menu-mascot"></div>
+            </button>
+            <button id="btn-continue" class="btn-menu btn-continue disabled">继续游戏</button>
+            <button id="btn-daily-challenge" class="btn-menu btn-daily-challenge">📅 每日挑战</button>
+            <button id="btn-talents" class="btn-menu btn-talents">天赋星图</button>
+            <button id="btn-leaderboard" class="btn-menu btn-leaderboard">排行榜</button>
+            <button id="btn-settings" class="btn-menu btn-settings">设置</button>
+            <button id="btn-more" class="btn-menu btn-more">更多 &gt;</button>
+          </div>
+        </div>
+        
+        <!-- Extras Group (Secondary Level) -->
+        <div id="menu-group-extras" class="menu-group hidden">
+          <div class="menu-buttons">
+            <button id="btn-back" class="btn-menu btn-back">&lt; 返回</button>
+            <button id="btn-achievements" class="btn-menu btn-achievements">成就</button>
+            <button id="btn-bestiary" class="btn-menu btn-bestiary">怪物图鉴</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right Art Display -->
+      <div class="menu-art-display"></div>
+    </div>
+  </div>
+
+  <!-- Bestiary Overlay - Monster Encyclopedia
+  
+       ========================================================================
+       图鉴界面 - 样式结构分离说明
+       ========================================================================
+       
+       核心设计: 左侧列表面板和右侧详情面板的样式完全独立
+       
+       左侧面板 (.bestiary-list-panel):
+       - 管理怪物列表按钮的显示和布局
+       - 可独立调整: 宽度、padding、margin、gap、背景、滚动条等
+       - 修改左侧样式 ✓ 不会影响右侧
+       
+       右侧面板 (.bestiary-detail-panel):
+       - 管理怪物属性、信息、背景故事的显示
+       - 可独立调整: 宽度、padding、margin、gap、背景、滚动条等
+       - 修改右侧样式 ✓ 不会影响左侧
+       
+       详细的样式调整说明请查看 style.css 中的注释
+       
+       ======================================================================== -->
+  <div id="bestiary-overlay" class="bestiary-overlay hidden">
+    <div class="bestiary-modal">
+      <!-- Header -->
+      <div class="bestiary-header">
+        <h2 class="bestiary-title">怪物图鉴</h2>
+        <button class="bestiary-close-btn" onclick="window.game?.closeBestiary()" aria-label="关闭"></button>
+      </div>
+
+      <!-- Main Content -->
+      <div class="bestiary-content">
+        <!-- Left Panel - Monster List (独立样式结构) -->
+        <div class="bestiary-list-panel">
+          <div class="bestiary-list" id="bestiary-list">
+            <!-- Monster list items will be generated here -->
+          </div>
+        </div>
+
+        <!-- Right Panel - Monster Details (独立样式结构) -->
+        <div class="bestiary-detail-panel">
+          <!-- Monster Stats Grid -->
+          <div class="bestiary-stats-grid">
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">生命值</span>
+              <span class="stat-grid-value" id="bestiary-hp">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">物攻</span>
+              <span class="stat-grid-value" id="bestiary-patk">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">魔攻</span>
+              <span class="stat-grid-value" id="bestiary-matk">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">物防</span>
+              <span class="stat-grid-value" id="bestiary-pdef">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">魔防</span>
+              <span class="stat-grid-value" id="bestiary-mdef">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">经验</span>
+              <span class="stat-grid-value" id="bestiary-xp">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">金币</span>
+              <span class="stat-grid-value" id="bestiary-gold">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">怒气</span>
+              <span class="stat-grid-value" id="bestiary-rage">-</span>
+            </div>
+          </div>
+
+          <!-- Monster Info -->
+          <div class="bestiary-info-section">
+            <div class="info-row">
+              <span class="info-label">身高:</span>
+              <span class="info-value" id="bestiary-height">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">体重:</span>
+              <span class="info-value" id="bestiary-weight">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">速度:</span>
+              <span class="info-value" id="bestiary-speed">-</span>
+            </div>
+          </div>
+
+          <!-- Monster Traits -->
+          <div class="bestiary-traits-section" id="bestiary-traits-section">
+            <!-- Traits will be rendered here -->
+          </div>
+
+          <!-- Monster Lore -->
+          <div class="bestiary-lore-section">
+            <h3 class="lore-title">背景故事</h3>
+            <div class="lore-text" id="bestiary-lore">
+              选择一个怪物来查看其背景故事...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Panel Overlay -->
+  <div id="settings-overlay" class="settings-overlay hidden">
+    <!-- Left Sidebar - Category List -->
+    <div class="settings-sidebar">
+      <div class="settings-category active" data-category="audio">
+        <span class="category-name">音频</span>
+      </div>
+      <div class="settings-category" data-category="graphics">
+        <span class="category-name">画质</span>
+      </div>
+      <div class="settings-category" data-category="gameplay">
+        <span class="category-name">游戏</span>
+      </div>
+      <div class="settings-category" data-category="display">
+        <span class="category-name">显示</span>
+      </div>
+      <div class="settings-category" data-category="about">
+        <span class="category-name">关于</span>
+      </div>
+    </div>
+    <div class="settings-modal">
+      <!-- Settings Header -->
+      <div class="settings-header">
+        <h2 class="settings-title">设置</h2>
+        <button class="settings-close-btn" onclick="window.game?.closeSettings()" aria-label="关闭"></button>
+      </div>
+
+      <!-- Settings Content -->
+      <div class="settings-content">
+        <!-- Right Panel - Settings Options -->
+        <div class="settings-panel">
+          <!-- Audio Settings -->
+          <div class="settings-section active" data-section="audio">
+            <h3 class="section-title">音频设置</h3>
+            
+            <div class="settings-item">
+              <div class="item-label">
+                <span class="label-text">背景音乐音量</span>
+                <span class="label-value" id="bgm-value">100%</span>
+              </div>
+              <div class="slider-container">
+                <input type="range" id="bgm-volume" class="settings-slider" min="0" max="100" value="100" title="背景音乐音量" />
+              </div>
+            </div>
+
+            <div class="settings-item">
+              <div class="item-label">
+                <span class="label-text">音效音量</span>
+                <span class="label-value" id="sfx-value">100%</span>
+              </div>
+              <div class="slider-container">
+                <input type="range" id="sfx-volume" class="settings-slider" min="0" max="100" value="100" title="音效音量" />
+              </div>
+            </div>
+
+            <div class="settings-item">
+              <div class="item-label">
+                <span class="label-text">UI音效</span>
+                <span class="label-value" id="ui-sfx-value">100%</span>
+              </div>
+              <div class="slider-container">
+                <input type="range" id="ui-sfx-volume" class="settings-slider" min="0" max="100" value="100" title="UI音效音量" />
+              </div>
+            </div>
+
+            <div class="settings-item checkbox-item">
+              <label class="checkbox-label">
+                <input type="checkbox" id="audio-enabled" class="settings-checkbox" checked title="启用音频" />
+                <span class="checkbox-text">启用音频</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Graphics Settings -->
+          <div class="settings-section" data-section="graphics">
+            <h3 class="section-title">画质设置</h3>
+            
+            <div class="settings-item">
+              <div class="item-label">
+                <span class="label-text">画质预设</span>
+              </div>
+              <div class="button-group">
+                <button class="quality-btn active" data-quality="low">低</button>
+                <button class="quality-btn" data-quality="medium">中</button>
+                <button class="quality-btn" data-quality="high">高</button>
+              </div>
+            </div>
+
+            <div class="settings-item checkbox-item">
+              <label class="checkbox-label">
+                <input type="checkbox" id="particle-effects" class="settings-checkbox" checked title="粒子效果" />
+                <span class="checkbox-text">粒子效果</span>
+              </label>
+            </div>
+
+            <div class="settings-item checkbox-item">
+              <label class="checkbox-label">
+                <input type="checkbox" id="screen-shake" class="settings-checkbox" checked title="屏幕震动" />
+                <span class="checkbox-text">屏幕震动</span>
+              </label>
+            </div>
+
+            <div class="settings-item checkbox-item">
+              <label class="checkbox-label">
+                <input type="checkbox" id="bloom-effect" class="settings-checkbox" checked title="光晕效果" />
+                <span class="checkbox-text">光晕效果</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Gameplay Settings -->
+          <div class="settings-section" data-section="gameplay">
+            <h3 class="section-title">游戏设置</h3>
+            
+            <div class="settings-item checkbox-item">
+              <label class="checkbox-label">
+                <input type="checkbox" id="auto-save" class="settings-checkbox" checked title="自动保存" />
+                <span class="checkbox-text">自动保存</span>
+              </label>
+            </div>
+
+            <div class="settings-item checkbox-item">
+              <label class="checkbox-label">
+                <input type="checkbox" id="difficulty-scaling" class="settings-checkbox" checked title="难度动态调整" />
+                <span class="checkbox-text">难度动态调整</span>
+              </label>
+            </div>
+
+            <div class="settings-item checkbox-item">
+              <label class="checkbox-label">
+                <input type="checkbox" id="show-damage-numbers" class="settings-checkbox" checked title="显示伤害数字" />
+                <span class="checkbox-text">显示伤害数字</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Display Settings -->
+          <div class="settings-section" data-section="display">
+            <h3 class="section-title">显示设置</h3>
+            
+            <div class="settings-item">
+              <div class="item-label">
+                <span class="label-text">亮度</span>
+                <span class="label-value" id="brightness-value">100%</span>
+              </div>
+              <div class="slider-container">
+                <input type="range" id="brightness" class="settings-slider" min="50" max="150" value="100" title="亮度" />
+              </div>
+            </div>
+
+            <div class="settings-item">
+              <div class="item-label">
+                <span class="label-text">对比度</span>
+                <span class="label-value" id="contrast-value">100%</span>
+              </div>
+              <div class="slider-container">
+                <input type="range" id="contrast" class="settings-slider" min="50" max="150" value="100" title="对比度" />
+              </div>
+            </div>
+
+            <div class="settings-item checkbox-item">
+              <label class="checkbox-label">
+                <input type="checkbox" id="show-fps" class="settings-checkbox" title="显示FPS" />
+                <span class="checkbox-text">显示FPS</span>
+              </label>
+            </div>
+
+            <div class="settings-item checkbox-item">
+              <label class="checkbox-label">
+                <input type="checkbox" id="fullscreen-mode" class="settings-checkbox" title="全屏模式" />
+                <span class="checkbox-text">全屏模式</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- About Section -->
+          <div class="settings-section" data-section="about">
+            <h3 class="section-title">关于游戏</h3>
+            
+            <div class="about-content">
+              <div class="about-item">
+                <span class="about-label">游戏名称:</span>
+                <span class="about-value">魔塔战记 RPG</span>
+              </div>
+              <div class="about-item">
+                <span class="about-label">版本:</span>
+                <span class="about-value">1.0.0</span>
+              </div>
+              <div class="about-item">
+                <span class="about-label">开发者:</span>
+                <span class="about-value">Game Studio</span>
+              </div>
+              <div class="about-item">
+                <span class="about-label">引擎:</span>
+                <span class="about-value">Canvas 2D</span>
+              </div>
+              <div class="about-description">
+                <p>这是一款黑暗幻想风格的RPG游戏，融合了Roguelike元素和塔防机制。</p>
+                <p>探索神秘的魔法塔，击败各种怪物，收集强大的装备和技能。</p>
+              </div>
+              
+              <!-- 开发者模式入口 -->
+              <div class="settings-item" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255, 215, 0, 0.2);">
+                <div class="item-label">
+                  <span class="label-text">开发者模式</span>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
+                  <input 
+                    type="password" 
+                    id="dev-code-input" 
+                    placeholder="输入开发者密码"
+                    style="flex: 1; padding: 8px 12px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 4px; color: #fff; font-family: var(--font-body);"
+                  />
+                  <button 
+                    id="dev-code-submit" 
+                    class="dev-code-submit-btn"
+                    style="padding: 8px 20px; background: rgba(255, 215, 0, 0.2); border: 1px solid #ffd700; border-radius: 4px; color: #ffd700; cursor: pointer; font-family: var(--font-body); transition: all 0.2s ease;"
+                    onmouseover="this.style.background='rgba(255, 215, 0, 0.3)'; this.style.transform='translateY(-1px)';"
+                    onmouseout="this.style.background='rgba(255, 215, 0, 0.2)'; this.style.transform='translateY(0)';"
+                  >
+                    确认
+                  </button>
+                </div>
+                <div id="dev-mode-status" style="margin-top: 8px; font-size: 0.85rem; color: #8c8273; display: none;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Footer -->
+      <div class="settings-footer">
+        <button class="btn-core btn-system" onclick="window.game?.resetSettings()">恢复默认</button>
+        <button class="btn-core btn-system" onclick="window.game?.closeSettings()">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="main-ui">
+    <div id="left-column">
+      <div id="relic-bar">
+        <div class="relic-slot"></div><div class="relic-slot"></div><div class="relic-slot"></div>
+        <div class="relic-slot"></div><div class="relic-slot"></div><div class="relic-slot"></div>
+      </div>
+      <div id="canvas-wrapper">
+        <canvas id="gameCanvas" width="1200" height="800"></canvas>
+        <div id="skill-bar">
+          <!-- Skill slots will be generated here by JavaScript -->
+        </div>
+        <div id="level-splash" class="level-splash">第 2 层</div>
+
+        <div id="system-log-container">
+          <div id="log-panel"><div class="log-entry log-entry-init">&gt; 系统已初始化...</div></div>
+        </div>
+      </div>
+    </div>
+    <div id="right-sidebar">
+      <div class="hp-section">
+        <div class="hp-container">
+          <div class="hp-bar-inner"><div class="hp-fill hp-fill-full" id="hp-visual-fill"></div></div>
+          <div class="hp-text-overlay"><span id="ui-hp">100</span> / <span id="ui-hp-max">100</span></div>
+        </div>
+        <div class="level-header">Level <span id="ui-lvl">1</span></div>
+        <div class="xp-section">
+          <div class="xp-bar-bg"><div id="xp-fill"></div></div>
+          <div class="xp-text">经验 <b><span id="ui-xp">0</span></b> / <b><span id="ui-xp-max">50</span></b></div>
+        </div>
+        <div class="rage-section">
+          <div class="rage-bar-bg"><div id="rage-fill"></div></div>
+          <div class="rage-text">怒气 <span id="rage-text">0%</span></div>
+        </div>
+      </div>
+      <div class="panel-header">角色属性</div>
+      <div class="panel-container stats-panel">
+        <div class="stats-content">
+          <div class="stat-row"><span class="stat-name">物攻</span><span class="stat-val" id="ui-patk">15</span></div>
+          <div class="stat-row"><span class="stat-name">魔攻</span><span class="stat-val" id="ui-matk">0</span></div>
+          <div class="stat-row"><span class="stat-name">物防</span><span class="stat-val" id="ui-pdef">5</span></div>
+          <div class="stat-row"><span class="stat-name">魔防</span><span class="stat-val" id="ui-mdef">0</span></div>
+          <div class="stat-row"><span class="stat-name">暴击率</span><span class="stat-val" id="ui-crit">20%</span></div>
+          <div class="stat-row"><span class="stat-name">金币</span><span class="stat-val stat-gold" id="ui-gold">0</span></div>
+          <div class="stat-row"><span class="stat-name">钥匙</span><span class="stat-val" id="ui-keys">1</span></div>
+          <div class="stat-row">
+            <span class="stat-name">灵魂水晶</span>
+            <span class="stat-val" id="ui-soul-crystals">0</span>
+          </div>
+        </div>
+      </div>
+      <div class="panel-header">装备栏</div>
+      <div class="panel-container equip-panel">
+        <div class="equip-content">
+          <div class="equip-socket" data-slot="HELM" title="Helm"></div><div class="equip-socket" data-slot="WEAPON" title="Weapon"></div><div class="equip-socket" data-slot="ARMOR" title="Armor"></div>
+          <div class="equip-socket" data-slot="BOOTS" title="Boots"></div><div class="equip-socket" data-slot="RING" title="Ring"></div><div class="equip-socket" data-slot="AMULET" title="Amulet"></div>
+        </div>
+      </div>
+      <div class="btn-actions">
+        <button id="btn-ultimate" class="btn-core btn-sidebar" disabled onclick="game.activateUltimate()">必杀技</button>
+        <button class="btn-core btn-sidebar" onclick="window.game.saveGame()">保存</button>
+        <button class="btn-core btn-sidebar" onclick="window.game.loadGame()">读取</button>
+        <button class="btn-core btn-sidebar" onclick="window.game.endGame(false)">退出 / 重置</button>
+      </div>
+      <div id="debug-content"></div>
+    </div>
+    <!-- 游戏图标容器 - 位于地图和右侧面板之间 -->
+    <div id="game-icons-container">
+      <img id="backpack-icon" src="https://i.postimg.cc/kgCXFC1B/beibaotubiao1.png" alt="背包" class="backpack-icon" />
+    </div>
+  </div>
+
+  <!-- 符文强化界面 - 必须在 #main-ui 之外以确保全屏覆盖 -->
+  <div id="draft-overlay" class="modal-overlay">
+    <h2 id="draft-title" class="modal-title">升级</h2>
+    <div class="card-container" id="draft-cards"></div>
+    <div class="draft-actions" style="margin-top: 30px; display: flex; gap: 20px; justify-content: center;">
+      <button id="draft-reroll-btn" class="btn-core" onclick="if(window.game && window.game.roguelike) window.game.roguelike.reroll()">刷新 (50G)</button>
+      <button id="draft-recycle-btn" class="btn-core" onclick="if(window.game && window.game.roguelike) window.game.roguelike.recycle()">放弃 (获得20G)</button>
+    </div>
+  </div>
+  <div id="shrine-overlay" class="modal-overlay hidden">
+    <h2 id="shrine-title" class="modal-title">圣殿</h2>
+    <div class="card-container" id="shrine-cards"></div>
+  </div>
+
+  <!-- 背包和商店界面 - 必须在 #main-ui 之外以确保全屏覆盖 -->
+  <div id="inventory-overlay" class="modal-overlay hidden">
+    <h2 class="modal-title-small">背包</h2>
+    <div class="inventory-wrap">
+      <div class="inventory-titles">
+        <div class="inv-equip-title">装备栏</div>
+        <div class="inv-list-title">背包物品（容量 20）</div>
+      </div>
+      <div class="inventory-layout">
+        <div class="inventory-left">
+          <div class="inv-equip-grid">
+            <div class="equip-socket inv-equip" data-slot="HELM"></div>
+            <div class="equip-socket inv-equip" data-slot="WEAPON"></div>
+            <div class="equip-socket inv-equip" data-slot="ARMOR"></div>
+            <div class="equip-socket inv-equip" data-slot="BOOTS"></div>
+            <div class="equip-socket inv-equip" data-slot="RING"></div>
+            <div class="equip-socket inv-equip" data-slot="AMULET"></div>
+          </div>
+        </div>
+        <div class="inventory-right">
+          <div class="inv-grid">
+            <div class="inv-slot" data-index="0"></div><div class="inv-slot" data-index="1"></div><div class="inv-slot" data-index="2"></div><div class="inv-slot" data-index="3"></div><div class="inv-slot" data-index="4"></div>
+            <div class="inv-slot" data-index="5"></div><div class="inv-slot" data-index="6"></div><div class="inv-slot" data-index="7"></div><div class="inv-slot" data-index="8"></div><div class="inv-slot" data-index="9"></div>
+            <div class="inv-slot" data-index="10"></div><div class="inv-slot" data-index="11"></div><div class="inv-slot" data-index="12"></div><div class="inv-slot" data-index="13"></div><div class="inv-slot" data-index="14"></div>
+            <div class="inv-slot" data-index="15"></div><div class="inv-slot" data-index="16"></div><div class="inv-slot" data-index="17"></div><div class="inv-slot" data-index="18"></div><div class="inv-slot" data-index="19"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-core btn-modal-close" onclick="window.game.closeInventory()">关闭背包</button>
+  </div>
+
+  <!-- 商店界面 -->
+  <div id="shop-overlay" class="modal-overlay hidden">
+    <h2 class="modal-title-shop">地精商店</h2>
+    <div class="flex-center">
+      <button class="btn-core btn-transaction" onclick="game.buy('atk')">购买 攻击 +3<br/>价格: <span id="price-atk">200</span> 金币</button>
+      <button class="btn-core btn-transaction" onclick="game.buy('def')">购买 防御 +3<br/>价格: <span id="price-def">200</span> 金币</button>
+      <button class="btn-core btn-transaction" onclick="game.buy('hp')">购买 治疗 +200HP<br/>价格: <span id="price-hp">100</span> 金币</button>
+      <button class="btn-core btn-transaction" onclick="game.buy('key')">购买 钥匙 +1<br/>价格: <span id="price-key">500</span> 金币</button>
+    </div>
+    <button class="btn-core btn-modal-close" style="margin-top:25px;" onclick="game.closeShop()">关闭商店</button>
+  </div>
+
+  <!-- 赌徒界面 (The Gambler) -->
+  <div id="gambler-overlay" class="modal-overlay hidden">
+    <div class="gambler-panel">
+      <h2 class="modal-title-shop" style="margin-bottom: 20px;">🎰 命运的老虎机 🎰</h2>
+      
+      <!-- 赌徒消息 -->
+      <p id="gambler-message" style="font-size: 18px; color: #ffcc00; text-align: center; margin-bottom: 25px; font-style: italic;">
+        手气不错，陌生人？老虎机知道你的命运...
+      </p>
+      
+      <!-- 旋转动画区域 -->
+      <div id="gambler-spin-animation" class="hidden" style="font-size: 24px; color: #ff6600; text-align: center; margin: 20px 0; font-weight: bold; animation: pulse 0.5s infinite;">
+        旋转中...
+      </div>
+      
+      <!-- 结果显示区域 -->
+      <div id="gambler-result" class="hidden" style="font-size: 22px; text-align: center; margin: 20px 0; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
+        获得：[物品名称]
+      </div>
+      
+      <!-- 按钮组 -->
+      <div class="flex-center" style="flex-direction: column; gap: 15px;">
+        <button id="gambler-btn-standard" class="btn-core btn-transaction" data-shop-item="standard" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">
+          标准旋转 (50 G)
+        </button>
+        <button id="gambler-btn-high-roller" class="btn-core btn-transaction" data-shop-item="high-roller" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">
+          豪赌旋转 (200 G)
+        </button>
+        <button id="gambler-btn-leave" class="btn-core btn-modal-close" style="margin-top: 15px;">
+          离开
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 死亡界面 - 必须在 #main-ui 之外以避免堆叠上下文问题 -->
+  <div id="leaderboard-overlay" class="modal-overlay hidden">
+    <div id="game-over-content">
+      <h2 id="go-title">你已死亡</h2>
+      <div class="stats-grid">
+        <div class="stat-item"><span>游戏时间:</span> <span id="go-time">00:00</span></div>
+        <div class="stat-item"><span>到达层数:</span> <span id="go-floor">1</span></div>
+        <div class="stat-item"><span>击杀怪物:</span> <span id="go-kills">0</span></div>
+        <div class="stat-item"><span>总经验值:</span> <span id="go-xp">0</span></div>
+        <div class="stat-item"><span>最终金币:</span> <span id="go-gold">0</span></div>
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button id="btn-retry-game" class="btn-core btn-system btn-system-primary">重试</button>
+        <button class="btn-core btn-system" onclick="location.reload()">返回主菜单</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 昵称注册模态框 -->
+  <div id="nickname-modal" class="modal-overlay hidden">
+    <div class="modal-content nickname-modal-content">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="nickname-input" style="margin-top: 89px;">昵称 (2-20 个字符)</label>
+          <input 
+            type="text" 
+            id="nickname-input" 
+            class="nickname-input" 
+            placeholder="请输入您的昵称..." 
+            maxlength="20"
+            autocomplete="off"
+          />
+          <span id="nickname-error" class="error-message"></span>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-register-nickname" class="btn-core btn-system btn-system-primary">确认</button>
+          <button id="btn-skip-register" class="btn-core btn-system btn-system-secondary">跳过（稍后设置）</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tooltip 和 Item Action Menu - 必须在 #main-ui 之外以避免 transform 导致的 fixed 定位问题 -->
+  <div id="tooltip" class="hidden"></div>
+  <div id="item-action-menu" class="hidden">
+    <div class="action-menu-item" data-action="use">使用/装备</div>
+    <div class="action-menu-item" data-action="discard">丢弃</div>
+    <div class="action-menu-item" data-action="cancel">取消</div>
+  </div>
+
+  <!-- Supabase SDK（CDN UMD 构建版本，用于全球排行榜） -->
+  <script 
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"
+    onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js'"
+  ></script>
+  
+  <!-- 核心游戏脚本（同步加载） -->
+  <script type="module" src="./src/main.js"></script>
+  
+  <!-- 工具类脚本 -->
+  <script type="module" src="./src/utils/ResourceManager.js"></script>
+  <script type="module" src="./src/utils/WallAssetRotator.js"></script>
+  <script type="module" src="./src/utils/CanvasSprite.js"></script>
+  <script type="module" src="./src/utils/PanelDrag.js"></script>
+  
+
+  <!-- 资源加载管理器：优先加载页面资源，然后加载其他资源 -->
+  <script>
+    /**
+     * 资源加载优先级管理器 - 完全重构版本 v2.0
+     * 功能: 确保关键资源（页面UI）优先加载，然后加载其他资源（图片、字体等）
+     * 核心改进:
+     * 1. 准确追踪每个资源的加载状态（待加载、加载中、已加载、失败）
+     * 2. 实时计算加载进度百分比，与进度条完全同步
+     * 3. 支持多界面资源加载管理
+     * 4. 防止重复加载资源
+     * 5. 进度条平滑增长，准确反映实际加载状态
+     */
+    window.ResourceManager = {
+      // 关键资源列表（页面加载时必需）
+      criticalResources: [
+        // 样式表已在 head 中同步加载
+        // 核心 JS 已通过 <script type="module"> 同步加载
+      ],
+
+      // 次要资源列表（页面加载后异步加载）
+      secondaryResources: [
+        // 游戏相关的外部图片资源
+        { type: 'image', url: 'https://i.postimg.cc/fTv3sWB2/chooseheropanel1.png', priority: 'high' },
+        { type: 'image', url: 'https://i.postimg.cc/P551FVmq/anniu2.png', priority: 'high' },
+        { type: 'image', url: 'https://i.postimg.cc/kgCXFC1B/beibaotubiao1.png', priority: 'high' },
+        { type: 'image', url: 'https://i.postimg.cc/MGft6mWh/xiaokuloujiazai1.png', priority: 'medium' },
+        { type: 'image', url: 'https://i.postimg.cc/DyjfRzTx/hudie1.png', priority: 'medium' },
+      ],
+
+      // 资源加载状态追踪：{ url: 'pending'|'loading'|'loaded'|'failed' }
+      resourceStates: {},
+
+      // 已加载的资源缓存
+      loadedResources: new Set(),
+      failedResources: new Set(),
+      loadingResources: new Set(),
+
+      // 加载统计
+      totalResources: 0,
+      loadedCount: 0,
+      failedCount: 0,
+
+      // 加载状态追踪
+      isLoading: false,
+      loadingStartTime: 0,
+
+      /**
+       * 初始化资源加载管理器
+       * 在页面加载完成后调用
+       */
+      init: function() {
+        console.log('📦 资源加载管理器已初始化（v2.0 - 进度条同步版本）');
+        this.totalResources = this.secondaryResources.length;
+        
+        // 初始化所有资源的状态为 'pending'
+        this.secondaryResources.forEach(resource => {
+          this.resourceStates[resource.url] = 'pending';
+        });
+        
+        // 等待页面加载完成
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', () => this.startSecondaryLoading());
+        } else {
+          this.startSecondaryLoading();
+        }
+      },
+
+      /**
+       * 开始加载次要资源
+       * 并发加载所有资源，实时更新进度条
+       */
+      startSecondaryLoading: function() {
+        console.log('⏳ 开始加载次要资源（并发模式）...');
+        this.isLoading = true;
+        this.loadingStartTime = Date.now();
+        
+        // 并发加载所有资源（而不是按优先级顺序加载）
+        // 这样可以更准确地反映实际的加载进度
+        this.secondaryResources.forEach(resource => {
+          this.loadResource(resource);
+        });
+      },
+
+      /**
+       * 加载单个资源
+       * @param {Object} resource - 资源对象 { type, url, priority }
+       */
+      loadResource: function(resource) {
+        const url = resource.url;
+
+        // 检查是否已加载或加载失败
+        if (this.loadedResources.has(url)) {
+          console.log(`⏭️  资源已加载（跳过）: ${url}`);
+          this.resourceStates[url] = 'loaded';
+          this.updateProgress();
+          return;
+        }
+
+        if (this.failedResources.has(url)) {
+          console.log(`⏭️  资源加载失败（跳过）: ${url}`);
+          this.resourceStates[url] = 'failed';
+          this.updateProgress();
+          return;
+        }
+
+        // 标记为加载中
+        this.resourceStates[url] = 'loading';
+        this.loadingResources.add(url);
+        this.updateProgress();
+
+        // 根据资源类型选择加载方式
+        switch (resource.type) {
+          case 'image':
+            this.loadImage(url);
+            break;
+          case 'script':
+            this.loadScript(url);
+            break;
+          case 'style':
+            this.loadStyle(url);
+            break;
+          default:
+            this.resourceStates[url] = 'loaded';
+            this.loadedResources.add(url);
+            this.loadingResources.delete(url);
+            this.updateProgress();
+        }
+      },
+
+      /**
+       * 加载图片资源
+       * @param {string} url - 图片URL
+       */
+      loadImage: function(url) {
+        const img = new Image();
+        
+        img.onload = () => {
+          this.loadedResources.add(url);
+          this.loadingResources.delete(url);
+          this.resourceStates[url] = 'loaded';
+          this.loadedCount++;
+          console.log(`✓ 图片已加载: ${url}`);
+          this.updateProgress();
+          this.checkAllResourcesLoaded();
+        };
+        
+        img.onerror = () => {
+          console.warn(`✗ 图片加载失败: ${url}`);
+          this.failedResources.add(url);
+          this.loadingResources.delete(url);
+          this.resourceStates[url] = 'failed';
+          this.failedCount++;
+          this.updateProgress();
+          this.checkAllResourcesLoaded();
+        };
+        
+        // 立即开始加载
+        img.src = url;
+      },
+
+      /**
+       * 加载脚本资源
+       * @param {string} url - 脚本URL
+       */
+      loadScript: function(url) {
+        const script = document.createElement('script');
+        script.src = url;
+        script.async = true;
+        
+        script.onload = () => {
+          this.loadedResources.add(url);
+          this.loadingResources.delete(url);
+          this.resourceStates[url] = 'loaded';
+          this.loadedCount++;
+          console.log(`✓ 脚本已加载: ${url}`);
+          this.updateProgress();
+          this.checkAllResourcesLoaded();
+        };
+        
+        script.onerror = () => {
+          console.warn(`✗ 脚本加载失败: ${url}`);
+          this.failedResources.add(url);
+          this.loadingResources.delete(url);
+          this.resourceStates[url] = 'failed';
+          this.failedCount++;
+          this.updateProgress();
+          this.checkAllResourcesLoaded();
+        };
+        
+        document.body.appendChild(script);
+      },
+
+      /**
+       * 加载样式资源
+       * @param {string} url - 样式URL
+       */
+      loadStyle: function(url) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = url;
+        
+        link.onload = () => {
+          this.loadedResources.add(url);
+          this.loadingResources.delete(url);
+          this.resourceStates[url] = 'loaded';
+          this.loadedCount++;
+          console.log(`✓ 样式已加载: ${url}`);
+          this.updateProgress();
+          this.checkAllResourcesLoaded();
+        };
+        
+        link.onerror = () => {
+          console.warn(`✗ 样式加载失败: ${url}`);
+          this.failedResources.add(url);
+          this.loadingResources.delete(url);
+          this.resourceStates[url] = 'failed';
+          this.failedCount++;
+          this.updateProgress();
+          this.checkAllResourcesLoaded();
+        };
+        
+        document.head.appendChild(link);
+      },
+
+      /**
+       * 更新加载进度 - 核心方法，与进度条完全同步
+       * 计算方式：(已加载 + 失败) / 总数 * 100
+       * 这样可以准确反映实际的加载进度
+       */
+      updateProgress: function() {
+        const loadedCount = this.loadedResources.size;
+        const failedCount = this.failedResources.size;
+        const completedCount = loadedCount + failedCount; // 已完成的资源数（无论成功还是失败）
+        const totalCount = this.totalResources;
+        
+        // 计算进度百分比：已完成的资源数 / 总资源数
+        const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+        
+        // 分发进度更新事件
+        const progressEvent = new CustomEvent('loadingProgress', {
+          detail: {
+            progress: progress,
+            loaded: loadedCount,
+            failed: failedCount,
+            completed: completedCount,
+            total: totalCount,
+            overlayType: 'global'
+          }
+        });
+        window.dispatchEvent(progressEvent);
+
+        console.log(`📊 资源加载进度: ${progress}% (${completedCount}/${totalCount}) [已加载: ${loadedCount}, 失败: ${failedCount}]`);
+      },
+
+      /**
+       * 检查所有资源是否加载完成
+       */
+      checkAllResourcesLoaded: function() {
+        const completedCount = this.loadedResources.size + this.failedResources.size;
+        const totalCount = this.totalResources;
+        
+        if (completedCount === totalCount) {
+          console.log('✓ 所有资源加载完成（或失败）');
+          this.onAllResourcesLoaded();
+        }
+      },
+
+      /**
+       * 所有资源加载完成的回调
+       */
+      onAllResourcesLoaded: function() {
+        this.isLoading = false;
+        const loadingTime = Date.now() - this.loadingStartTime;
+        
+        console.log(`🎉 所有资源加载完成！`);
+        console.log(`   - 成功加载: ${this.loadedCount} 个`);
+        console.log(`   - 加载失败: ${this.failedCount} 个`);
+        console.log(`   - 加载耗时: ${loadingTime}ms`);
+        
+        // 触发自定义事件，通知游戏资源已加载
+        const event = new CustomEvent('resourcesLoaded', {
+          detail: {
+            loadedCount: this.loadedCount,
+            failedCount: this.failedCount,
+            totalCount: this.totalResources,
+            loadingTime: loadingTime
+          }
+        });
+        window.dispatchEvent(event);
+      },
+
+      /**
+       * 添加资源到加载队列
+       * @param {Object} resource - 资源对象
+       * @param {string} priority - 优先级 ('high', 'medium', 'low')
+       */
+      addResource: function(resource, priority = 'medium') {
+        resource.priority = priority;
+        this.secondaryResources.push(resource);
+        this.resourceStates[resource.url] = 'pending';
+        this.totalResources = this.secondaryResources.length;
+        console.log(`➕ 添加资源到加载队列: ${resource.url} (优先级: ${priority})`);
+      },
+
+      /**
+       * 获取加载统计信息
+       * @returns {Object} 加载统计对象
+       */
+      getStats: function() {
+        const completedCount = this.loadedResources.size + this.failedResources.size;
+        return {
+          total: this.totalResources,
+          loaded: this.loadedCount,
+          failed: this.failedCount,
+          completed: completedCount,
+          isLoading: this.isLoading,
+          progress: this.totalResources > 0 ? Math.round((completedCount / this.totalResources) * 100) : 0
+        };
+      }
+    };
+
+    // 注意：ResourceManager 的初始化现在由 Game 类在 main.js 中处理
+    // 不再需要手动调用 init()
+    // ResourceManager 现在是 ES6 模块，在 src/utils/ResourceManager.js 中定义
+  </script>
+  
+  <!-- 墙壁素材旋转处理脚本 -->
+  <script>
+    /**
+     * 墙壁素材旋转处理器
+     * 功能: 将墙壁素材旋转90度，不影响其他素材
+     * 使用方法: rotateWallAsset(imageUrl, rotationDegrees, callback)
+     */
+    window.WallAssetRotator = {
+      /**
+       * 旋转墙壁素材
+       * @param {string} imageUrl - 墙壁素材URL
+       * @param {number} degrees - 旋转角度（90, 180, 270等）
+       * @param {function} callback - 完成后的回调函数，返回旋转后的图片数据URL
+       */
+      rotateWallAsset: function(imageUrl, degrees = 90, callback) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = function() {
+          // 创建临时canvas用于旋转
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // 根据旋转角度调整canvas尺寸
+          const radians = (degrees % 360) * Math.PI / 180;
+          const cos = Math.abs(Math.cos(radians));
+          const sin = Math.abs(Math.sin(radians));
+          
+          // 计算新的canvas尺寸
+          const newWidth = img.width * cos + img.height * sin;
+          const newHeight = img.width * sin + img.height * cos;
+          
+          canvas.width = Math.ceil(newWidth);
+          canvas.height = Math.ceil(newHeight);
+          
+          // 移动到中心并旋转
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate(radians);
+          ctx.imageSmoothingEnabled = false; // 保持像素风格
+          
+          // 从中心绘制图片
+          ctx.drawImage(img, -img.width / 2, -img.height / 2);
+          
+          // 获取旋转后的图片数据URL
+          const rotatedImageUrl = canvas.toDataURL('image/png');
+          
+          if (callback && typeof callback === 'function') {
+            callback(rotatedImageUrl);
+          }
+          
+          // 返回旋转后的图片数据
+          return rotatedImageUrl;
+        };
+        
+        img.onerror = function() {
+          console.error('墙壁素材加载失败:', imageUrl);
+          if (callback && typeof callback === 'function') {
+            callback(null);
+          }
+        };
+        
+        img.src = imageUrl;
+      },
+      
+      /**
+       * 快速旋转墙壁90度
+       * @param {string} imageUrl - 墙壁素材URL
+       * @param {function} callback - 完成后的回调函数
+       */
+      rotateWall90: function(imageUrl, callback) {
+        this.rotateWallAsset(imageUrl, 90, callback);
+      },
+      
+      /**
+       * 快速旋转墙壁180度
+       * @param {string} imageUrl - 墙壁素材URL
+       * @param {function} callback - 完成后的回调函数
+       */
+      rotateWall180: function(imageUrl, callback) {
+        this.rotateWallAsset(imageUrl, 180, callback);
+      },
+      
+      /**
+       * 快速旋转墙壁270度
+       * @param {string} imageUrl - 墙壁素材URL
+       * @param {function} callback - 完成后的回调函数
+       */
+      rotateWall270: function(imageUrl, callback) {
+        this.rotateWallAsset(imageUrl, 270, callback);
+      }
+    };
+  </script>
+
+  <script>
+    // 为“怪物图鉴 > 属性介绍页（右侧详情面板）”添加整体拖拽/移动能力
+    // 使用说明：
+    // 1) 用户可直接按住该面板任意位置拖动
+    // 2) 也可通过 window.setBestiaryDetailOffset(x, y) 在代码中移动（单位：px）
+    // 3) 若需要给别的面板启用拖拽，可调用 window.enablePanelDrag(dom, opts)
+    (function(){
+      function enablePanelDrag(el, options){
+        if(!el) return null;
+        const opts = options || {};
+        const handle = opts.handle || el; // 可指定把手，不指定则整体可拖
+        const saveKey = opts.saveKey || null; // 持久化位置
+        let pos = { x: 0, y: 0 };
+
+        // 恢复上次位置
+        if(saveKey){
+          try{
+            const saved = JSON.parse(localStorage.getItem(saveKey));
+            if(saved && typeof saved.x === 'number' && typeof saved.y === 'number'){
+              pos = saved;
+              apply();
+            }
+          }catch(_e){}
+        }
+
+        let start = null;
+        let startPos = null;
+        handle.style.cursor = handle.style.cursor || 'move';
+        handle.style.touchAction = 'none'; // 防止移动端滚动干扰
+        handle.addEventListener('pointerdown', onDown);
+
+        function onDown(e){
+          // 仅响应鼠标左键/触摸
+          if(e.pointerType === 'mouse' && e.button !== 0) return;
+          e.preventDefault();
+          handle.setPointerCapture && handle.setPointerCapture(e.pointerId);
+          start = { x: e.clientX, y: e.clientY };
+          startPos = { ...pos };
+          window.addEventListener('pointermove', onMove);
+          window.addEventListener('pointerup', onUp);
+        }
+        function onMove(e){
+          const dx = e.clientX - start.x;
+          const dy = e.clientY - start.y;
+          pos.x = startPos.x + dx;
+          pos.y = startPos.y + dy;
+          apply();
+        }
+        function onUp(){
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          if(saveKey){
+            try{ localStorage.setItem(saveKey, JSON.stringify(pos)); }catch(_e){}
+          }
+        }
+        function apply(){
+          el.style.willChange = 'transform';
+          // 注意：如果你的元素已有 transform，将被覆盖。如需合并请改为拼接。
+          el.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+        }
+        return {
+          getPosition(){ return { ...pos }; },
+          setPosition(x, y){ pos.x = +x || 0; pos.y = +y || 0; apply(); }
+        };
+      }
+
+      // 暴露通用方法
+      window.enablePanelDrag = enablePanelDrag;
+
+      // 默认：让“属性介绍页（右侧详情面板）”可拖拽
+      let dragAPI = null;
+      window.addEventListener('DOMContentLoaded', function(){
+        const detail = document.querySelector('.bestiary-detail-panel');
+        if(detail){
+          dragAPI = enablePanelDrag(detail, { saveKey: 'bestiaryDetailPanelPos' });
+        }
+      });
+
+      // 对外暴露一个便捷方法，代码中可直接移动该面板
+      window.setBestiaryDetailOffset = function(x, y){
+        if(dragAPI){ dragAPI.setPosition(x, y); }
+      };
+    })();
+  </script>
+
+  <!-- ================================================================================================
+       Tooltip 位置强制修复 - 直接引用有效的 JS 文件
+       ================================================================================================ -->
+  <script>
+    // 立即执行修复 - 简化版本，直接移动到 body
+    (function() {
+      console.log('🔧 [Tooltip修复] 脚本开始执行...');
+      
+      function fixNow() {
+        const tt = document.getElementById('tooltip');
+        const menu = document.getElementById('item-action-menu');
+        
+        if (tt && tt.parentElement !== document.body) {
+          console.warn('⚠️ [修复] Tooltip 不在 body，当前位置:', tt.parentElement.tagName, tt.parentElement.id);
+          document.body.appendChild(tt);
+          console.log('✅ [修复] Tooltip 已移动到 body');
+        }
+        
+        if (menu && menu.parentElement !== document.body) {
+          document.body.appendChild(menu);
+          console.log('✅ [修复] Action Menu 已移动到 body');
+        }
+      }
+      
+      // 多次检查修复
+      fixNow();
+      setTimeout(fixNow, 100);
+      setTimeout(fixNow, 500);
+      setTimeout(fixNow, 1000);
+      setTimeout(() => {
+        fixNow();
+        console.log('✅ [修复] 检查完成');
+      }, 2000);
+      
+    })();
+  </script>
+</body>
+</html>

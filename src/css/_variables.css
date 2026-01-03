@@ -1,0 +1,18 @@
+/* CSS Variables - Colors, Fonts, Sizes */
+:root {
+  --bg-color: #050505;
+  --sidebar-bg: #111;
+  --border-color: #2c241b;
+  --accent-gold: #ffd700;
+  --text-main: #e0d6c8;
+  --text-dim: #8c8273;
+  --font-header: 'Cinzel', serif;
+  --font-body: 'Spectral', serif;
+  --gold-gradient: linear-gradient(135deg, #ffd700, #ffed4e, #ffa500);
+  /* 按钮尺寸控制（不扭曲） */
+  --btn-w: 320px;       /* 按钮基础宽度，根据素材调整 */
+  --btn-ratio-w: 140;   /* 素材原始宽度比例 */
+  --btn-ratio-h: 29;    /* 素材原始高度比例（保持 140:29 比例） */
+  --btn-bg-scale: 1.0;  /* 按钮背景素材缩放，1.0 表示完全贴合素材 */
+}
+

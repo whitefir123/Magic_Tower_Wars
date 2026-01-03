@@ -1,0 +1,196 @@
+/* Inventory System Styles */
+
+/* Inventory Overlay (modal) */
+#inventory-overlay { 
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%; 
+  z-index: 10000; /* ✅ FIX: 提升到标准 Overlay 层级，与其他UI一致 */ 
+  background: rgba(0,0,0,0.95); 
+  display: none; 
+  justify-content: center; 
+  align-items: center; 
+  flex-direction: column; 
+}
+#inventory-overlay:not(.hidden) {
+  display: flex !important; /* 确保打开时显示 */
+}
+
+/* Inventory Panel */
+.inventory-layout { display:grid; grid-template-columns: 1fr 1fr; gap:25px;  background: url('https://i.postimg.cc/SNb51xWY/zhaungbeipanel1.png'); background-size:100% 100%; padding:167px 168px 168px 168px;  box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+.inventory-left, .inventory-right { min-width:320px; }
+
+/* Titles above panel */
+.inventory-wrap { display:inline-block; }
+.inventory-titles { display:grid; grid-template-columns:1fr 1fr; align-items:center; margin-bottom:8px; padding:0 8px; }
+.inv-equip-title, .inv-list-title { color: var(--accent-gold); font-family: var(--font-header); font-size:1.2rem; text-align:center; margin-bottom:8px; }
+.inventory-titles .inv-equip-title { text-align:left; margin-bottom:0; }
+.inventory-titles .inv-list-title { text-align:right; margin-bottom:0; }
+
+/* Equip grid inside inventory */
+.inv-equip-grid { display:grid; grid-template-columns: repeat(3, 80px); grid-auto-rows:80px; gap:24px; justify-content:center; margin-top:12px; margin-left:6px; }
+
+/* Backpack grid */
+.inv-grid { display:grid; grid-template-columns: repeat(5, 64px); grid-auto-rows:64px; gap:10px; justify-content:center; padding:8px; background: rgba(0,0,0,0.4); border:none; }
+.inventory-right .inv-grid { margin-top:4px; }
+
+.inv-slot { 
+  width: 64px; 
+  height: 64px; 
+  background: url('https://i.postimg.cc/9MC9ZxXb/zhuangbeicao1.png') no-repeat center/contain; 
+  border: none; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  box-shadow: none; 
+  cursor: pointer; 
+  position: relative;
+  pointer-events: auto; /* 确保可以接收鼠标事件 */
+}
+.inv-slot:hover, .inv-equip:hover { 
+  outline: 2px solid #ffd700; 
+  z-index: 10; /* 悬停时提升层级 */
+}
+
+/* Drag & Drop visual feedback */
+.inv-slot.drag-over, .equip-socket.drag-over {
+  outline: 2px solid #00ff00 !important;
+  background: rgba(0,255,0,0.08);
+}
+
+.inventory-wrap { position: relative; }
+
+.inventory-titles { display: none; }
+
+.inventory-left,
+.inventory-right { position: relative; }
+
+.inventory-left::before {
+content: "装备栏";
+position: absolute;
+top: -44px;
+left: 0;
+right: 0;
+transform: none;
+color: #8b5a3c;
+display: block;
+width: 100%;
+text-align: center;
+font-family: var(--font-header);
+font-size: 22px; /* 使用整数像素，避免小数导致的模糊 */
+letter-spacing: 1px; /* 使用整数像素 */
+text-shadow: 0 1px 0 rgba(0,0,0,0.5); /* 减弱阴影，提升清晰度 */
+pointer-events: none;
+z-index: 1;
+font-weight: 700;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+text-rendering: geometricPrecision;
+}
+
+.inventory-right::before {
+content: "背包（容量 20）";
+position: absolute;
+top: -44px;
+left: 0;
+right: 0;
+transform: none;
+color: #8b5a3c;
+display: block;
+width: 100%;
+text-align: center;
+font-family: var(--font-header);
+font-size: 1.2rem;
+letter-spacing: 0.8px;
+text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+pointer-events: none;
+z-index: 1;
+font-weight: 700;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+text-rendering: geometricPrecision;
+}
+
+#inventory-overlay .inventory-layout {
+        position: relative;
+        z-index: 1; 
+    }
+#inventory-overlay > .btn-rpg {
+        position: relative;
+        z-index: 2; 
+        margin-top: -44px !important; 
+        pointer-events: auto;
+    }
+
+.btn-inventory-close {
+  margin-top: 15px;
+  width: 220px;
+}
+
+/* ✅ v2.0: 套装流光边框动画 */
+.equip-socket.set-active-2,
+.equip-socket.set-active-4 {
+  position: relative;
+  overflow: visible;
+}
+
+.equip-socket.set-active-2::before,
+.equip-socket.set-active-4::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 4px;
+  padding: 2px;
+  background: linear-gradient(
+    45deg,
+    rgba(0, 255, 0, 0.8) 0%,
+    rgba(0, 255, 150, 0.6) 25%,
+    rgba(0, 255, 0, 0.8) 50%,
+    rgba(0, 255, 150, 0.6) 75%,
+    rgba(0, 255, 0, 0.8) 100%
+  );
+  background-size: 200% 200%;
+  animation: set-glow-2 2s linear infinite;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.equip-socket.set-active-4::before {
+  background: linear-gradient(
+    45deg,
+    rgba(255, 215, 0, 0.9) 0%,
+    rgba(255, 255, 100, 0.7) 25%,
+    rgba(255, 215, 0, 0.9) 50%,
+    rgba(255, 255, 100, 0.7) 75%,
+    rgba(255, 215, 0, 0.9) 100%
+  );
+  background-size: 200% 200%;
+  animation: set-glow-4 1.5s linear infinite;
+  opacity: 0.8;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+@keyframes set-glow-2 {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes set-glow-4 {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+

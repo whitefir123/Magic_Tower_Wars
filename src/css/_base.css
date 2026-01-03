@@ -1,0 +1,40 @@
+/* Base Styles - Reset & Global Utilities */
+
+/* 全局 Box Model 重置 */
+* { 
+  box-sizing: border-box; 
+  -webkit-user-select: none; 
+  -moz-user-select: none; 
+  -ms-user-select: none; 
+  user-select: none; 
+}
+
+/* Body 基础样式 */
+body {
+  margin: 0; 
+  padding: 0;
+  background-color: #000; 
+  color: var(--text-main);
+  font-family: var(--font-body);
+  height: 100vh; 
+  width: 100vw; 
+  display: flex; 
+  justify-content: flex-end; 
+  align-items: center;
+  overflow: hidden; 
+  font-size: 18px;
+}
+
+/* 通用工具类 */
+.hidden {
+  display: none !important;
+}
+
+.flex-center {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 620px;
+}
+
