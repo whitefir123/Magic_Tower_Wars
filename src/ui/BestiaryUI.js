@@ -162,6 +162,17 @@ export class BestiaryUI {
       this.selectMonster(this.monsters[0]);
     }
 
+    // Apply smooth transition animation
+    const modal = this.elements.overlay.querySelector('.bestiary-modal');
+    if (modal) {
+      // Remove animation class to restart animation on re-open
+      modal.classList.remove('modal-animate-enter');
+      // Force reflow to restart animation
+      void modal.offsetWidth;
+      // Add animation class
+      modal.classList.add('modal-animate-enter');
+    }
+
     console.log('✓ BestiaryUI 已打开');
   }
 

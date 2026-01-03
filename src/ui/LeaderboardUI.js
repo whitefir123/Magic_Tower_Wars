@@ -170,6 +170,17 @@ export class LeaderboardUI {
       this.game.inputStack = [];
     }
 
+    // Apply smooth transition animation
+    const content = container.querySelector('.leaderboard-content');
+    if (content) {
+      // Remove animation class to restart animation on re-open
+      content.classList.remove('modal-animate-enter');
+      // Force reflow to restart animation
+      void content.offsetWidth;
+      // Add animation class
+      content.classList.add('modal-animate-enter');
+    }
+
     // 根据当前标签页加载相应的排行榜数据
     if (this.currentTab === 'daily') {
       await this.loadDailyLeaderboard();

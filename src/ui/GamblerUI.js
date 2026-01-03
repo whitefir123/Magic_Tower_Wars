@@ -138,6 +138,18 @@ export class GamblerUI {
         this.render();
       }
 
+      // Apply smooth transition animation
+      const panel = this.elements.overlay.querySelector('.gambler-panel, .gambler-content, .gambler-modal');
+      const targetElement = panel || this.elements.overlay.querySelector('[class*="gambler"]');
+      if (targetElement) {
+        // Remove animation class to restart animation on re-open
+        targetElement.classList.remove('modal-animate-enter');
+        // Force reflow to restart animation
+        void targetElement.offsetWidth;
+        // Add animation class
+        targetElement.classList.add('modal-animate-enter');
+      }
+
       console.log('✓ GamblerUI 已打开');
     }
   }

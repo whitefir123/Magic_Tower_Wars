@@ -18,18 +18,7 @@
   animation: fadeIn 0.3s ease-out;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    -webkit-backdrop-filter: blur(0px);
-    backdrop-filter: blur(0px);
-  }
-  to {
-    opacity: 1;
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
-  }
-}
+/* Note: fadeIn and slideUp keyframes are defined in src/css/components/modal.css */
 
 .settings-modal {
   width: 90%;
@@ -52,17 +41,6 @@ settings-overlay > div.settings-modal {
   transform: translate(-25px, 5px) !important;
   position: relative; /* 确保 z-index 生效 */
   z-index: 100; /* 可选，防止被遮挡 */
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(50px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
 }
 
 /* Settings Header */

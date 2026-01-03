@@ -121,6 +121,17 @@ export class AchievementUI {
         this.isOpen = true;
         this.elements.overlay.classList.remove('hidden');
         this.render();
+        
+        // Apply smooth transition animation
+        const modal = this.elements.overlay.querySelector('.achievement-modal');
+        if (modal) {
+            // Remove animation class to restart animation on re-open
+            modal.classList.remove('modal-animate-enter');
+            // Force reflow to restart animation
+            void modal.offsetWidth;
+            // Add animation class
+            modal.classList.add('modal-animate-enter');
+        }
     }
     
     /**

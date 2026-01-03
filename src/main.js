@@ -1640,35 +1640,59 @@ class Game {
   /**
    * 打开天赋树UI
    */
-  openTalentTree() {
+  async openTalentTree() {
     // 延迟初始化天赋树UI
     if (!this.talentTreeUI) {
       this.talentTreeUI = new TalentTreeUI(this);
       console.log('[Game] 天赋树UI已初始化');
     }
     
-    // 隐藏主菜单
+    // 获取主菜单元素
     const mainMenu = document.getElementById('main-menu');
-    if (mainMenu) {
+    if (mainMenu && mainMenu.style.display !== 'none') {
+      // 添加淡出动画类
+      mainMenu.classList.remove('scene-active');
+      mainMenu.classList.add('scene-transition', 'scene-enter');
+      
+      // 等待淡出动画完成 (800ms)
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // 隐藏主菜单
       mainMenu.style.display = 'none';
+      mainMenu.classList.remove('scene-transition', 'scene-enter');
     }
     
-    // 显示天赋树
+    // 显示天赋树（带淡入动画）
     this.talentTreeUI.show();
   }
 
   /**
    * 关闭天赋树UI并返回主菜单
    */
-  closeTalentTree() {
+  async closeTalentTree() {
+    // 先隐藏天赋树（带淡出动画）
     if (this.talentTreeUI) {
       this.talentTreeUI.hide();
+      // 等待淡出动画完成 (300ms)
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
     
-    // 显示主菜单
+    // 显示主菜单（带淡入动画）
     const mainMenu = document.getElementById('main-menu');
     if (mainMenu) {
+      // 准备主菜单（在幕后渲染）
       mainMenu.style.display = 'flex';
+      mainMenu.classList.remove('scene-active');
+      mainMenu.classList.add('scene-transition', 'scene-enter');
+      
+      // 强制重排以应用初始状态
+      void mainMenu.offsetWidth;
+      
+      // 触发淡入动画
+      requestAnimationFrame(() => {
+        mainMenu.classList.remove('scene-enter');
+        mainMenu.classList.add('scene-active');
+      });
     }
   }
 

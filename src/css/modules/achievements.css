@@ -38,16 +38,7 @@
   position: relative;
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(50px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
+/* Note: slideUp keyframe is defined in src/css/components/modal.css */
 
 /* 成就标题栏 */
 .achievement-header {

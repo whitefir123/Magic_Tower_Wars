@@ -143,6 +143,18 @@ export class ShopUI {
         this.render();
       }
 
+      // Apply smooth transition animation
+      const shopPanel = this.elements.overlay.querySelector('.shop-panel, .shop-content, .shop-modal');
+      const targetElement = shopPanel || this.elements.overlay.querySelector('[class*="shop"]');
+      if (targetElement) {
+        // Remove animation class to restart animation on re-open
+        targetElement.classList.remove('modal-animate-enter');
+        // Force reflow to restart animation
+        void targetElement.offsetWidth;
+        // Add animation class
+        targetElement.classList.add('modal-animate-enter');
+      }
+
       console.log('✓ ShopUI 已打开');
     }
   }

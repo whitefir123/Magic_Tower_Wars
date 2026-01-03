@@ -446,6 +446,17 @@ export class InventoryUI {
         console.warn('⚠️ No player data to render');
       }
       
+      // Apply smooth transition animation
+      const layout = this.elements.overlay.querySelector('.inventory-layout');
+      if (layout) {
+        // Remove animation class to restart animation on re-open
+        layout.classList.remove('modal-animate-enter');
+        // Force reflow to restart animation
+        void layout.offsetWidth;
+        // Add animation class
+        layout.classList.add('modal-animate-enter');
+      }
+      
       console.log('✓ InventoryUI 已打开');
     } else {
       console.error('❌ Inventory overlay element not found!');
