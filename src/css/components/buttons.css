@@ -546,7 +546,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: auto; /* 🔴 关键修复：确保按钮自身可点击 */
+  z-index: 100; /* 🔴 关键修复：提升层级，确保在菜单背景之上 */
+  pointer-events: auto !important; /* 🔴 关键修复：确保按钮自身可点击 */
 }
 
 .btn-menu:hover:not(.disabled) {

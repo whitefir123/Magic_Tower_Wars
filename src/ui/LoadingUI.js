@@ -609,13 +609,18 @@ export class LoadingUI {
 
       // 3. 动画结束后的清理工作 (等待 1000ms，略长于 CSS 的 0.8s 以确保安全)
       setTimeout(() => {
-        // 隐藏加载层
+        // 强制隐藏加载层 (双重保险：类名 + 内联样式)
         overlayEl.classList.add('hidden');
         overlayEl.classList.remove('overlay-exit');
+        overlayEl.style.display = 'none'; // 🔴 关键修复：强制隐藏
+        
         const config = this.overlays[overlayType];
         if (config) {
           config.visible = false;
         }
+        
+        // 强制确保目标场景可交互
+        targetEl.style.pointerEvents = 'auto'; // 🔴 关键修复：强制开启交互
         
         // ✅ CRITICAL FIX: 确保主UI可见（兜底机制）
         // 即使CSS动画失败，也要确保主UI可见，避免黑屏
@@ -644,7 +649,7 @@ export class LoadingUI {
         // 清理目标层动画类（保留 scene-fade-in 和 scene-transition 以保持过渡效果）
         // 这些类可以保留，不会影响后续操作
         
-        console.log('✨ 转场完成');
+        console.log(`✨ 转场完成: ${overlayType} -> ${targetId} (交互已解锁)`);
         resolve();
       }, 1000);
     });

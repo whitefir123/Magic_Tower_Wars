@@ -37,8 +37,10 @@
 .loading-overlay-screen.hidden,
 #loading-overlay.hidden { /* 🔴 新增：确保 ID 选择器也能完全隐藏 */
   opacity: 0;
-  pointer-events: none;
-  display: none;
+  pointer-events: none !important;
+  display: none !important; /* 强制 display none */
+  visibility: hidden !important; /* 额外保险 */
+  z-index: -1 !important; /* 沉到底部 */
 }
 
 .loading-overlay-screen {

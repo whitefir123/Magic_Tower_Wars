@@ -152,6 +152,8 @@ export class BestiaryUI {
 
     // 显示 overlay
     this.elements.overlay.classList.remove('hidden');
+    this.elements.overlay.style.display = 'flex'; // 🔴 新增：强制覆盖内联的 display: none
+    this.elements.overlay.style.pointerEvents = 'auto'; // 🔴 关键修复：恢复交互能力，覆盖 main.js 的设置
     this.isOpen = true;
 
     // 渲染怪物列表
@@ -182,6 +184,8 @@ export class BestiaryUI {
   close() {
     if (this.elements.overlay) {
       this.elements.overlay.classList.add('hidden');
+      this.elements.overlay.style.display = 'none';
+      this.elements.overlay.style.pointerEvents = 'none'; // 🔴 恢复为不可交互，防止误触
       this.isOpen = false;
       console.log('✓ BestiaryUI 已关闭');
     }

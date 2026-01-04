@@ -482,6 +482,14 @@ class Game {
         this.showMainMenu(true); // 仅预备不显示
         // 执行转场
         await this.loadingUI.transitionToScene('main-menu', 'global');
+        
+        // 🔴 安全阀：强制移除全局加载层的阻挡 (防止按钮无法点击)
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+          loadingOverlay.style.display = 'none';
+          loadingOverlay.style.pointerEvents = 'none';
+          console.log('✅ [Init] 安全阀：强制移除加载层阻挡');
+        }
       } else {
         console.log('[Init] 游戏页面检测到，跳过主菜单显示');
         
@@ -503,6 +511,13 @@ class Game {
         this.loader.loadGameplayAssets(GAMEPLAY_ASSETS).catch(e => console.warn('后台资源加载警告:', e));
         this.audio.preloadGameplayAudio().catch(e => console.warn('后台音频加载警告:', e));
       }, 100);
+      
+      // 🔴 调试辅助：在点击时输出被点击的元素，帮助定位遮挡问题
+      // 仅在开发环境下或调试时有用，不影响正常逻辑
+      document.addEventListener('click', (e) => {
+        console.log('👆 Clicked element:', e.target);
+        console.log('   Parent path:', e.composedPath());
+      }, { once: true }); // 只运行一次，避免刷屏
 
     } catch (e) {
       console.error('[Init] CRITICAL ERROR:', e);
@@ -1459,6 +1474,9 @@ class Game {
           this.ui.logMessage(`祈祷于神殿！恢复 ${OBJ_SHRINE_HEAL.heal} HP，消耗 ${OBJ_SHRINE_HEAL.cost} 金币`, 'gain');
           this.map.removeObject(shrine);
           this.ui.updateStats(this.player);
+          // 🔴 关键修复：正确处理隐藏类
+          overlayEl.classList.remove('overlay-fade-in');
+          overlayEl.classList.add('hidden');
           overlayEl.style.setProperty('display', 'none', 'important');
           this.isPaused = false;
           this.currentShrine = null;
@@ -1471,6 +1489,9 @@ class Game {
       declineDiv.className = 'card';
       declineDiv.innerHTML = `<h3>离开</h3><p>放弃祝福</p>`;
       declineDiv.onclick = () => {
+        // 🔴 关键修复：正确处理隐藏类
+        overlayEl.classList.remove('overlay-fade-in');
+        overlayEl.classList.add('hidden');
         overlayEl.style.setProperty('display', 'none', 'important');
         this.isPaused = false;
         this.currentShrine = null;
@@ -1493,6 +1514,9 @@ class Game {
           this.ui.logMessage(`祈祷于神殿！获得 ${OBJ_SHRINE_POWER.gainAtk} 攻击力，消耗 ${OBJ_SHRINE_POWER.cost} HP`, 'gain');
           this.map.removeObject(shrine);
           this.ui.updateStats(this.player);
+          // 🔴 关键修复：正确处理隐藏类
+          overlayEl.classList.remove('overlay-fade-in');
+          overlayEl.classList.add('hidden');
           overlayEl.style.setProperty('display', 'none', 'important');
           this.isPaused = false;
           this.currentShrine = null;
@@ -1505,6 +1529,9 @@ class Game {
       declineDiv.className = 'card';
       declineDiv.innerHTML = `<h3>离开</h3><p>放弃祝福</p>`;
       declineDiv.onclick = () => {
+        // 🔴 关键修复：正确处理隐藏类
+        overlayEl.classList.remove('overlay-fade-in');
+        overlayEl.classList.add('hidden');
         overlayEl.style.setProperty('display', 'none', 'important');
         this.isPaused = false;
         this.currentShrine = null;
@@ -1512,7 +1539,11 @@ class Game {
       cardsEl.appendChild(declineDiv);
     }
     
+    // 🔴 关键修复：正确处理显示类
+    overlayEl.classList.remove('hidden');
     overlayEl.style.setProperty('display', 'flex', 'important');
+    void overlayEl.offsetWidth; // 强制重排
+    overlayEl.classList.add('overlay-fade-in');
   }
 
   // SHOP - 委托给 UIManager
@@ -1642,6 +1673,20 @@ class Game {
    * 完善转场逻辑：确保主菜单完全淡出（0.8s）后再启动天赋树渲染，避免 z-index 竞争
    */
   async openTalentTree() {
+    // 1. 🔴 焦土政策：立即强制隐藏所有非主菜单界面
+    // 防止主菜单淡出时漏出底下的界面
+    const charSelect = document.getElementById('char-select-screen');
+    if (charSelect) {
+      charSelect.style.setProperty('display', 'none', 'important');
+      charSelect.classList.remove('scene-transition', 'scene-active', 'loaded');
+    }
+    
+    const mainUI = document.getElementById('main-ui');
+    if (mainUI) {
+      mainUI.style.setProperty('display', 'none', 'important');
+      mainUI.classList.remove('scene-transition', 'scene-active', 'loaded');
+    }
+
     // 延迟初始化天赋树UI
     if (!this.talentTreeUI) {
       this.talentTreeUI = new TalentTreeUI(this);
@@ -1675,30 +1720,55 @@ class Game {
   /**
    * 关闭天赋树UI并返回主菜单
    */
+  /**
+   * 关闭天赋树UI并返回主菜单
+   */
   async closeTalentTree() {
-    // 先隐藏天赋树（带淡出动画）
+    // 1. 隐藏天赋树
     if (this.talentTreeUI) {
       this.talentTreeUI.hide();
-      // 等待淡出动画完成 (300ms)
-      await new Promise(resolve => setTimeout(resolve, 300));
     }
     
-    // 显示主菜单（带淡入动画）
+    // 2. 🔴 再次强制清理幽灵界面
+    const charSelect = document.getElementById('char-select-screen');
+    if (charSelect) {
+      charSelect.style.setProperty('display', 'none', 'important');
+      charSelect.className = 'hidden'; // 重置所有类，只留 hidden
+    }
+    
+    const mainUI = document.getElementById('main-ui');
+    if (mainUI) {
+      mainUI.style.setProperty('display', 'none', 'important');
+      mainUI.className = 'hidden';
+    }
+
+    // 3. 显式恢复主菜单
     const mainMenu = document.getElementById('main-menu');
     if (mainMenu) {
-      // 准备主菜单（在幕后渲染）
+      // 移除所有可能导致冲突的动画类
+      mainMenu.classList.remove('hidden', 'scene-transition', 'scene-enter', 'scene-exit');
+      
+      // 强制重置样式
       mainMenu.style.display = 'flex';
-      mainMenu.classList.remove('scene-active');
-      mainMenu.classList.add('scene-transition', 'scene-enter');
-      
-      // 强制重排以应用初始状态
+      mainMenu.style.opacity = '0'; // 先透明
+      mainMenu.style.zIndex = '10000';
+      mainMenu.style.pointerEvents = 'auto';
+
+      // 强制重排
       void mainMenu.offsetWidth;
-      
-      // 触发淡入动画
+
+      // 添加动画类并淡入
+      mainMenu.classList.add('scene-transition');
       requestAnimationFrame(() => {
-        mainMenu.classList.remove('scene-enter');
+        mainMenu.style.opacity = '1';
         mainMenu.classList.add('scene-active');
       });
+      
+      // 恢复菜单按钮组状态
+      const mainGroup = document.getElementById('menu-group-main');
+      const extrasGroup = document.getElementById('menu-group-extras');
+      if (mainGroup) { mainGroup.classList.add('active'); mainGroup.classList.remove('hidden'); }
+      if (extrasGroup) { extrasGroup.classList.add('hidden'); extrasGroup.classList.remove('active'); }
     }
   }
 
@@ -2689,6 +2759,13 @@ class Game {
       this.showMainMenu(true); // 仅预备不显示
       await this.loadingUI.transitionToScene('main-menu', 'charSelect');
       
+      // 🔴 关键修复：移除 char-select-screen 的 .scene-transition 类，防止它因为 CSS 规则 display: block !important 而无法隐藏
+      const charSelect = document.getElementById('char-select-screen');
+      if (charSelect) {
+        charSelect.classList.remove('scene-transition');
+        charSelect.style.setProperty('display', 'none', 'important');
+      }
+      
       console.log('[CharSelect] Returned to main menu with transition');
     } catch (e) {
       console.error('[CharSelect] Error returning to main menu:', e);
@@ -3008,6 +3085,7 @@ class Game {
   showMainMenu(prepareOnly = false) {
     const mainMenu = document.getElementById('main-menu');
     const mainUI = document.getElementById('main-ui');
+    const charSelect = document.getElementById('char-select-screen'); // 获取角色选择界面
     
     // Reset menu groups to show main group, hide extras group
     const mainGroup = document.getElementById('menu-group-main');
@@ -3021,24 +3099,46 @@ class Game {
       extrasGroup.classList.remove('active');
     }
     
-    // Hide main UI (will be shown when game starts)
+    // 🔴 关键修复：彻底隐藏其他所有界面，防止隐形遮挡
     if (mainUI) {
-      mainUI.classList.remove('loaded');
+      mainUI.classList.remove('loaded', 'scene-active');
       mainUI.style.display = 'none';
+      mainUI.style.pointerEvents = 'none'; // 双重保险
     }
     
-    // Show main menu (unless prepareOnly is true)
+    if (charSelect) {
+      charSelect.classList.remove('loaded', 'scene-active');
+      charSelect.style.display = 'none';
+      charSelect.style.pointerEvents = 'none'; // 双重保险
+    }
+    
+    // 🔴 新增：强制隐藏所有可能阻挡点击的覆盖层 (Draft, Shrine, Gambler, etc.)
+    const blockers = ['draft-overlay', 'shrine-overlay', 'gambler-overlay', 'shop-overlay', 'inventory-overlay', 'bestiary-overlay'];
+    blockers.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('hidden');
+        el.style.display = 'none';
+        el.style.pointerEvents = 'none';
+        console.log(`✅ [Menu] 强制隐藏覆盖层: ${id}`);
+      }
+    });
+    
+    // Show main menu
     if (mainMenu) {
       if (prepareOnly) {
         // 仅预备：移除 hidden 类，但不设置 display
         mainMenu.classList.remove('hidden');
-        // 不设置 display，让 transitionToScene 控制
+        // 预备阶段也确保它在最上层
+        mainMenu.style.zIndex = '10000';
       } else {
         mainMenu.style.display = 'flex';
+        mainMenu.style.zIndex = '10000';
+        mainMenu.style.pointerEvents = 'auto';
       }
     }
     
-    console.log(`[Menu] Main menu ${prepareOnly ? 'prepared' : 'displayed'}`);
+    console.log(`[Menu] Main menu ${prepareOnly ? 'prepared' : 'displayed'} (其他界面已强制隐藏)`);
   }
 
   hideMainMenu() {

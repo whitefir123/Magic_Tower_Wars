@@ -176,6 +176,10 @@
   /* 滚动行为 - 独立控制 */
   overflow-y: auto;
   overflow-x: hidden;
+  
+  /* 🔴 关键修复：确保容器可交互 */
+  pointer-events: auto;
+  z-index: 5;
 }
 
 .bestiary-list-panel::-webkit-scrollbar {
@@ -251,6 +255,10 @@
   text-transform: none;
   overflow: visible;
   clip-path: none;
+  
+  /* 🔴 关键修复：强制开启交互 */
+  z-index: 10; /* 提升层级 */
+  pointer-events: auto !important; /* 强制开启交互 */
 }
 
 /* 按钮背景素材 - 使用 ::before 伪元素分离控制 */

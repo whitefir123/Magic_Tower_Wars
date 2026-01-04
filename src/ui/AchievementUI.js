@@ -117,9 +117,16 @@ export class AchievementUI {
             console.warn('[AchievementUI] 元素未找到');
             return;
         }
-        
+
+        // 暂停游戏
+        if (this.game) {
+            this.game.isPaused = true;
+            this.game.inputStack = []; // 清空输入防止穿透
+        }
+
         this.isOpen = true;
         this.elements.overlay.classList.remove('hidden');
+        this.elements.overlay.style.display = 'flex'; // 确保显示
         this.render();
         
         // Apply smooth transition animation
@@ -140,8 +147,14 @@ export class AchievementUI {
     close() {
         if (this.elements.overlay) {
             this.elements.overlay.classList.add('hidden');
+            this.elements.overlay.style.display = 'none';
         }
         this.isOpen = false;
+
+        // 恢复游戏
+        if (this.game) {
+            this.game.isPaused = false;
+        }
     }
     
     /**

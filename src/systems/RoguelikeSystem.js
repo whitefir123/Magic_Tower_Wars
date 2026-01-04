@@ -508,6 +508,9 @@ export class RoguelikeSystem {
     // 隐藏界面
     const overlay = document.getElementById('draft-overlay');
     if (overlay) {
+      // 🔴 关键修复：移除淡入类，添加 hidden
+      overlay.classList.remove('overlay-fade-in');
+      overlay.classList.add('hidden');
       overlay.style.setProperty('display', 'none', 'important');
     }
     
@@ -602,7 +605,15 @@ export class RoguelikeSystem {
       // 显示界面
       const overlay = document.getElementById('draft-overlay');
       if (overlay) {
+        overlay.classList.remove('hidden'); // 确保移除 hidden
         overlay.style.setProperty('display', 'flex', 'important');
+        
+        // 强制重排以触发过渡动画
+        void overlay.offsetWidth;
+        
+        // 🔴 关键修复：添加淡入类，使 opacity 变为 1
+        overlay.classList.add('overlay-fade-in');
+        
         console.log('[RoguelikeSystem] 符文选择界面已显示');
       } else {
         console.error('[RoguelikeSystem] draft-overlay 元素未找到');

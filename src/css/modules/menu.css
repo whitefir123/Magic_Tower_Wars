@@ -50,18 +50,20 @@
   filter: brightness(0.7);
 }
 
+/* 确保内容层在背景之上，且可交互 */
 .menu-content {
   position: relative;
-  z-index: 1;
+  z-index: 10; /* 提升层级 */
   display: flex;
   flex-direction: row;
   width: 100%;
   height: 100%;
   align-items: stretch;
   text-align: left;
+  pointer-events: none; /* 让容器本身不阻挡，只让子元素接收点击 */
 }
 
-/* Left Sidebar */
+/* 左侧侧边栏 */
 .menu-sidebar {
   width: 450px;
   height: 100%;
@@ -71,6 +73,8 @@
   padding: 40px 30px;
   box-sizing: border-box;
   position: relative;
+  pointer-events: auto; /* 恢复交互 */
+  z-index: 20;
 }
 
 .menu-title {
@@ -87,7 +91,7 @@
   flex-shrink: 0;
 }
 
-/* Menu Groups - Multi-level Menu Control */
+/* 菜单组 - 绝对定位 */
 .menu-group {
   position: absolute;
   top: 50%;
@@ -99,8 +103,9 @@
   justify-content: center;
   width: calc(100% - 60px);
   opacity: 1;
-  pointer-events: auto;
+  pointer-events: auto !important; /* 强制开启 */
   transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 30; /* 确保在侧边栏内部最高 */
 }
 
 .menu-group.hidden {
