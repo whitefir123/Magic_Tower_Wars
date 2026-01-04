@@ -116,6 +116,8 @@ export class MapSystem {
       for (let ry = y; ry < y + h; ry++) for (let rx = x; rx < x + w; rx++) this.grid[ry][rx] = TILE.FLOOR;
     }
     if (rooms.length === 0) return;
+    // 保存房间数据，用于智能迷雾驱散
+    this.rooms = rooms;
     const start = rooms[0]; start.isStart = true;
     const bossRoom = rooms[rooms.length - 1]; if (floor >= 9) { bossRoom.isSecure = true; bossRoom.isBoss = true; }
     const candidates = rooms.filter(r => r !== start && r !== bossRoom);
@@ -712,6 +714,11 @@ export class MapSystem {
         }
       }
       console.log('Fog particles generated:', this.fogParticles.length);
+      
+      // 登场爆发：在关卡开始时瞬间驱散大范围迷雾
+      const startWorldX = start.cx * TILE_SIZE + TILE_SIZE / 2;
+      const startWorldY = start.cy * TILE_SIZE + TILE_SIZE / 2;
+      this.triggerInitialClear(startWorldX, startWorldY);
     } else {
       console.log('Fog of War disabled - skipping fog particle generation');
     }
@@ -1117,19 +1124,74 @@ export class MapSystem {
       }
     }
     
-    // Trigger fog particle dispersal for visible tiles
+    // ===== 智能迷雾驱散逻辑 =====
+    // 保持原有的 visible 和 explored 数组逻辑不变（这控制战斗视野）
+    // 只更新迷雾粒子的驱散逻辑，让玩家更容易驱散迷雾，但保持对怪物的视野限制
+    
     const playerWorldX = px * TILE_SIZE + TILE_SIZE / 2;
     const playerWorldY = py * TILE_SIZE + TILE_SIZE / 2;
-    const sightRadiusPixels = (radius + 2) * TILE_SIZE;
+    const visionRadius = radius; // 使用传入的半径参数
+    const sightRadiusPixels = (visionRadius + 3.5) * TILE_SIZE; // 光环半径：视野半径 + 3.5格（广域光环）
     
+    // 逻辑A：检查玩家是否在房间内
+    let playerRoom = null;
+    if (this.rooms && this.rooms.length > 0) {
+      for (const room of this.rooms) {
+        // 检查玩家坐标是否在房间内（使用瓦片坐标）
+        if (px >= room.x && px < room.x + room.w && py >= room.y && py < room.y + room.h) {
+          playerRoom = room;
+          break;
+        }
+      }
+    }
+    
+    // 逻辑B：双层半径判断 - 遍历所有迷雾粒子
     this.fogParticles.forEach(particle => {
       if (!particle.isDispersing) {
+        // 判断1 (光环)：计算粒子与玩家的世界坐标距离
         const dx = particle.x - playerWorldX;
         const dy = particle.y - playerWorldY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
+        let shouldDisperse = false;
+        
+        // 如果距离小于光环半径，触发驱散
         if (distance < sightRadiusPixels) {
+          shouldDisperse = true;
+        }
+        
+        // 判断2 (房间感知)：如果玩家在房间内，且粒子位于该房间的矩形范围内
+        if (!shouldDisperse && playerRoom) {
+          // 比较粒子的 tileX, tileY 与房间的 x, y, w, h
+          if (particle.tileX >= playerRoom.x && particle.tileX < playerRoom.x + playerRoom.w &&
+              particle.tileY >= playerRoom.y && particle.tileY < playerRoom.y + playerRoom.h) {
+            shouldDisperse = true;
+          }
+        }
+        
+        if (shouldDisperse) {
           particle.triggerDispersal(playerWorldX, playerWorldY);
+        }
+      }
+    });
+  }
+  
+  /**
+   * 登场爆发：在关卡开始时瞬间驱散大范围迷雾
+   * @param {number} startX - 起始位置的世界坐标X（像素）
+   * @param {number} startY - 起始位置的世界坐标Y（像素）
+   */
+  triggerInitialClear(startX, startY) {
+    const clearRadius = 8 * TILE_SIZE; // 8格超大半径
+    
+    this.fogParticles.forEach(particle => {
+      if (!particle.isDispersing) {
+        const dx = particle.x - startX;
+        const dy = particle.y - startY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < clearRadius) {
+          particle.triggerDispersal(startX, startY);
         }
       }
     });

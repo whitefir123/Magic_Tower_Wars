@@ -516,6 +516,7 @@ export class RoguelikeSystem {
       overlay.classList.remove('overlay-fade-in');
       overlay.classList.add('hidden');
       overlay.style.setProperty('display', 'none', 'important');
+      overlay.style.pointerEvents = 'none'; // 禁用交互，保持状态一致性
     }
     
     // 重置状态
@@ -611,6 +612,7 @@ export class RoguelikeSystem {
       if (overlay) {
         overlay.classList.remove('hidden'); // 确保移除 hidden
         overlay.style.setProperty('display', 'flex', 'important');
+        overlay.style.pointerEvents = 'auto'; // 恢复交互能力
         
         // 强制重排以触发过渡动画
         void overlay.offsetWidth;

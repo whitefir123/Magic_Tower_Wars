@@ -307,14 +307,14 @@ export class FogParticlePool extends ObjectPool {
         this.isDispersing = true;
         
         if (windAngle !== null) {
-          const speed = 0.55;
+          const speed = 0.8;
           this.velocity.x = Math.cos(windAngle) * speed;
           this.velocity.y = Math.sin(windAngle) * speed;
         } else {
           const dx = this.x - playerX;
           const dy = this.y - playerY;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const speed = 0.55;
+          const speed = 0.8;
           if (dist > 0) {
             this.velocity.x = (dx / dist) * speed;
             this.velocity.y = (dy / dist) * speed;

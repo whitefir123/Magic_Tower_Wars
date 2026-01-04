@@ -118,7 +118,8 @@ export class InventoryUI {
     
     // 关闭按钮监听器
     if (this.elements.overlay) {
-      const closeBtn = this.elements.overlay.querySelector('.inventory-close-btn');
+      // 支持两种类名：.inventory-close-btn 或 .btn-modal-close
+      const closeBtn = this.elements.overlay.querySelector('.inventory-close-btn, .btn-modal-close');
       if (closeBtn) {
         closeBtn.addEventListener('click', () => this.close());
       }
@@ -437,6 +438,7 @@ export class InventoryUI {
       // 使用平滑过渡显示
       this.elements.overlay.classList.remove('hidden');
       this.elements.overlay.style.display = 'flex';
+      this.elements.overlay.style.pointerEvents = 'auto'; // 恢复交互能力
       // 强制重排以应用初始状态
       void this.elements.overlay.offsetWidth;
       // 使用 requestAnimationFrame 确保平滑过渡
