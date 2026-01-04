@@ -107,7 +107,7 @@ export class HUD {
     setText('ui-xp', xpNow);
     setText('ui-xp-max', xpNext);
     
-    // ✅ FIX: 技能预备状态高亮显示
+    // FIX: 技能预备状态高亮显示
     // 技能槽位索引：0=Slash, 1=Scorch, 2=Freeze
     const skillSlots = [
       { id: 'skill-icon-0', state: 'slashPrimed' },
@@ -209,12 +209,12 @@ export class HUD {
     console.log('🎯 initSkillBar called', { skillBar, player });
     
     if (!skillBar) {
-      console.error('❌ Skill bar element not found');
+      console.error('Skill bar element not found');
       return;
     }
     
     if (!player) {
-      console.error('❌ Player object is null');
+      console.error('Player object is null');
       return;
     }
     

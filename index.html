@@ -180,7 +180,7 @@
         </div>
 
         <div class="daily-leaderboard-section">
-          <h3 class="ror-config-header">🏆 今日榜首</h3>
+          <h3 class="ror-config-header">今日榜首</h3>
           <div class="daily-top3-list" id="daily-top3-list">
             <div class="loading-text">加载中...</div>
           </div>
@@ -230,7 +230,7 @@
               <div id="menu-mascot" class="menu-mascot"></div>
             </button>
             <button id="btn-continue" class="btn-menu btn-continue disabled">继续游戏</button>
-            <button id="btn-daily-challenge" class="btn-menu btn-daily-challenge">📅 每日挑战</button>
+            <button id="btn-daily-challenge" class="btn-menu btn-daily-challenge">每日挑战</button>
             <button id="btn-talents" class="btn-menu btn-talents">天赋星图</button>
             <button id="btn-leaderboard" class="btn-menu btn-leaderboard">排行榜</button>
             <button id="btn-settings" class="btn-menu btn-settings">设置</button>
@@ -881,7 +881,7 @@
        * 在页面加载完成后调用
        */
       init: function() {
-        console.log('📦 资源加载管理器已初始化（v2.0 - 进度条同步版本）');
+        console.log('资源加载管理器已初始化（v2.0 - 进度条同步版本）');
         this.totalResources = this.secondaryResources.length;
         
         // 初始化所有资源的状态为 'pending'
@@ -922,14 +922,14 @@
 
         // 检查是否已加载或加载失败
         if (this.loadedResources.has(url)) {
-          console.log(`⏭️  资源已加载（跳过）: ${url}`);
+          console.log(`资源已加载（跳过）: ${url}`);
           this.resourceStates[url] = 'loaded';
           this.updateProgress();
           return;
         }
 
         if (this.failedResources.has(url)) {
-          console.log(`⏭️  资源加载失败（跳过）: ${url}`);
+          console.log(`资源加载失败（跳过）: ${url}`);
           this.resourceStates[url] = 'failed';
           this.updateProgress();
           return;
@@ -1081,7 +1081,7 @@
         });
         window.dispatchEvent(progressEvent);
 
-        console.log(`📊 资源加载进度: ${progress}% (${completedCount}/${totalCount}) [已加载: ${loadedCount}, 失败: ${failedCount}]`);
+        console.log(`资源加载进度: ${progress}% (${completedCount}/${totalCount}) [已加载: ${loadedCount}, 失败: ${failedCount}]`);
       },
 
       /**
@@ -1340,21 +1340,21 @@
   <script>
     // 立即执行修复 - 简化版本，直接移动到 body
     (function() {
-      console.log('🔧 [Tooltip修复] 脚本开始执行...');
+      console.log('[Tooltip修复] 脚本开始执行...');
       
       function fixNow() {
         const tt = document.getElementById('tooltip');
         const menu = document.getElementById('item-action-menu');
         
         if (tt && tt.parentElement !== document.body) {
-          console.warn('⚠️ [修复] Tooltip 不在 body，当前位置:', tt.parentElement.tagName, tt.parentElement.id);
+          console.warn('[修复] Tooltip 不在 body，当前位置:', tt.parentElement.tagName, tt.parentElement.id);
           document.body.appendChild(tt);
-          console.log('✅ [修复] Tooltip 已移动到 body');
+          console.log('[修复] Tooltip 已移动到 body');
         }
         
         if (menu && menu.parentElement !== document.body) {
           document.body.appendChild(menu);
-          console.log('✅ [修复] Action Menu 已移动到 body');
+          console.log('[修复] Action Menu 已移动到 body');
         }
       }
       
@@ -1365,7 +1365,7 @@
       setTimeout(fixNow, 1000);
       setTimeout(() => {
         fixNow();
-        console.log('✅ [修复] 检查完成');
+        console.log('[修复] 检查完成');
       }, 2000);
       
     })();

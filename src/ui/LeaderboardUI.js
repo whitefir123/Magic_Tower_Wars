@@ -229,7 +229,7 @@ export class LeaderboardUI {
       this.currentData = data;
 
       if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="empty-row">📭 暂无记录</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-row">暂无记录</td></tr>';
         return;
       }
 
@@ -262,20 +262,20 @@ export class LeaderboardUI {
     const retryBtnId = 'leaderboard-retry-btn-' + Date.now();
 
     // 根据错误类型显示不同的消息
-    let errorIcon = '❌';
+    let errorIcon = '';
     let errorTitle = '排行榜加载失败';
     let errorDesc = this.escapeHtml(errorMessage);
 
     if (isTimeout) {
-      errorIcon = '⚠️';
+      errorIcon = '';
       errorTitle = '连接超时或服务器休眠中';
       errorDesc = 'Connection Timeout - 服务器可能正在休眠，请点击重试唤醒';
     } else if (errorMessage?.includes('network') || errorMessage?.includes('网络')) {
-      errorIcon = '🌐';
+      errorIcon = '';
       errorTitle = '网络连接失败';
       errorDesc = '请检查您的网络连接';
     } else if (errorMessage?.includes('column') || errorMessage?.includes('列')) {
-      errorIcon = '🔧';
+      errorIcon = '';
       errorTitle = '数据库架构不匹配';
       errorDesc = this.escapeHtml(errorMessage);
     }
@@ -288,7 +288,7 @@ export class LeaderboardUI {
             <div class="error-title">${errorTitle}</div>
             <div class="error-message">${errorDesc}</div>
             <button id="${retryBtnId}" class="btn-retry">
-              🔄 重试 (Retry)
+              重试 (Retry)
             </button>
           </div>
         </td>
@@ -517,7 +517,7 @@ export class LeaderboardUI {
     modal.innerHTML = `
       <div class="modal-content leaderboard-detail-content">
         <div class="modal-header">
-          <h3>🏆 挑战详情</h3>
+          <h3>挑战详情</h3>
           <button class="close-btn" onclick="document.getElementById('leaderboard-detail-modal').remove()">×</button>
         </div>
         
@@ -650,7 +650,7 @@ export class LeaderboardUI {
       this.currentData = data;
 
       if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-row">📭 今日暂无记录</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-row">今日暂无记录</td></tr>';
         return;
       }
 
@@ -728,16 +728,16 @@ export class LeaderboardUI {
     const retryBtnId = 'daily-leaderboard-retry-btn-' + Date.now();
 
     // 根据错误类型显示不同的消息
-    let errorIcon = '❌';
+    let errorIcon = '';
     let errorTitle = '每日排行榜加载失败';
     let errorDesc = this.escapeHtml(errorMessage);
 
     if (isTimeout) {
-      errorIcon = '⚠️';
+      errorIcon = '';
       errorTitle = '连接超时或服务器休眠中';
       errorDesc = 'Connection Timeout - 服务器可能正在休眠，请点击重试唤醒';
     } else if (errorMessage?.includes('network') || errorMessage?.includes('网络')) {
-      errorIcon = '🌐';
+      errorIcon = '';
       errorTitle = '网络连接失败';
       errorDesc = '请检查您的网络连接';
     }
@@ -750,7 +750,7 @@ export class LeaderboardUI {
             <div class="error-title">${errorTitle}</div>
             <div class="error-message">${errorDesc}</div>
             <button id="${retryBtnId}" class="btn-retry">
-              🔄 重试 (Retry)
+              重试 (Retry)
             </button>
           </div>
         </td>
@@ -795,7 +795,7 @@ export class LeaderboardUI {
     modal.innerHTML = `
       <div class="modal-content leaderboard-detail-content">
         <div class="modal-header">
-          <h3>🏆 每日挑战详情</h3>
+          <h3>每日挑战详情</h3>
           <button class="close-btn" onclick="document.getElementById('daily-leaderboard-detail-modal').remove()">×</button>
         </div>
         

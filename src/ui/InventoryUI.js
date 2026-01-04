@@ -82,7 +82,7 @@ export class InventoryUI {
     
     // 确保action menu元素存在
     if (!this.elements.actionMenu) {
-      console.warn('⚠️ Action menu element not found, creating it');
+      console.warn('Action menu element not found, creating it');
       const actionMenu = document.createElement('div');
       actionMenu.id = 'item-action-menu';
       actionMenu.className = 'hidden';
@@ -136,7 +136,7 @@ export class InventoryUI {
    * 设置操作菜单监听器
    */
   setupActionMenuListeners() {
-    // ✅ FIX: 防止重复初始化（避免重复绑定监听器导致的多次触发）
+    // FIX: 防止重复初始化（避免重复绑定监听器导致的多次触发）
     if (this.menuListenersInitialized) {
       console.log('✓ Action menu listeners already initialized, skipping');
       return;
@@ -150,13 +150,13 @@ export class InventoryUI {
       
       const menu = this.elements.actionMenu;
       if (!menu) {
-        console.warn('⚠️ Action menu element not found during setup, will retry');
+        console.warn('Action menu element not found during setup, will retry');
         // 如果菜单元素还没有准备好，等待一下再试
         setTimeout(initializeMenuListeners, 100);
         return;
       }
       
-      // ✅ FIX: 检查是否已经初始化（防止 setTimeout 重复触发）
+      // FIX: 检查是否已经初始化（防止 setTimeout 重复触发）
       if (this.menuListenersInitialized) {
         return;
       }
@@ -165,7 +165,7 @@ export class InventoryUI {
 
       // 防止重复绑定
       if (menu._listenersInitialized) {
-        console.log('⚠️ Action menu listeners already initialized');
+        console.log('Action menu listeners already initialized');
         return;
       }
       menu._listenersInitialized = true;
@@ -173,7 +173,7 @@ export class InventoryUI {
       // 点击外部关闭菜单
       const outsideClickHandler = (e) => {
         if (this.actionMenuState.visible && menu && !menu.contains(e.target)) {
-          console.log('📋 Closing action menu (clicked outside)');
+          console.log('Closing action menu (clicked outside)');
           this.hideActionMenu();
         }
       };
@@ -183,13 +183,13 @@ export class InventoryUI {
 
       // 菜单项点击处理
       const items = menu.querySelectorAll('.action-menu-item');
-      console.log(`📋 Found ${items.length} action menu items`);
+      console.log(`Found ${items.length} action menu items`);
       
       items.forEach(item => {
         const clickHandler = (e) => {
           e.stopPropagation();
           const action = item.dataset.action;
-          console.log('📋 Action menu item clicked:', action);
+          console.log('Action menu item clicked:', action);
           this.handleMenuAction(action);
         };
         item.addEventListener('click', clickHandler);
@@ -197,7 +197,7 @@ export class InventoryUI {
         item._clickHandler = clickHandler;
       });
       
-      // ✅ FIX: 标记为已初始化（防止重复调用 setupActionMenuListeners）
+      // FIX: 标记为已初始化（防止重复调用 setupActionMenuListeners）
       this.menuListenersInitialized = true;
       console.log('✓ Action menu listeners setup complete');
     };
@@ -211,11 +211,11 @@ export class InventoryUI {
    * @param {string} action - 操作类型（'use'、'discard' 或 'cancel'）
    */
   handleMenuAction(action) {
-    console.log('📋 Handling menu action:', action);
+    console.log('Handling menu action:', action);
     
     const game = window.game;
     if (!game || !game.player) {
-      console.warn('⚠️ Game or player not available');
+      console.warn('Game or player not available');
       return;
     }
 
@@ -227,7 +227,7 @@ export class InventoryUI {
       return;
     }
     
-    // ✅ FIX: 支持物品对象和字符串ID
+    // FIX: 支持物品对象和字符串ID
     let item = null;
     if (typeof itemId === 'string') {
       item = EQUIPMENT_DB[itemId];
@@ -241,7 +241,7 @@ export class InventoryUI {
     }
     
     if (!item) {
-      console.warn('⚠️ Item definition not found:', itemId);
+      console.warn('Item definition not found:', itemId);
       return;
     }
 
@@ -249,13 +249,13 @@ export class InventoryUI {
     const itemName = item.nameZh || item.name;
 
     if (action === 'use') {
-      console.log('📋 Using item:', itemName);
+      console.log('Using item:', itemName);
       
       if (isFromEquipment) {
         // 从装备栏卸下
         const firstEmptySlot = game.player.inventory.findIndex(item => item === null);
         if (firstEmptySlot !== -1) {
-          // ✅ FIX: 支持物品对象比较
+          // FIX: 支持物品对象比较
           for (const [slotType, equippedItem] of Object.entries(game.player.equipment)) {
             const equippedId = typeof equippedItem === 'string' ? equippedItem : (equippedItem?.itemId || equippedItem?.id);
             const compareId = typeof itemId === 'string' ? itemId : (itemId?.itemId || itemId?.id);
@@ -274,10 +274,10 @@ export class InventoryUI {
         game.equipFromInventory(slotIndex);
       }
     } else if (action === 'discard') {
-      console.log('📋 Discarding item:', itemName);
+      console.log('Discarding item:', itemName);
       
       if (isFromEquipment) {
-        // ✅ FIX: 支持物品对象比较
+        // FIX: 支持物品对象比较
         for (const [slotType, equippedItem] of Object.entries(game.player.equipment)) {
           const equippedId = typeof equippedItem === 'string' ? equippedItem : (equippedItem?.itemId || equippedItem?.id);
           const compareId = typeof itemId === 'string' ? itemId : (itemId?.itemId || itemId?.id);
@@ -311,17 +311,17 @@ export class InventoryUI {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('📋 showActionMenu called:', { itemId, slotIndex, hasElement: !!slotElement });
+    console.log('showActionMenu called:', { itemId, slotIndex, hasElement: !!slotElement });
 
     // 确保menu元素存在
     if (!this.elements.actionMenu) {
       this.elements.actionMenu = document.getElementById('item-action-menu');
-      console.log('📋 Fetching action menu element:', !!this.elements.actionMenu);
+      console.log('Fetching action menu element:', !!this.elements.actionMenu);
     }
     
     const menu = this.elements.actionMenu;
     if (!menu) {
-      console.error('❌ Action menu element not found!');
+      console.error('Action menu element not found!');
       // 尝试动态创建
       const newMenu = document.createElement('div');
       newMenu.id = 'item-action-menu';
@@ -335,14 +335,14 @@ export class InventoryUI {
       this.elements.actionMenu = newMenu;
       // 重新设置监听器
       this.setupActionMenuListeners();
-      console.log('📋 Action menu created dynamically');
+      console.log('Action menu created dynamically');
       return this.showActionMenu(e, itemId, slotIndex, slotElement);
     }
 
     const isFromEquipment = slotIndex === null;
     this.actionMenuState = { visible: true, itemId, slotIndex, currentSlot: slotElement, isFromEquipment };
     
-    // ✅ FIX: 根据物品类型动态更新菜单文本 - 支持物品对象
+    // FIX: 根据物品类型动态更新菜单文本 - 支持物品对象
     let item = null;
     if (typeof itemId === 'string') {
       item = EQUIPMENT_DB[itemId];
@@ -400,7 +400,7 @@ export class InventoryUI {
     menu.style.left = `${left}px`;
     menu.style.top = `${top}px`;
     
-    console.log('✅ Action menu shown:', {
+    console.log('Action menu shown:', {
       itemId,
       slotIndex,
       position: { left, top },
@@ -453,7 +453,7 @@ export class InventoryUI {
         console.log('🎒 Rendering inventory for player...');
         this.render(this.player);
       } else {
-        console.warn('⚠️ No player data to render');
+        console.warn('No player data to render');
       }
       
       // Apply smooth transition animation
@@ -469,7 +469,7 @@ export class InventoryUI {
       
       console.log('✓ InventoryUI 已打开');
     } else {
-      console.error('❌ Inventory overlay element not found!');
+      console.error('Inventory overlay element not found!');
     }
   }
 
@@ -493,7 +493,7 @@ export class InventoryUI {
       this.hideActionMenu();
       console.log('✓ InventoryUI 已关闭');
     } else {
-      console.warn('⚠️ Inventory overlay element not found when closing');
+      console.warn('Inventory overlay element not found when closing');
     }
   }
 
@@ -612,7 +612,7 @@ export class InventoryUI {
           }
         };
 
-        // ✅ FIX: 渲染物品图标 - 支持物品对象和字符串ID
+        // FIX: 渲染物品图标 - 支持物品对象和字符串ID
         const itemOrId = player.inventory[idx];
         if (!itemOrId) {
           // 空格子
@@ -677,7 +677,7 @@ export class InventoryUI {
           return false;
         };
 
-        // ✅ FIX: 绑定提示框 - 传递物品对象或ID
+        // FIX: 绑定提示框 - 传递物品对象或ID
         this.tooltipManager.bind(slot, itemOrId);
 
         // 设置拖拽（装备可拖拽，消耗品不可）
@@ -733,7 +733,7 @@ export class InventoryUI {
 
       slotTypes.forEach((slotType) => {
         const sockets = document.querySelectorAll(`.equip-socket[data-slot="${slotType}"]`);
-        // ✅ FIX: 支持物品对象和字符串ID
+        // FIX: 支持物品对象和字符串ID
         const itemOrId = player.equipment?.[slotType];
         
         // 获取物品ID和物品定义
@@ -823,7 +823,7 @@ export class InventoryUI {
           const itemName = item.nameZh || item.name;
           // 使用中文属性名称
           const statName = { p_atk: '物攻', m_atk: '魔攻', p_def: '物防', m_def: '魔防' };
-          // ✅ FIX: 优先使用实例对象的stats（可能包含强化后的属性）
+          // FIX: 优先使用实例对象的stats（可能包含强化后的属性）
           const statsToShow = item.stats || {};
           const statsText = Object.entries(statsToShow)
             .map(([k, v]) => `${statName[k] || k}+${v}`)
@@ -835,7 +835,7 @@ export class InventoryUI {
             if (canvas) socket.appendChild(canvas);
           }
 
-          // ✅ v2.0: 检查套装效果，添加流光边框动画
+          // v2.0: 检查套装效果，添加流光边框动画
           // 移除之前的套装类
           socket.classList.remove('set-active-2', 'set-active-4');
           
@@ -874,7 +874,7 @@ export class InventoryUI {
             }
           }
           
-          // ✅ FIX: 绑定提示框 - 传递物品对象或ID
+          // FIX: 绑定提示框 - 传递物品对象或ID
           this.tooltipManager.bind(socket, itemOrId);
           socket.setAttribute('draggable', 'true');
           socket.ondragstart = (ev) => setDragData(ev, { source: 'equip', slot: slotType, itemId: itemId });
