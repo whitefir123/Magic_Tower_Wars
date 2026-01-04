@@ -1,7 +1,8 @@
 // save.js - 存档和读取系统
-import { TILE_SIZE, TILE, EQUIPMENT_DB } from './constants.js';
+import { TILE_SIZE, TILE, EQUIPMENT_DB, CHARACTERS } from './constants.js';
 import { createStandardizedItem } from './data/items.js';
 import { RUNE_POOL, RUNE_RARITY_MULTIPLIERS } from './data/Runes.js';
+import { Player } from './entities.js';
 
 /**
  * ✅ FIX: 根据装备品质生成孔位数量（用于旧存档兼容性）
@@ -62,6 +63,8 @@ export class SaveSystem {
 
       const player = game.player;
       const saveData = {
+        // 角色ID（用于读档时重新创建正确的角色实例）
+        charId: player.charConfig ? player.charConfig.id : 'WARRIOR', // 保存角色ID
         // 玩家属性
         stats: {
           hp: player.stats.hp ?? 100,
@@ -262,12 +265,35 @@ export class SaveSystem {
    */
   static restore(game, saveData) {
     try {
-      if (!game || !game.player || !game.map || !saveData) {
+      if (!game || !game.map || !saveData) {
         console.error('SaveSystem: 无法恢复 - 参数不完整');
         return false;
       }
 
+      // 1. 根据存档的角色ID重新创建玩家实例 (确保技能和配置正确)
+      const charId = saveData.charId || 'WARRIOR'; // 兼容旧存档，默认 WARRIOR
+      const charConfig = CHARACTERS[charId];
+      if (charConfig) {
+        // 重新实例化 Player，这会重置技能、基础属性等
+        game.player = new Player(game.map, game.loader, charConfig);
+        console.log(`[SaveSystem] Re-created player instance as ${charId}`);
+      } else {
+        console.warn(`[SaveSystem] Character config not found for ${charId}, using default WARRIOR`);
+        const defaultCharConfig = CHARACTERS['WARRIOR'];
+        if (defaultCharConfig) {
+          game.player = new Player(game.map, game.loader, defaultCharConfig);
+        } else {
+          console.error('[SaveSystem] Default WARRIOR config not found!');
+          return false;
+        }
+      }
+
+      // 更新本地引用
       const player = game.player;
+      if (!player) {
+        console.error('SaveSystem: 无法恢复 - 玩家实例创建失败');
+        return false;
+      }
 
       // 恢复玩家属性
       // ✅ FIX: 添加字段迁移逻辑，处理旧存档缺少新字段的情况

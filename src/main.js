@@ -3271,13 +3271,26 @@ class Game {
           this.ui.logMessage('没有保存的数据！', 'info');
           return;
         }
-        // 确保音频上下文已解锁并启动 BGM
+        
+        // 播放音效
         if (this.audio) {
           await this.audio.resume();
-          this.audio.playBgm('dungeon_theme');
+          this.audio.playBookOpen(); // 使用书本音效代替BGM，因为即将跳转
         }
-        this.loadGame();
-        this.startGame();
+
+        console.log('[Menu] Continue Game clicked - Redirecting to game.html');
+        
+        // 设置标记，告诉 game.html 需要读取存档
+        sessionStorage.setItem('shouldLoadSave', 'true');
+        sessionStorage.setItem('gameMode', 'normal'); // 确保模式正确
+        
+        // 显示加载遮罩，通过跳转进入游戏
+        this.loadingUI.showOverlay('gameplay', '正在读取存档...');
+        
+        // 延迟跳转
+        setTimeout(() => {
+          window.location.href = 'game.html';
+        }, 100);
       });
     }
 
@@ -3502,8 +3515,8 @@ class Game {
     }, 200); // 稍微缩短等待时间，感觉更响应
   }
 
-  async startGame() {
-    console.log('[StartGame] Starting game...');
+  async startGame(isLoaded = false) {
+    console.log('[StartGame] Starting game...', { isLoaded });
     
     // 🔴 关键修复：强制隐藏所有可能阻挡点击/滚轮的覆盖层
     // 确保游戏开始时，没有任何隐形弹窗遮挡 Canvas
@@ -3619,9 +3632,9 @@ class Game {
         mainUI.style.display = 'none';
       }
       
-      // Only reset if this is a new game (not a loaded game)
-      // Check if player is still at floor 1 with default stats (new game indicator)
-      if (this.player.stats.floor === 1 && this.player.stats.gold === 0 && this.player.stats.xp === 0) {
+      // Only reset if this is a new game (and NOT explicitly loaded)
+      // 如果显式指定了 isLoaded，或者状态不符合新游戏特征，则视为已加载游戏
+      if (!isLoaded && this.player.stats.floor === 1 && this.player.stats.gold === 0 && this.player.stats.xp === 0) {
         // New game - create a new Player instance with the selected character config
         const charData = CHARACTERS[this.selectedCharId];
         this.player = new Player(this.map, this.loader, charData);
@@ -4672,9 +4685,25 @@ window.addEventListener('load', async () => {
         // 标记游戏已初始化完成
         window.dispatchEvent(new CustomEvent('gameInitialized'));
         
-        // 延迟启动游戏，确保加载界面已显示
+        // 延迟启动游戏
         setTimeout(() => {
-          game.startGame();
+          // 检查是否有读取存档的请求
+          const shouldLoad = sessionStorage.getItem('shouldLoadSave') === 'true';
+          
+          if (shouldLoad) {
+            console.log('[Init] Detected load save request');
+            sessionStorage.removeItem('shouldLoadSave'); // 清除标记
+            
+            // 读取存档
+            game.loadGame();
+            
+            // 启动游戏（传入 true 表示这是已加载的游戏，不要重置）
+            game.startGame(true);
+          } else {
+            // 正常启动（可能是新游戏，也可能是刷新页面）
+            // 如果是刷新页面，startGame 会根据 player 状态自动判断
+            game.startGame(false);
+          }
         }, 500);
       }
     }
