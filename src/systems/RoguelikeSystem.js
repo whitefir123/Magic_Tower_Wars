@@ -78,7 +78,11 @@ export class RoguelikeSystem {
       const typeWeight = RUNE_TYPE_WEIGHTS[rune.type] || 1.0;
       weight *= typeWeight;
       
-      // 3. 标签权重（物理/魔法偏好）
+      // 3. spawnWeight 权重（如果未定义则默认为 1.0）
+      const spawnWeight = rune.spawnWeight !== undefined ? rune.spawnWeight : 1.0;
+      weight *= spawnWeight;
+      
+      // 4. 标签权重（物理/魔法偏好）
       if (rune.type === 'STAT') {
         // 物理系符文（物攻、物防）
         if (rune.id.includes('might') || rune.id.includes('brutal') || 
@@ -197,7 +201,7 @@ export class RoguelikeSystem {
       return {
         rune,
         value,
-        name: rune.nameZh || rune.name,
+        name: rune.name,
         description,
         rarity: rune.rarity,
         type: rune.type

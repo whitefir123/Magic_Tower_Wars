@@ -3446,6 +3446,31 @@ class Game {
   async startGame() {
     console.log('[StartGame] Starting game...');
     
+    // 🔴 关键修复：强制隐藏所有可能阻挡点击/滚轮的覆盖层
+    // 确保游戏开始时，没有任何隐形弹窗遮挡 Canvas
+    const blockers = [
+      'draft-overlay', 
+      'shrine-overlay', 
+      'gambler-overlay', 
+      'shop-overlay', 
+      'inventory-overlay', 
+      'bestiary-overlay',
+      'settings-overlay',
+      'achievement-overlay',
+      'leaderboard-overlay',
+      'item-action-menu' // 右键菜单也一并清理
+    ];
+    
+    blockers.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('overlay-fade-in'); // 移除可能的动画类
+        el.classList.add('hidden');
+        el.style.setProperty('display', 'none', 'important'); // 强制隐藏
+        el.style.pointerEvents = 'none'; // 确保不阻挡交互
+      }
+    });
+    
     // FIX: 清理每日挑战状态（防御性编程，确保普通模式不受影响）
     this.isDailyMode = false;
     this.rng = null;
@@ -3818,7 +3843,7 @@ class Game {
         const runeOption = {
           rune: dailyConfig.startingRune,
           value: value,
-          name: dailyConfig.startingRune.nameZh || dailyConfig.startingRune.name,
+          name: dailyConfig.startingRune.name,
           description: dailyConfig.startingRune.description || '',
           rarity: dailyConfig.startingRune.rarity,
           type: dailyConfig.startingRune.type
@@ -4358,7 +4383,7 @@ class Game {
         const runeOption = {
           rune: dailyConfig.startingRune,
           value: value,
-          name: dailyConfig.startingRune.nameZh || dailyConfig.startingRune.name,
+          name: dailyConfig.startingRune.name,
           description: dailyConfig.startingRune.description || '',
           rarity: dailyConfig.startingRune.rarity,
           type: dailyConfig.startingRune.type

@@ -42,6 +42,7 @@ export const RUNE_POOL = [
     nameZh: '蛮力',
     type: 'STAT',
     rarity: 'COMMON',
+    spawnWeight: 1.0,
     description: '物理攻击力 +{{value}}',
     onObtain: (player, value = 1) => {
       // ✅ FIX: 不直接修改 player.stats，只更新 runeState.bonusStats
@@ -65,6 +66,7 @@ export const RUNE_POOL = [
     nameZh: '狂暴蛮力',
     type: 'STAT',
     rarity: 'RARE',
+    spawnWeight: 1.0,
     description: '物理攻击力 +{{value}}',
     onObtain: (player, value = 3) => {
       // ✅ FIX: 不直接修改 player.stats，只更新 runeState.bonusStats
@@ -88,6 +90,7 @@ export const RUNE_POOL = [
     nameZh: '铁壁',
     type: 'STAT',
     rarity: 'COMMON',
+    spawnWeight: 1.0,
     description: '物理防御力 +{{value}}',
     onObtain: (player, value = 1) => {
       // ✅ FIX: 不直接修改 player.stats，只更新 runeState.bonusStats
@@ -110,6 +113,7 @@ export const RUNE_POOL = [
     nameZh: '堡垒',
     type: 'STAT',
     rarity: 'RARE',
+    spawnWeight: 1.0,
     description: '物理防御力 +{{value}}',
     onObtain: (player, value = 3) => {
       // ✅ FIX: 不直接修改 player.stats，只更新 runeState.bonusStats
@@ -133,6 +137,7 @@ export const RUNE_POOL = [
     nameZh: '奥术',
     type: 'STAT',
     rarity: 'COMMON',
+    spawnWeight: 1.0,
     description: '魔法攻击力 +{{value}}',
     onObtain: (player, value = 1) => {
       // ✅ FIX: 不直接修改 player.stats，只更新 runeState.bonusStats
@@ -155,6 +160,7 @@ export const RUNE_POOL = [
     nameZh: '奥术之力',
     type: 'STAT',
     rarity: 'RARE',
+    spawnWeight: 1.0,
     description: '魔法攻击力 +{{value}}',
     onObtain: (player, value = 3) => {
       // ✅ FIX: 不直接修改 player.stats，只更新 runeState.bonusStats
@@ -178,6 +184,7 @@ export const RUNE_POOL = [
     nameZh: '护盾',
     type: 'STAT',
     rarity: 'COMMON',
+    spawnWeight: 1.0,
     description: '魔法防御力 +{{value}}',
     onObtain: (player, value = 1) => {
       // ✅ FIX: 不直接修改 player.stats，只更新 runeState.bonusStats
@@ -200,6 +207,7 @@ export const RUNE_POOL = [
     nameZh: '屏障',
     type: 'STAT',
     rarity: 'RARE',
+    spawnWeight: 1.0,
     description: '魔法防御力 +{{value}}',
     onObtain: (player, value = 3) => {
       // ✅ FIX: 不直接修改 player.stats，只更新 runeState.bonusStats
@@ -223,6 +231,7 @@ export const RUNE_POOL = [
     nameZh: '活力',
     type: 'STAT',
     rarity: 'COMMON',
+    spawnWeight: 1.0,
     description: '最大生命值 +{{value}} 并回复 {{value}} 生命',
     onObtain: (player, value = 10) => {
       // ✅ FIX: 修复 vitality 符文的双重叠加风险 - 只更新 bonusStats，不直接修改 player.stats.maxHp
@@ -257,6 +266,7 @@ export const RUNE_POOL = [
     nameZh: '生命精华',
     type: 'STAT',
     rarity: 'RARE',
+    spawnWeight: 1.0,
     description: '最大生命值 +{{value}} 并回复 {{value}} 生命',
     onObtain: (player, value = 30) => {
       // ✅ FIX: 修复 vitality 符文的双重叠加风险 - 只更新 bonusStats，不直接修改 player.stats.maxHp
@@ -292,8 +302,9 @@ export const RUNE_POOL = [
     nameZh: '精准',
     type: 'STAT',
     rarity: 'COMMON',
+    spawnWeight: 0.3,
     description: '暴击率 +{{value}}%',
-    onObtain: (player, value = 5) => {
+    onObtain: (player, value = 2) => {
       // ✅ FIX: STAT类符文只更新 bonusStats，不写入 player.runes（避免双重叠加）
       if (!player.runeState) {
         player.runeState = {
@@ -314,8 +325,9 @@ export const RUNE_POOL = [
     nameZh: '致命精准',
     type: 'STAT',
     rarity: 'RARE',
+    spawnWeight: 0.3,
     description: '暴击率 +{{value}}%',
-    onObtain: (player, value = 15) => {
+    onObtain: (player, value = 6) => {
       // ✅ FIX: STAT类符文只更新 bonusStats，不写入 player.runes（避免双重叠加）
       if (!player.runeState) {
         player.runeState = {
@@ -336,8 +348,9 @@ export const RUNE_POOL = [
     nameZh: '刺客印记',
     type: 'STAT',
     rarity: 'LEGENDARY',
+    spawnWeight: 0.2,
     description: '暴击率 +{{value}}%，暴击伤害 +50%',
-    onObtain: (player, value = 20) => {
+    onObtain: (player, value = 10) => {
       // ✅ FIX: LEGENDARY符文特殊处理 - 暴击率只加一次（通过bonusStats），暴击伤害加成通过player.runes处理
       if (!player.runeState) {
         player.runeState = {
@@ -365,8 +378,9 @@ export const RUNE_POOL = [
     nameZh: '敏捷',
     type: 'STAT',
     rarity: 'COMMON',
+    spawnWeight: 0.3,
     description: '闪避率 +{{value}}%',
-    onObtain: (player, value = 5) => {
+    onObtain: (player, value = 2) => {
       // ✅ FIX: STAT类符文只更新 bonusStats，不写入 player.runes（避免双重叠加）
       if (!player.runeState) {
         player.runeState = {
@@ -387,8 +401,9 @@ export const RUNE_POOL = [
     nameZh: '幻影步',
     type: 'STAT',
     rarity: 'RARE',
+    spawnWeight: 0.3,
     description: '闪避率 +{{value}}%',
-    onObtain: (player, value = 15) => {
+    onObtain: (player, value = 5) => {
       // ✅ FIX: STAT类符文只更新 bonusStats，不写入 player.runes（避免双重叠加）
       if (!player.runeState) {
         player.runeState = {
@@ -412,14 +427,15 @@ export const RUNE_POOL = [
     nameZh: '雷霆',
     type: 'MECHANIC',
     rarity: 'RARE',
+    spawnWeight: 0.4,
     description: '攻击时有 {{value}}% 概率触发闪电链，对目标周围敌人造成 {{chainDamage}}% 攻击力的魔法伤害',
     onObtain: (player) => {
       // 初始化符文数据
       if (!player.runes) player.runes = {};
       if (!player.runes.thunder) {
         player.runes.thunder = {
-          chance: 0.15, // 15% 触发概率
-          chainDamage: 0.5 // 50% 攻击力伤害
+          chance: 0.12, // 12% 触发概率
+          chainDamage: 0.6 // 60% 攻击力伤害
         };
       }
     },
@@ -487,12 +503,13 @@ export const RUNE_POOL = [
     nameZh: '吸血',
     type: 'MECHANIC',
     rarity: 'RARE',
+    spawnWeight: 0.4,
     description: '攻击时回复造成伤害的 {{value}}% 生命值',
     onObtain: (player) => {
       if (!player.runes) player.runes = {};
       if (!player.runes.vampire) {
         player.runes.vampire = {
-          lifesteal: 0.15 // 15% 吸血率
+          lifesteal: 0.08 // 8% 吸血率
         };
       }
     },
@@ -527,12 +544,13 @@ export const RUNE_POOL = [
     nameZh: '处决',
     type: 'MECHANIC',
     rarity: 'RARE',
+    spawnWeight: 0.4,
     description: '对生命值低于 {{value}}% 的敌人造成额外 {{executeDamage}}% 伤害',
     onObtain: (player) => {
       if (!player.runes) player.runes = {};
       if (!player.runes.execute) {
         player.runes.execute = {
-          threshold: 0.3, // 30% 血量阈值
+          threshold: 0.2, // 20% 血量阈值
           damageBonus: 0.5 // 50% 额外伤害
         };
       }
@@ -571,6 +589,7 @@ export const RUNE_POOL = [
     nameZh: '多重施法',
     type: 'MECHANIC',
     rarity: 'LEGENDARY',
+    spawnWeight: 0.4,
     description: '攻击时有 {{value}}% 概率触发双重攻击',
     onObtain: (player) => {
       if (!player.runes) player.runes = {};
@@ -621,8 +640,9 @@ export const RUNE_POOL = [
     nameZh: '玻璃大炮',
     type: 'CURSE',
     rarity: 'CURSED',
+    spawnWeight: 0.2,
     description: '物理攻击力 +{{value}}，但最大生命值 -{{hpLoss}}%',
-    onObtain: (player, value = 5) => {
+    onObtain: (player, value = 8) => {
       if (!player.stats) player.stats = {};
       // ✅ FIX: 攻击力加成只更新 bonusStats，不直接修改 player.stats
       if (!player.runeState) {
@@ -636,8 +656,8 @@ export const RUNE_POOL = [
       }
       player.runeState.bonusStats.p_atk = (player.runeState.bonusStats.p_atk || 0) + value;
       
-      // 扣除最大生命值（30%）（需要即时修改，因为这是负面效果）
-      const hpLossPercent = 0.3;
+      // 扣除最大生命值（25%）（需要即时修改，因为这是负面效果）
+      const hpLossPercent = 0.25;
       const maxHp = player.stats.maxHp || 100;
       const hpLoss = Math.floor(maxHp * hpLossPercent);
       player.stats.maxHp = Math.max(10, maxHp - hpLoss);
@@ -661,13 +681,14 @@ export const RUNE_POOL = [
     nameZh: '贪婪',
     type: 'CURSE',
     rarity: 'CURSED',
+    spawnWeight: 0.2,
     description: '获得的金币翻倍，但受到的伤害 +{{damageIncrease}}%',
     onObtain: (player) => {
       if (!player.runes) player.runes = {};
       if (!player.runes.greed) {
         player.runes.greed = {
           goldMultiplier: 2.0, // 金币翻倍
-          damageTakenMultiplier: 1.3 // 受到伤害增加30%
+          damageTakenMultiplier: 1.25 // 受到伤害增加25%
         };
       }
       
