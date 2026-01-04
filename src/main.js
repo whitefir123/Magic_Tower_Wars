@@ -1639,6 +1639,7 @@ class Game {
 
   /**
    * 打开天赋树UI
+   * 完善转场逻辑：确保主菜单完全淡出（0.8s）后再启动天赋树渲染，避免 z-index 竞争
    */
   async openTalentTree() {
     // 延迟初始化天赋树UI
@@ -1654,12 +1655,17 @@ class Game {
       mainMenu.classList.remove('scene-active');
       mainMenu.classList.add('scene-transition', 'scene-enter');
       
-      // 等待淡出动画完成 (800ms)
+      // 等待淡出动画完成 (800ms) - 确保完全淡出
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      // 隐藏主菜单
+      // 隐藏主菜单（确保 z-index 不会竞争）
       mainMenu.style.display = 'none';
+      mainMenu.style.opacity = '0';
+      mainMenu.style.zIndex = '0';
       mainMenu.classList.remove('scene-transition', 'scene-enter');
+      
+      // 额外等待一小段时间，确保 DOM 更新完成
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
     
     // 显示天赋树（带淡入动画）
@@ -2553,10 +2559,16 @@ class Game {
 
   // CHARACTER SELECTION SYSTEM - Risk of Rain 2 HUD Style
   async showCharacterSelect(mode = 'normal') {
-    // 显示加载界面
-    this.loadingUI.showOverlay('charSelect', '加载英雄选择界面...');
-    
     try {
+      // ✅ 第一步：淡出主菜单（如果可见）
+      const mainMenu = document.getElementById('main-menu');
+      if (mainMenu && !mainMenu.classList.contains('hidden') && mainMenu.style.display !== 'none') {
+        await this.loadingUI.fadeSceneOut('main-menu');
+      }
+      
+      // 显示加载界面
+      this.loadingUI.showOverlay('charSelect', '加载英雄选择界面...');
+      
       // 初始化角色选择界面
       this.initCharSelect();
       
@@ -2666,23 +2678,12 @@ class Game {
   async returnToMainMenu() {
     console.log('[CharSelect] Returning to main menu with transition');
     
-    // 显示加载界面
-    this.loadingUI.showOverlay('charSelect', '返回主菜单...');
-    
     try {
-      // 隐藏角色选择界面（使用淡出效果）
-      const charSelectScreen = document.getElementById('char-select-screen');
-      if (charSelectScreen) {
-        // 添加淡出类
-        charSelectScreen.classList.remove('scene-active');
-        charSelectScreen.classList.add('scene-enter');
-        
-        // 等待淡出动画完成
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // 隐藏元素
-        this.hideCharacterSelect();
-      }
+      // ✅ 第一步：淡出角色选择界面
+      await this.loadingUI.fadeSceneOut('char-select-screen');
+      
+      // 显示加载界面
+      this.loadingUI.showOverlay('charSelect', '返回主菜单...');
       
       // 显示主菜单（使用过渡效果）
       this.showMainMenu(true); // 仅预备不显示
@@ -3280,9 +3281,13 @@ class Game {
   /**
    * 保存游戏状态并跳转到 game.html
    * 用于从角色选择界面跳转到游戏页面
+   * 在跳转前强制 body 渐黑 0.5s，使后续加载屏的出现更自然
    */
   startGameWithRedirect() {
     console.log('[StartGameWithRedirect] Saving game state and redirecting to game.html...');
+    
+    // 强制 body 渐黑 0.5s
+    document.body.classList.add('page-exit-active');
     
     // 检查当前是否为每日挑战模式
     const charSelectScreen = document.getElementById('char-select-screen');
@@ -3413,9 +3418,14 @@ class Game {
         }
       }
       
-      // Hide main menu and character select
+      // ✅ 第一步：淡出角色选择界面（如果可见）
+      const charSelectScreen = document.getElementById('char-select-screen');
+      if (charSelectScreen && !charSelectScreen.classList.contains('hidden') && charSelectScreen.style.display !== 'none') {
+        await this.loadingUI.fadeSceneOut('char-select-screen');
+      }
+      
+      // Hide main menu (should already be hidden, but ensure it's hidden)
       this.hideMainMenu();
-      this.hideCharacterSelect();
       console.log('[StartGame] Main menu and character select hidden');
       
       // Prepare main UI (but don't show yet)
@@ -3634,9 +3644,14 @@ class Game {
         return;
       }
       
-      // 隐藏主菜单和角色选择界面
+      // ✅ 第一步：淡出角色选择界面（如果可见）
+      const charSelectScreen = document.getElementById('char-select-screen');
+      if (charSelectScreen && !charSelectScreen.classList.contains('hidden') && charSelectScreen.style.display !== 'none') {
+        await this.loadingUI.fadeSceneOut('char-select-screen');
+      }
+      
+      // Hide main menu (should already be hidden, but ensure it's hidden)
       this.hideMainMenu();
-      this.hideCharacterSelect();
       
       // 3. 准备主UI
       const mainUI = document.getElementById('main-ui');
@@ -3945,7 +3960,19 @@ class Game {
       const goTitle = document.getElementById('go-title'); if (goTitle) { if (isDeath) { goTitle.innerText = 'YOU DIED'; goTitle.style.color = '#e74c3c'; } else { goTitle.innerText = 'RETIRED'; goTitle.style.color = '#f1c40f'; } }
       const setText = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
       setText('go-time', timeStr); setText('go-floor', floor); setText('go-kills', kills); setText('go-xp', totalXp); setText('go-gold', gold);
+      
+      // 使用平滑渐变显示结算页面（从透明到不透明，0.4s）
       overlay.style.setProperty('display', 'flex', 'important');
+      overlay.style.opacity = '0';
+      // 强制重排以应用初始状态
+      void overlay.offsetWidth;
+      // 使用 requestAnimationFrame 确保平滑过渡
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          overlay.style.transition = 'opacity 0.4s ease-out';
+          overlay.style.opacity = '1';
+        });
+      });
       
       // Bind retry button if not already bound
       const retryBtn = document.getElementById('btn-retry-game');
@@ -4085,7 +4112,7 @@ class Game {
   }
 
   // RESTART GAME (Retry functionality)
-  restartGame() {
+  async restartGame() {
     console.log('[RestartGame] Restarting game...');
     
     // ✅ CRITICAL FIX: 每日挑战模式重试逻辑
@@ -4110,11 +4137,8 @@ class Game {
       console.log('[RestartGame] 元进度已重载:', this.metaSaveSystem.data);
     }
     
-    // Hide game over overlay
-    const overlay = document.getElementById('leaderboard-overlay');
-    if (overlay) {
-      overlay.style.setProperty('display', 'none', 'important');
-    }
+    // ✅ 淡出游戏结束界面（如果可见）
+    await this.loadingUI.fadeSceneOut('leaderboard-overlay');
     
     // Reset all game state
     this.killCount = 0;

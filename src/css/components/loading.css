@@ -28,12 +28,14 @@
 }
 
 /* 淡出状态 - 电影级过渡 */
-.loading-overlay-screen.overlay-exit {
+.loading-overlay-screen.overlay-exit,
+#loading-overlay.overlay-exit { /* 🔴 新增：确保 ID 选择器也能触发点击穿透 */
   opacity: 0;
   pointer-events: none !important; /* 🔴 关键：立即释放点击穿透，防止过渡期间无法操作 */
 }
 
-.loading-overlay-screen.hidden {
+.loading-overlay-screen.hidden,
+#loading-overlay.hidden { /* 🔴 新增：确保 ID 选择器也能完全隐藏 */
   opacity: 0;
   pointer-events: none;
   display: none;

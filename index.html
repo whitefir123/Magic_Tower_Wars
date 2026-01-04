@@ -109,7 +109,7 @@
   </div>
 
   <!-- Character Selection Screen - Risk of Rain 2 HUD Style -->
-  <div id="char-select-screen" class="hidden">
+  <div id="char-select-screen" class="hidden scene-transition">
     <div class="ror-bg"></div>
     
     <!-- Center Preview Sprite (Clean, no overlay text) -->
@@ -217,7 +217,7 @@
   </div>
 
   <!-- Main Menu Overlay -->
-  <div id="main-menu" class="main-menu-overlay">
+  <div id="main-menu" class="main-menu-overlay scene-transition scene-active">
     <div class="menu-bg"></div>
     <div class="menu-content">
       <!-- Left Sidebar -->
@@ -600,7 +600,7 @@
     </div>
   </div>
 
-  <div id="main-ui">
+  <div id="main-ui" class="scene-fade-in">
     <div id="left-column">
       <div id="relic-bar">
         <div class="relic-slot"></div><div class="relic-slot"></div><div class="relic-slot"></div>
@@ -777,7 +777,7 @@
       </div>
       <div style="display: flex; gap: 10px; justify-content: center;">
         <button id="btn-retry-game" class="btn-core btn-system btn-system-primary">重试</button>
-        <button class="btn-core btn-system" onclick="location.reload()">返回主菜单</button>
+        <button class="btn-core btn-system" onclick="window.game?.fadeOutAndReload('index.html')">返回主菜单</button>
       </div>
     </div>
   </div>

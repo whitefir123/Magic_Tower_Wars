@@ -449,6 +449,89 @@ export class LoadingUI {
   }
 
   /**
+   * 统一转场调度方法 - 中台化调度中心
+   * 三段式流程：[遮罩/渐隐 -> 逻辑处理 -> 渐现]
+   * @param {Object} config - 转场配置对象
+   * @param {string} config.targetId - 目标场景 DOM 元素 ID
+   * @param {Function} config.action - 切换逻辑函数（在遮罩显示后执行）
+   * @param {string} config.overlayType - 使用的遮罩类型 ('global', 'gameplay', 'charSelect')
+   * @returns {Promise} 转场完成后的 Promise
+   */
+  performTransition(config) {
+    return new Promise((resolve) => {
+      const { targetId, action, overlayType = 'global' } = config;
+      
+      if (!targetId || !action) {
+        console.warn('[LoadingUI] performTransition: 缺少必要参数', config);
+        resolve();
+        return;
+      }
+
+      console.log(`🎬 [LoadingUI] 启动统一转场: ${overlayType} -> ${targetId}`);
+
+      // 1. 设置全局转场标志位
+      this.isTransitioning = true;
+
+      // 2. 触发遮罩显示（如果遮罩未显示）
+      const overlayConfig = this.overlays[overlayType];
+      if (!overlayConfig) {
+        console.warn(`[LoadingUI] 未知的遮罩类型: ${overlayType}`);
+        this.isTransitioning = false;
+        resolve();
+        return;
+      }
+
+      const overlayEl = document.getElementById(overlayConfig.id);
+      if (!overlayEl) {
+        console.warn(`[LoadingUI] 遮罩元素未找到: ${overlayConfig.id}`);
+        this.isTransitioning = false;
+        resolve();
+        return;
+      }
+
+      // 如果遮罩未显示，先显示它
+      if (!overlayConfig.visible) {
+        this.showOverlay(overlayType, '切换场景...');
+      }
+
+      // 3. 等待遮罩完全显示后，执行 action 回调
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          try {
+            // 执行实际的切换逻辑（数据变更、页面切换等）
+            const actionResult = action();
+            
+            // 如果 action 返回 Promise，等待它完成
+            if (actionResult && typeof actionResult.then === 'function') {
+              actionResult.then(() => {
+                // 4. 执行平滑转场到目标场景
+                this.transitionToScene(targetId, overlayType).then(() => {
+                  this.isTransitioning = false;
+                  resolve();
+                });
+              }).catch((error) => {
+                console.error('[LoadingUI] performTransition action 执行失败:', error);
+                this.isTransitioning = false;
+                resolve();
+              });
+            } else {
+              // 4. 执行平滑转场到目标场景
+              this.transitionToScene(targetId, overlayType).then(() => {
+                this.isTransitioning = false;
+                resolve();
+              });
+            }
+          } catch (error) {
+            console.error('[LoadingUI] performTransition action 执行异常:', error);
+            this.isTransitioning = false;
+            resolve();
+          }
+        });
+      });
+    });
+  }
+
+  /**
    * 执行电影级转场：加载层淡出 + 目标场景淡入
    * @param {string} targetId - 目标 DOM 元素的 ID (如 'main-ui' 或 'main-menu')
    * @param {string} overlayType - 当前使用的加载层类型 ('global', 'gameplay' 等)
@@ -473,9 +556,8 @@ export class LoadingUI {
       console.log(`🎬 启动转场: ${overlayType} -> ${targetId}`);
 
       // 1. 准备目标场景 (在幕后渲染)
-      // 🔴 关键修正：移除 hidden 类和 display:none，确保元素可见但透明
-      targetEl.classList.remove('hidden');
-      targetEl.classList.remove('loaded'); // 清理旧类
+      // 🔴 关键修复：彻底清理所有可能导致隐藏或不可交互的类
+      targetEl.classList.remove('hidden', 'loaded', 'scene-exit', 'scene-hidden');
       
       // 🔴 关键修正：根据目标类型设置正确的 display 值
       if (targetId === 'main-ui') {
@@ -783,6 +865,85 @@ export class LoadingUI {
       this.hideOverlay(overlayType);
     });
     console.log('✅ 所有加载界面已隐藏');
+  }
+
+  /**
+   * 通用的场景淡出方法
+   * 实现"旧界面平滑淡出"的效果
+   * @param {string} elementId - 目标DOM元素的ID
+   * @param {number} duration - 动画持续时间（毫秒），默认600ms
+   * @returns {Promise} 动画完成后的Promise
+   */
+  fadeSceneOut(elementId, duration = 600) {
+    return new Promise((resolve) => {
+      const element = document.getElementById(elementId);
+      if (!element) {
+        console.warn(`[LoadingUI] fadeSceneOut: 元素未找到: ${elementId}`);
+        resolve();
+        return;
+      }
+
+      // 确保元素有过渡类
+      if (!element.classList.contains('scene-transition') && !element.classList.contains('scene-fade-in')) {
+        // 判断元素类型：main-ui使用scene-fade-in，其他使用scene-transition
+        if (elementId === 'main-ui') {
+          element.classList.add('scene-fade-in');
+        } else {
+          element.classList.add('scene-transition');
+        }
+      }
+
+      // 移除激活状态，添加离场状态
+      element.classList.remove('scene-active', 'scene-visible');
+      element.classList.add('scene-exit');
+
+      // 使用transitionend事件监听动画完成（更准确）
+      const handleTransitionEnd = (e) => {
+        // 只处理opacity的transition，避免transform冲突
+        if (e.target === element && e.propertyName === 'opacity') {
+          element.removeEventListener('transitionend', handleTransitionEnd);
+          
+          // 动画结束后，隐藏元素
+          element.classList.add('hidden');
+          // 对于leaderboard-overlay等特殊元素，使用!important
+          if (elementId === 'leaderboard-overlay') {
+            element.style.setProperty('display', 'none', 'important');
+          } else {
+            element.style.display = 'none';
+          }
+          
+          // 清理动画类（保留基础类以便下次使用）
+          // 🔴 关键修复：彻底清理所有离场/隐藏相关的类，防止状态残留
+          element.classList.remove('scene-exit', 'scene-active', 'scene-visible', 'scene-hidden');
+          
+          console.log(`✅ [LoadingUI] 场景淡出完成: ${elementId}`);
+          resolve();
+        }
+      };
+
+      // 添加事件监听
+      element.addEventListener('transitionend', handleTransitionEnd);
+
+      // 兜底：如果transitionend事件没有触发（某些情况下可能不会触发），使用setTimeout
+      setTimeout(() => {
+        // 检查是否已经resolve（通过检查事件监听器是否还在）
+        // 如果元素仍然有scene-exit类，说明transitionend没有触发，需要手动处理
+        if (element.classList.contains('scene-exit')) {
+          element.removeEventListener('transitionend', handleTransitionEnd);
+          element.classList.add('hidden');
+          // 对于leaderboard-overlay等特殊元素，使用!important
+          if (elementId === 'leaderboard-overlay') {
+            element.style.setProperty('display', 'none', 'important');
+          } else {
+            element.style.display = 'none';
+          }
+          // 🔴 关键修复：彻底清理所有离场/隐藏相关的类，防止状态残留
+          element.classList.remove('scene-exit', 'scene-active', 'scene-visible', 'scene-hidden');
+          console.log(`✅ [LoadingUI] 场景淡出完成（超时兜底）: ${elementId}`);
+          resolve();
+        }
+      }, duration + 100); // 略长于动画时间，确保安全
+    });
   }
 }
 

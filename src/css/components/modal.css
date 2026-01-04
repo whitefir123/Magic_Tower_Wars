@@ -20,6 +20,24 @@
   border: none !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  will-change: opacity;
+}
+
+/* 平滑淡入状态 */
+.modal-overlay.overlay-fade-in {
+  opacity: 1;
+}
+
+/* 平滑淡出状态 */
+.modal-overlay.overlay-fade-out {
+  opacity: 0;
+}
+
+/* 当 overlay 显示时（非 hidden），确保可见 */
+.modal-overlay:not(.hidden) {
+  display: flex !important;
 }
 
 /* Modal Content Container */

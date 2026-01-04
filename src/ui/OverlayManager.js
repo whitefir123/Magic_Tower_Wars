@@ -31,6 +31,54 @@ export class OverlayManager {
   }
 
   /**
+   * 平滑显示 overlay（使用 opacity 过渡）
+   * @param {HTMLElement} overlay - overlay 元素
+   * @private
+   */
+  _showOverlaySmooth(overlay) {
+    if (!overlay) return;
+    
+    // 确保 overlay 有正确的 display 值
+    const computedStyle = window.getComputedStyle(overlay);
+    if (computedStyle.display === 'none') {
+      overlay.style.display = 'flex';
+      // 强制重排以应用初始状态
+      void overlay.offsetWidth;
+    }
+    
+    // 移除 hidden 类
+    overlay.classList.remove('hidden');
+    
+    // 使用 requestAnimationFrame 确保平滑过渡
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        overlay.classList.remove('overlay-fade-out');
+        overlay.classList.add('overlay-fade-in');
+      });
+    });
+  }
+
+  /**
+   * 平滑隐藏 overlay（使用 opacity 过渡）
+   * @param {HTMLElement} overlay - overlay 元素
+   * @private
+   */
+  _hideOverlaySmooth(overlay) {
+    if (!overlay) return;
+    
+    // 添加淡出类
+    overlay.classList.remove('overlay-fade-in');
+    overlay.classList.add('overlay-fade-out');
+    
+    // 等待过渡完成后隐藏
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      overlay.style.display = 'none';
+      overlay.classList.remove('overlay-fade-out');
+    }, 300); // 匹配 CSS 过渡时间
+  }
+
+  /**
    * 打开指定弹窗
    * @param {string} name - 弹窗名称
    * @param {object} options - 传递给弹窗的选项

@@ -546,6 +546,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: auto; /* 🔴 关键修复：确保按钮自身可点击 */
 }
 
 .btn-menu:hover:not(.disabled) {

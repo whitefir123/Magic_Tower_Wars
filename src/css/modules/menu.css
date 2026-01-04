@@ -37,6 +37,7 @@
 .main-menu-overlay.scene-active {
   opacity: 1;
   transform: scale(1);
+  pointer-events: auto !important; /* 🔴 关键修复：强制开启交互 */
 }
 
 .menu-bg {
@@ -110,7 +111,7 @@
 
 .menu-group.active {
   opacity: 1;
-  pointer-events: auto;
+  pointer-events: auto !important; /* 🔴 关键修复：强制开启交互 */
   transform: translateY(-50%) translateX(0);
 }
 

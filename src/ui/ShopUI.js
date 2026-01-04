@@ -133,8 +133,18 @@ export class ShopUI {
         game.inputStack = [];
       }
 
+      // 使用平滑过渡显示
       this.elements.overlay.classList.remove('hidden');
       this.elements.overlay.style.setProperty('display', 'flex', 'important');
+      // 强制重排以应用初始状态
+      void this.elements.overlay.offsetWidth;
+      // 使用 requestAnimationFrame 确保平滑过渡
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          this.elements.overlay.classList.remove('overlay-fade-out');
+          this.elements.overlay.classList.add('overlay-fade-in');
+        });
+      });
       this.isOpen = true;
 
       // 渲染当前数据
@@ -164,8 +174,15 @@ export class ShopUI {
    */
   close() {
     if (this.elements.overlay) {
-      this.elements.overlay.classList.add('hidden');
-      this.elements.overlay.style.setProperty('display', 'none', 'important');
+      // 使用平滑过渡隐藏
+      this.elements.overlay.classList.remove('overlay-fade-in');
+      this.elements.overlay.classList.add('overlay-fade-out');
+      // 等待过渡完成后隐藏
+      setTimeout(() => {
+        this.elements.overlay.classList.add('hidden');
+        this.elements.overlay.style.setProperty('display', 'none', 'important');
+        this.elements.overlay.classList.remove('overlay-fade-out');
+      }, 300);
       this.isOpen = false;
 
       // 恢复游戏
