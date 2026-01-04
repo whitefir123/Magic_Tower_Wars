@@ -1406,7 +1406,7 @@ export class MapSystem {
     this.items.forEach(i => {
       if (i.visualX > cameraLeft - margin && i.visualX < cameraRight + margin &&
           i.visualY > cameraTop - margin && i.visualY < cameraBottom + margin) {
-        list.push({ y: i.visualY, obj: i, type: 'item', z: 0 });
+        list.push({ y: i.visualY, obj: i, type: 'item', z: 0.5 });
       }
     });
     

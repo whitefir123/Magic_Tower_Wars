@@ -886,7 +886,7 @@ export class Monster extends Entity {
     if (this.isMoving) return; if (this.moveTimer > 0) return;
     
     // 应用噩梦层级机制：aggroRange（仇恨范围修饰符）
-    const baseAggroRange = 1; // 基础仇恨范围（相邻格子）
+    const baseAggroRange = 6; // 基础追击范围扩大，确保怪物能持续追击
     const aggroRange = baseAggroRange + (this.ascConfig?.aggroRange || 0);
     
     // 简单的追击逻辑：朝向玩家移动
