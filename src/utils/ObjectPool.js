@@ -128,6 +128,9 @@ export class FloatingTextPool extends ObjectPool {
       icon: null,          // 图标URL（可选）
       iconSize: 16,        // 图标尺寸
       iconImage: null,     // 缓存的图像对象
+      type: 'NORMAL',      // 飘字类型：'NORMAL' 或 'CRIT'
+      age: 0,              // 已存活时间（毫秒）
+      startX: 0,           // 初始X坐标（用于计算震动偏移）
       
       // 重置方法
       reset() {
@@ -142,10 +145,13 @@ export class FloatingTextPool extends ObjectPool {
         this.icon = null;
         this.iconSize = 16;
         this.iconImage = null;
+        this.type = 'NORMAL';
+        this.age = 0;
+        this.startX = 0;
       },
       
       // 初始化方法
-      init(x, y, text, color, icon = null, iconSize = 16) {
+      init(x, y, text, color, icon = null, iconSize = 16, type = 'NORMAL') {
         this.x = x;
         this.y = y;
         this.text = text;
@@ -156,6 +162,9 @@ export class FloatingTextPool extends ObjectPool {
         this.scale = 1;
         this.icon = icon;
         this.iconSize = iconSize;
+        this.type = type;
+        this.age = 0;
+        this.startX = x;
         
         // 如果有图标URL，预加载图片
         if (icon && !this.iconImage) {
@@ -169,9 +178,49 @@ export class FloatingTextPool extends ObjectPool {
       // 更新方法
       update(dt) {
         this.life -= dt;
-        this.y -= this.velocityY * dt;
+        this.age += dt;
+        
+        // 先计算 alpha（普通飘字需要用到）
         this.alpha = Math.max(0, this.life / 800);
-        this.scale = 1 + (1 - this.alpha) * 0.1;
+        
+        if (this.type === 'CRIT') {
+          // 暴击飘字的特殊动画逻辑：弹性放大 + 平滑上浮
+          
+          // 缩放逻辑
+          if (this.age < 150) {
+            // 阶段1 (爆发)：0-150ms，从 1.0x 快速增长到 2.2x
+            const progress = this.age / 150;
+            this.scale = 1.0 + (2.2 - 1.0) * progress;
+          } else if (this.age < 300) {
+            // 阶段2 (回弹)：150-300ms，从 2.2x 平滑回缩到 1.5x
+            const progress = (this.age - 150) / 150;
+            this.scale = 2.2 + (1.5 - 2.2) * progress;
+          } else {
+            // 阶段3 (悬停与消散)：300ms 后，锁定在 1.5x
+            this.scale = 1.5;
+          }
+          
+          // 位移逻辑
+          if (this.age < 150) {
+            // 阶段1：快速上浮
+            this.y -= this.velocityY * 3 * dt;
+          } else if (this.age < 300) {
+            // 阶段2：上浮速度减缓
+            const progress = (this.age - 150) / 150;
+            const velocity = 3 + (1 - 3) * progress; // 从3倍速度过渡到1倍速度
+            this.y -= this.velocityY * velocity * dt;
+          } else {
+            // 阶段3：缓慢上浮
+            this.y -= this.velocityY * dt;
+          }
+          
+          // X轴：始终保持初始位置，不添加任何偏移
+          this.x = this.startX;
+        } else {
+          // 普通飘字的原有逻辑
+          this.y -= this.velocityY * dt;
+          this.scale = 1 + (1 - this.alpha) * 0.1;
+        }
       },
       
       // 判断是否死亡
@@ -185,35 +234,31 @@ export class FloatingTextPool extends ObjectPool {
         ctx.globalAlpha = this.alpha;
         
         const centerX = this.x + TILE_SIZE / 2;
-        let textY = this.y;
-        
-        // 如果有图标，先绘制图标
-        if (this.icon && this.iconImage && this.iconImage.complete) {
-          const iconSize = this.iconSize * this.scale;
-          const iconX = centerX - iconSize / 2;
-          const iconY = textY - iconSize / 2;
-          
-          // 绘制图标阴影
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-          ctx.shadowBlur = 6;
-          ctx.shadowOffsetX = 2;
-          ctx.shadowOffsetY = 2;
-          
-          ctx.drawImage(this.iconImage, iconX, iconY, iconSize, iconSize);
-          
-          // 文本位置下移，显示在图标下方
-          textY += iconSize / 2 + 10;
-        }
+        const textY = this.y;
         
         // 绘制文本
         ctx.fillStyle = this.color;
-        ctx.font = 'bold 16px Cinzel, serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.shadowColor = 'black';
-        ctx.shadowBlur = 4;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
+        
+        if (this.type === 'CRIT') {
+          // 暴击飘字样式：深红色，基于scale动态调整字体大小，暗红色硬阴影
+          const baseFontSize = 12; // 基础字体大小（调小）
+          const fontSize = baseFontSize * this.scale;
+          ctx.font = `bold ${fontSize}px Cinzel, serif`;
+          ctx.shadowColor = '#8B0000'; // 暗红色阴影
+          ctx.shadowBlur = 0; // 硬阴影，不带模糊
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 2;
+        } else {
+          // 普通飘字样式
+          ctx.font = 'bold 16px Cinzel, serif';
+          ctx.shadowColor = 'black';
+          ctx.shadowBlur = 4;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
+        }
+        
         ctx.fillText(this.text, centerX, textY);
         ctx.restore();
       }
@@ -230,11 +275,12 @@ export class FloatingTextPool extends ObjectPool {
    * @param {string} color - 颜色
    * @param {string} icon - 图标URL（可选）
    * @param {number} iconSize - 图标尺寸（可选）
+   * @param {string} type - 飘字类型：'NORMAL' 或 'CRIT'（可选，默认为 'NORMAL'）
    * @returns {Object} 飘字对象
    */
-  create(x, y, text, color, icon = null, iconSize = 16) {
+  create(x, y, text, color, icon = null, iconSize = 16, type = 'NORMAL') {
     const floatingText = this.acquire();
-    floatingText.init(x, y, text, color, icon, iconSize);
+    floatingText.init(x, y, text, color, icon, iconSize, type);
     return floatingText;
   }
 }

@@ -2033,14 +2033,10 @@ export class Player extends Entity {
   gainRage(amt) { 
     const beforeRage = this.stats.rage || 0;
     this.stats.rage = Math.min(100, beforeRage + amt);
-    const actualGain = this.stats.rage - beforeRage;
+    // const actualGain = this.stats.rage - beforeRage; // 不再需要计算实际增量用于显示
     if (window.game && window.game.ui) window.game.ui.updateStats(this);
     
-    // 显示怒气增加数字（如果设置开启）
-    if (actualGain > 0 && window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
-      const text = window.game.floatingTextPool.create(this.visualX, this.visualY - 20, `+${actualGain} 怒气`, '#ff9900');
-      window.game.floatingTexts.push(text);
-    }
+    // 移除怒气飘字逻辑，保持画面整洁
   }
   takeDamage(amt) { 
     this.stats.hp -= amt; 

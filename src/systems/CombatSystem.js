@@ -322,11 +322,8 @@ export class CombatSystem {
           if (xp > 0) {
             game.totalXpGained = (game.totalXpGained || 0) + xp;
             const leveled = attacker.gainXp(xp);
-            if (game.settings && game.settings.showDamageNumbers !== false) {
-              const offsetX = (Math.random() - 0.5) * 15;
-              const xpText = game.floatingTextPool.create(enemy.visualX + offsetX, enemy.visualY - 38, `+${xp} XP`, '#9b59b6');
-              game.floatingTexts.push(xpText);
-            }
+            // 移除 XP 飘字
+            
             if (leveled && game.roguelike && game.roguelike.triggerDraft) {
               game.roguelike.triggerDraft('ELITE', enemy);
             }
@@ -452,11 +449,8 @@ export class CombatSystem {
                 if (xp > 0) {
                   game.totalXpGained = (game.totalXpGained || 0) + xp;
                   const leveled = source.gainXp(xp);
-                  if (game.settings && game.settings.showDamageNumbers !== false) {
-                    const offsetX = (Math.random() - 0.5) * 15;
-                    const xpText = game.floatingTextPool.create(entity.visualX + offsetX, entity.visualY - 38, `+${xp} XP`, '#9b59b6');
-                    game.floatingTexts.push(xpText);
-                  }
+                  // 移除 XP 飘字
+                  
                   if (leveled && game.roguelike && game.roguelike.triggerDraft) {
                     game.roguelike.triggerDraft('ELITE', entity);
                   }
@@ -598,12 +592,8 @@ export class CombatSystem {
               if (xp > 0) {
                 game.totalXpGained = (game.totalXpGained || 0) + xp;
                 const leveled = source.gainXp(xp);
-                // ✅ FIX: 优化飘字显示重叠 - XP在金币上方
-                if (game.settings && game.settings.showDamageNumbers !== false) {
-                  const offsetX = (Math.random() - 0.5) * 15;
-                  const xpText = game.floatingTextPool.create(nearestEnemy.visualX + offsetX, nearestEnemy.visualY - 38, `+${xp} XP`, '#9b59b6');
-                  game.floatingTexts.push(xpText);
-                }
+                // 移除 XP 飘字
+                
                 if (leveled && game.roguelike && game.roguelike.triggerDraft) {
                   game.roguelike.triggerDraft('ELITE', nearestEnemy);
                 }
@@ -674,11 +664,8 @@ export class CombatSystem {
               if (xp > 0) {
                 game.totalXpGained = (game.totalXpGained || 0) + xp;
                 const leveled = source.gainXp(xp);
-                if (game.settings && game.settings.showDamageNumbers !== false) {
-                  const offsetX = (Math.random() - 0.5) * 15;
-                  const xpText = game.floatingTextPool.create(entity.visualX + offsetX, entity.visualY - 38, `+${xp} XP`, '#9b59b6');
-                  game.floatingTexts.push(xpText);
-                }
+                // 移除 XP 飘字
+                
                 if (leveled && game.roguelike && game.roguelike.triggerDraft) {
                   game.roguelike.triggerDraft('ELITE', entity);
                 }
@@ -1748,18 +1735,31 @@ export class CombatSystem {
       // 显示伤害数字 (飘字)
       let damageText = `-${dmgToMon}`;
       let damageColor = '#ffffff';
+      let floatingTextType = 'NORMAL';
       
       if (slashApplied && isCrit) { damageText = `斩击暴击！-${dmgToMon}`; damageColor = '#ff00ff'; }
       else if (slashApplied) { damageText = `斩击！-${dmgToMon}`; damageColor = '#ff6b6b'; }
       else if (scorchApplied) { damageText = `灼烧! -${dmgToMon}`; damageColor = '#ff6b6b'; }
       else if (freezeApplied) { damageText = `冰封! -${dmgToMon}`; damageColor = '#00bfff'; }
-      else if (isCrit) { damageText = `暴击！-${dmgToMon}`; damageColor = '#ffff00'; }
+      else if (isCrit) { 
+        damageText = `暴击！-${dmgToMon}`; 
+        damageColor = '#FF2424'; // 深红色
+        floatingTextType = 'CRIT'; // 使用暴击类型
+      }
       
       if (game.settings && game.settings.showDamageNumbers !== false) {
         // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
         const offsetX = (Math.random() - 0.5) * 15;
         const offsetY = -10 - Math.random() * 10;
-        const monsterDamageText = game.floatingTextPool.create(monster.visualX + offsetX, monster.visualY + offsetY, damageText, damageColor);
+        const monsterDamageText = game.floatingTextPool.create(
+          monster.visualX + offsetX, 
+          monster.visualY + offsetY, 
+          damageText, 
+          damageColor,
+          null,
+          16,
+          floatingTextType
+        );
         game.floatingTexts.push(monsterDamageText);
       }
       if (dmgToMon > 10) game.camera.shakeTimer = Math.max(game.camera.shakeTimer || 0, 10);
@@ -1920,15 +1920,11 @@ export class CombatSystem {
           }
           if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
         }
-        // ✅ FIX: 优化飘字显示重叠 - XP在金币上方
         if (xp > 0) {
           game.totalXpGained = (game.totalXpGained || 0) + xp;
           const leveled = player.gainXp(xp);
-          if (game.settings && game.settings.showDamageNumbers !== false) {
-            const offsetX = (Math.random() - 0.5) * 15;
-            const xpText = game.floatingTextPool.create(monster.visualX + offsetX, monster.visualY - 38, `+${xp} XP`, '#9b59b6');
-            game.floatingTexts.push(xpText);
-          }
+          // 移除 XP 飘字
+          
           if (leveled && game.roguelike && game.roguelike.triggerDraft) {
             game.roguelike.triggerDraft('ELITE', monster);
           }
@@ -2139,18 +2135,26 @@ export class CombatSystem {
       if (game.settings && game.settings.showDamageNumbers !== false) {
         let dmgText = `-${finalDamage}`;
         let color = '#e74c3c';
-        let fontSize = 16;
+        let type = 'NORMAL';
         
         if (isCrit) {
           dmgText = `暴击! -${finalDamage}`;
-          color = '#ff0000';
-          fontSize = 20;
+          color = '#FF2424'; // 深红色
+          type = 'CRIT'; // 使用暴击类型
         } else if (baseDamage === 0 && penetrationDamage > 0) {
            color = '#ff8c00';
         }
         
-        const damageText = game.floatingTextPool.create(player.visualX, player.visualY - 10, dmgText, color);
-        if (isCrit && damageText.scale !== undefined) damageText.scale = 1.3; 
+        const damageText = game.floatingTextPool.create(
+          player.visualX, 
+          player.visualY - 10, 
+          dmgText, 
+          color,
+          null,
+          16,
+          type
+        );
+        // 移除旧的 scale 设置（现在由内部动画控制）
         game.floatingTexts.push(damageText);
       }
       

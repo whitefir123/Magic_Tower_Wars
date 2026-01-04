@@ -1058,18 +1058,7 @@ export class MapSystem {
     // 添加到元进度存档
     game.metaSaveSystem.addSoulCrystals(amount);
     
-    // 显示浮动文字（带图标，受设置控制）
-    if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-      const text = game.floatingTextPool.create(
-        monster.visualX,
-        monster.visualY - 20,
-        `+${amount}`,
-        SOUL_CRYSTAL_CONFIG.VISUAL.color,
-        SOUL_CRYSTAL_CONFIG.VISUAL.iconUrl,  // 图标URL
-        20  // 图标尺寸
-      );
-      game.floatingTexts.push(text);
-    }
+    // 移除灵魂水晶飘字显示，保持画面整洁
     
     // 记录到日志
     if (game.ui) {

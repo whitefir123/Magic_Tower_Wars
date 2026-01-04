@@ -2643,10 +2643,7 @@ class Game {
           this.player.stats.rage = Math.min(100, (this.player.stats.rage || 0) + rageBoost);
           this.ui.logMessage(`宝箱打开！获得 ${rageBoost} 怒气！`, 'gain');
           
-          if (this.settings && this.settings.showDamageNumbers !== false) {
-            const floatingText = this.floatingTextPool.create(chestX * TILE_SIZE, chestY * TILE_SIZE - 10, `+${rageBoost} 怒气`, '#ff9900');
-            this.floatingTexts.push(floatingText);
-          }
+          // 移除怒气飘字逻辑
         }
         break;
       }
