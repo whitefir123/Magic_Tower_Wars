@@ -2675,30 +2675,26 @@ class Game {
   // CHARACTER SELECTION SYSTEM - Risk of Rain 2 HUD Style
   async showCharacterSelect(mode = 'normal') {
     try {
-      // 第一步：淡出主菜单（如果可见）
-      const mainMenu = document.getElementById('main-menu');
-      if (mainMenu && !mainMenu.classList.contains('hidden') && mainMenu.style.display !== 'none') {
-        await this.loadingUI.fadeSceneOut('main-menu');
-      }
-      
-      // 显示加载界面
+      // 1. 直接显示加载界面（它会覆盖在当前界面之上）
       this.loadingUI.showOverlay('charSelect', '加载英雄选择界面...');
       
+      // 给一点时间让加载界面的淡入动画开始播放
+      await new Promise(r => setTimeout(r, 100));
+
       // 初始化角色选择界面
       this.initCharSelect();
-      
-      // 等待英雄选择界面的所有资源加载完毕
       await this.waitForCharSelectScreenResourcesLoaded();
-      
-      // 更新进度条到 100%
       this.loadingUI.setProgress(100, 'charSelect');
       
-      // 应用模式设置（通过 UIManager）
+      // 应用模式设置
       if (this.ui && this.ui.showCharacterSelect) {
         this.ui.showCharacterSelect(mode);
       }
       
-      // 使用过渡效果显示角色选择界面
+      // 2. 在幕后隐藏主菜单（此时加载页已完全遮挡，用户看不见这个切换）
+      this.hideMainMenu();
+
+      // 3. 转场到角色选择界面
       await this.loadingUI.transitionToScene('char-select-screen', 'charSelect');
       
       // 确保角色选择界面可见（兜底机制）
@@ -3445,15 +3441,15 @@ class Game {
 
   /**
    * 保存游戏状态并跳转到 game.html
-   * 用于从角色选择界面跳转到游戏页面
-   * 在跳转前强制 body 渐黑 0.5s，使后续加载屏的出现更自然
    */
   startGameWithRedirect() {
-    console.log('[StartGameWithRedirect] Saving game state and redirecting to game.html...');
+    console.log('[StartGameWithRedirect] Saving state and redirecting...');
     
-    // 强制 body 渐黑 0.5s
-    document.body.classList.add('page-exit-active');
-    
+    // 1. 显示加载界面（视觉反馈）
+    // 使用 'global' 或 'gameplay' 类型的遮罩
+    this.loadingUI.showOverlay('gameplay', '正在进入世界...');
+    this.loadingUI.setProgress(100, 'gameplay'); // 设为满，表示准备就绪
+
     // 检查当前是否为每日挑战模式
     const charSelectScreen = document.getElementById('char-select-screen');
     const isDailyMode = charSelectScreen && charSelectScreen.classList.contains('mode-daily');
@@ -3498,14 +3494,12 @@ class Game {
     const enableLighting = sessionStorage.getItem('enableLighting') === 'true';
     console.log(`[StartGameWithRedirect] Saved: charId=${this.selectedCharId}, ascensionLevel=${this.selectedAscensionLevel}, enableFog=${enableFog}, enableLighting=${enableLighting}, gameMode=${isDailyMode ? 'daily' : 'normal'}`);
     
-    // 优化：页面跳转前的淡出效果
-    console.log('[Transition] Fading out for redirect...');
-    document.body.classList.add('page-exit-active');
+    console.log('[Transition] Redirecting to game.html...');
     
-    // 等待 500ms（匹配 CSS 过渡时间），然后再执行跳转
+    // 2. 延迟跳转，让用户看到加载层出现
     setTimeout(() => {
       window.location.href = 'game.html';
-    }, 500);
+    }, 200); // 稍微缩短等待时间，感觉更响应
   }
 
   async startGame() {
@@ -3796,52 +3790,49 @@ class Game {
     this.isDailyMode = true; // 尽早设置标志位
     console.log('[DailyChallenge] 强制设置难度层级: 1 (每日挑战标准难度)');
     
-    // 2. 接管加载界面 (使用 gameplay 类型)
-    // 注意：如果之前 global 层还在，这里会平滑切换到 gameplay 层
-    this.loadingUI.showOverlay('gameplay', '加载每日挑战资源...');
-    
-    // ✅ 触发游戏加载开始事件
-    window.dispatchEvent(new CustomEvent('gameplayLoadingStart'));
-    
-    try {
-      // 加载游戏资源（与 startGame 相同）
-      await this.loader.loadGameplayAssets(GAMEPLAY_ASSETS, (percent, loaded, total) => {
-        const imageProgress = Math.round((percent * 0.7));
-        this.loadingUI.setProgress(imageProgress, 'gameplay');
-      });
+      // 2. 接管加载界面 (使用 gameplay 类型)
+      // 注意：如果之前 global 层还在，这里会平滑切换到 gameplay 层
+      this.loadingUI.showOverlay('gameplay', '加载每日挑战资源...');
       
-      // 获取每日挑战配置
-      const dailyConfig = DailyChallengeSystem.getDailyConfig();
-      console.log('[DailyChallenge] 每日挑战配置:', dailyConfig);
-      
-      // CRITICAL FIX: 保存挑战开始时的日期（YYYY-MM-DD 格式）
-      // 确保即使跨日完成挑战，提交成绩时也使用开始时的日期，防止数据污染
-      const now = new Date();
-      const year = now.getUTCFullYear();
-      const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(now.getUTCDate()).padStart(2, '0');
-      this.dailyChallengeDate = `${year}-${month}-${day}`;
-      console.log('[DailyChallenge] 保存挑战日期:', this.dailyChallengeDate);
-      
-      // 初始化 RNG（用于确定性生成）
-      this.rng = dailyConfig.rng;
-      
-      // 强制设置玩家角色为今日限定角色
-      this.selectedCharId = dailyConfig.character;
-      const charData = CHARACTERS[dailyConfig.character];
-      if (!charData) {
-        console.error(`[DailyChallenge] 角色 ${dailyConfig.character} 不存在`);
-        return;
-      }
-      
-      // 第一步：淡出角色选择界面（如果可见）
-      const charSelectScreen = document.getElementById('char-select-screen');
-      if (charSelectScreen && !charSelectScreen.classList.contains('hidden') && charSelectScreen.style.display !== 'none') {
-        await this.loadingUI.fadeSceneOut('char-select-screen');
-      }
-      
-      // Hide main menu (should already be hidden, but ensure it's hidden)
+      // 2. 稍微等待遮罩层出现，然后幕后隐藏旧界面
+      await new Promise(r => setTimeout(r, 100));
       this.hideMainMenu();
+      const charSelect = document.getElementById('char-select-screen');
+      if(charSelect) charSelect.style.display = 'none';
+      
+      // ✅ 触发游戏加载开始事件
+      window.dispatchEvent(new CustomEvent('gameplayLoadingStart'));
+      
+      try {
+        // 加载游戏资源（与 startGame 相同）
+        await this.loader.loadGameplayAssets(GAMEPLAY_ASSETS, (percent, loaded, total) => {
+          const imageProgress = Math.round((percent * 0.7));
+          this.loadingUI.setProgress(imageProgress, 'gameplay');
+        });
+        
+        // 获取每日挑战配置
+        const dailyConfig = DailyChallengeSystem.getDailyConfig();
+        console.log('[DailyChallenge] 每日挑战配置:', dailyConfig);
+        
+        // CRITICAL FIX: 保存挑战开始时的日期（YYYY-MM-DD 格式）
+        // 确保即使跨日完成挑战，提交成绩时也使用开始时的日期，防止数据污染
+        const now = new Date();
+        const year = now.getUTCFullYear();
+        const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(now.getUTCDate()).padStart(2, '0');
+        this.dailyChallengeDate = `${year}-${month}-${day}`;
+        console.log('[DailyChallenge] 保存挑战日期:', this.dailyChallengeDate);
+        
+        // 初始化 RNG（用于确定性生成）
+        this.rng = dailyConfig.rng;
+        
+        // 强制设置玩家角色为今日限定角色
+        this.selectedCharId = dailyConfig.character;
+        const charData = CHARACTERS[dailyConfig.character];
+        if (!charData) {
+          console.error(`[DailyChallenge] 角色 ${dailyConfig.character} 不存在`);
+          return;
+        }
       
       // 3. 准备主UI
       const mainUI = document.getElementById('main-ui');

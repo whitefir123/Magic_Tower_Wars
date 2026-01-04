@@ -39,8 +39,46 @@
   </style>
 </head>
 <body>
+  <!-- GLOBAL LOADING OVERLAY - Must be first child of body for proper z-index stacking -->
+  <div id="loading-overlay">
+    <div class="loader"></div>
+    <div class="loading-bar-container">
+      <div id="loading-bar-fill" style="width: 0%"></div>
+    </div>
+    <div id="loading-percent">0%</div>
+    <div class="loading-tips-container">
+      <span class="tip-label">提示:</span>
+      <span id="loading-tip-text">加载中...</span>
+    </div>
+    <div class="loading-chase-container">
+      <div id="loading-skeleton"></div>
+      <div id="loading-butterfly"></div>
+    </div>
+  </div>
+  
+  <script>
+    (function() {
+      try {
+        var savedBg = sessionStorage.getItem('currentLoadingBg');
+        var overlay = document.getElementById('loading-overlay');
+        if (savedBg && overlay) {
+          var bgLayer = document.createElement('div');
+          bgLayer.className = 'loading-bg-layer active';
+          bgLayer.style.backgroundImage = "url('" + savedBg + "')";
+          bgLayer.style.opacity = '1';
+          // 插入到最底层
+          if (overlay.firstChild) {
+            overlay.insertBefore(bgLayer, overlay.firstChild);
+          } else {
+            overlay.appendChild(bgLayer);
+          }
+        }
+      } catch(e) { console.error('BG restore failed', e); }
+    })();
+  </script>
+
   <!-- 游戏加载界面 -->
-  <div id="gameplay-loading-overlay" class="loading-overlay-screen">
+  <div id="gameplay-loading-overlay" class="loading-overlay-screen hidden">
     <div class="loader"></div>
     <div class="loading-bar-container">
       <div class="loading-bar-fill" style="width: 0%"></div>

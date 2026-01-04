@@ -337,52 +337,93 @@ export class LoadingUI {
   }
 
   /**
-   * 设置随机背景
+   * 设置随机背景（修复版：防止闪烁，支持缓存）
    * @param {string} overlayId - 加载界面元素ID
    */
   setRandomBackground(overlayId) {
     const overlay = document.getElementById(overlayId);
     if (!overlay) return;
 
-    // 防御性检查：确保背景图数组不为空
-    if (!LOADING_BACKGROUNDS || LOADING_BACKGROUNDS.length === 0) {
-      console.warn('⚠️ 加载背景图数组为空，跳过背景设置');
-      return;
+    // 1. 检查是否已有背景层
+    let bgLayer = overlay.querySelector('.loading-bg-layer');
+    if (bgLayer && bgLayer.style.backgroundImage && bgLayer.style.backgroundImage !== 'none') {
+      if (!bgLayer.classList.contains('active')) {
+        bgLayer.classList.add('active');
+        bgLayer.style.opacity = '1';
+      }
+      return; 
     }
 
-    // 查找或创建背景层
-    let bgLayer = overlay.querySelector('.loading-bg-layer');
+    // 2. 准备新背景层
     if (!bgLayer) {
       bgLayer = document.createElement('div');
       bgLayer.className = 'loading-bg-layer';
-      // 插入到最前面，作为背景
       overlay.insertBefore(bgLayer, overlay.firstChild);
     }
 
-    // 确保初始透明度为0（防御性编程）
-    bgLayer.style.opacity = '0';
-    bgLayer.style.backgroundImage = 'none'; // 先清空，避免显示旧图片
-
-    // 随机选择一张图片
-    const randomBg = LOADING_BACKGROUNDS[Math.floor(Math.random() * LOADING_BACKGROUNDS.length)];
+    // 3. 智能选择背景
+    let randomBg;
+    let isRestored = false;
     
-    // 预加载图片以避免闪烁
+    // 尝试读取缓存，实现跨页面/跨遮罩的无缝衔接
+    try {
+      const storedBg = sessionStorage.getItem('currentLoadingBg');
+      
+      // 如果有缓存且是第一次加载（避免覆盖已有的不同图片），优先使用缓存
+      if (storedBg) {
+        // 验证存储的背景是否在可用列表中
+        if (!LOADING_BACKGROUNDS || LOADING_BACKGROUNDS.length === 0) return;
+        if (LOADING_BACKGROUNDS.includes(storedBg)) {
+          randomBg = storedBg;
+          isRestored = true;
+        } else {
+          randomBg = LOADING_BACKGROUNDS[Math.floor(Math.random() * LOADING_BACKGROUNDS.length)];
+        }
+      } else {
+        if (!LOADING_BACKGROUNDS || LOADING_BACKGROUNDS.length === 0) return;
+        randomBg = LOADING_BACKGROUNDS[Math.floor(Math.random() * LOADING_BACKGROUNDS.length)];
+      }
+    } catch (e) {
+      // 如果 sessionStorage 不可用（隐私模式等），随机选择
+      if (!LOADING_BACKGROUNDS || LOADING_BACKGROUNDS.length === 0) return;
+      randomBg = LOADING_BACKGROUNDS[Math.floor(Math.random() * LOADING_BACKGROUNDS.length)];
+    }
+    
+    // 更新缓存
+    try { 
+      sessionStorage.setItem('currentLoadingBg', randomBg); 
+    } catch(e) {}
+
     const img = new Image();
-    img.onerror = () => {
-      console.warn(`⚠️ 背景图加载失败: ${randomBg}`);
-      // 加载失败时保持透明，不显示背景
-    };
-    img.onload = () => {
-      // 使用 requestAnimationFrame 确保浏览器先渲染背景图，再执行淡入过渡
-      requestAnimationFrame(() => {
-        bgLayer.style.backgroundImage = `url('${randomBg}')`;
-        // 再次使用 requestAnimationFrame 确保背景图已渲染后再淡入
-        requestAnimationFrame(() => {
+    
+    const applyBackground = () => {
+      // 如果是恢复的背景，立即显示（无过渡），否则使用动画
+      if (isRestored) {
+          bgLayer.style.transition = 'none'; // ⚡ 禁用过渡，立即显示
+          bgLayer.style.backgroundImage = `url('${randomBg}')`;
           bgLayer.style.opacity = '1';
-        });
-      });
+          bgLayer.classList.add('active');
+          
+          // 强制重排后恢复过渡效果（以便后续可能有动画）
+          void bgLayer.offsetWidth;
+          bgLayer.style.transition = ''; 
+      } else {
+          requestAnimationFrame(() => {
+            bgLayer.style.backgroundImage = `url('${randomBg}')`;
+            bgLayer.classList.add('active');
+            bgLayer.style.opacity = '1';
+          });
+      }
     };
+
+    img.onload = applyBackground;
+    img.onerror = () => console.warn(`背景图加载失败: ${randomBg}`);
+    
     img.src = randomBg;
+
+    if (img.complete) {
+      applyBackground();
+    }
   }
 
   /**

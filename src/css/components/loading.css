@@ -2,22 +2,23 @@
    LOADING SCREEN COMPONENTS
    ======================================================================== */
 
+/* ⚡ 关键修复：背景改为透明，消除叠加时的黑屏闪烁 */
 #loading-overlay, .loading-overlay-screen { 
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: #000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: transparent !important; /* 让底层背景（或下层遮罩）透出来 */
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  flex-direction: column !important;
   z-index: 999999;
   transition: opacity 0.8s ease-in-out;
   opacity: 1;
   pointer-events: auto;
-  overflow: hidden; /* 裁剪背景层溢出，防止滚动条 */
+  overflow: hidden;
 }
 
 /* 显示状态 - 电影级过渡 */
@@ -150,21 +151,25 @@
   display: block !important;
 }
 
-/* Loading Tips Container - Bottom Left */
+/* Loading Tips Container - ⚡ 强制左下角 */
 .loading-tips-container {
-  position: absolute;
-  bottom: 80px;
-  left: 40px;
-  display: flex;
-  align-items: center;
+  position: absolute !important;
+  bottom: 30px !important;
+  left: 30px !important;
+  right: auto !important; /* 强制重置对立属性 */
+  top: auto !important;
+  transform: none !important;
+  
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important; /* 确保左对齐 */
   gap: 12px;
   font-family: var(--font-header);
   font-size: 1.1rem;
-  width: auto;
-  min-width: 411px;
-  max-width: 90vw;
-  height: 59px;
-  animation: fadeInTip 0.5s ease-in-out;
+  width: auto !important;
+  max-width: 45vw;
+  height: auto;
+  z-index: 20;
 }
 
 .tip-label {
@@ -192,17 +197,22 @@
   100% { opacity: 1; transform: translateX(0); }
 }
 
-/* Loading Chase Container - Bottom Right */
+/* Loading Chase Container - ⚡ 强制右下角 */
 .loading-chase-container {
-  position: absolute;
-  bottom: 0;
-  right: 20px;
-  width: auto;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  position: absolute !important;
+  bottom: 30px !important;
+  right: 30px !important;
+  left: auto !important; /* 强制重置对立属性 */
+  top: auto !important;
+  transform: none !important;
+  
+  width: auto !important;
+  height: 64px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important; /* 确保右对齐 */
   gap: 0px;
+  z-index: 20;
 }
 
 #loading-butterfly, .loading-butterfly {
@@ -282,38 +292,34 @@
    Dynamic Background System
    ======================================================================== */
 
-/* 背景层容器 - 绝对定位在最底层 */
+/* 优化：背景层容器 */
 .loading-bg-layer {
   position: absolute;
-  inset: -5%; /* 稍微延伸出边界，防止动画缩放时露底 */
+  inset: -5%;
   width: 110%;
   height: 110%;
-  z-index: 0; /* 最底层 */
-  
+  z-index: 0;
+  background-color: #000; /* 图片未加载时显示黑色，避免透视到游戏画面 */
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  
-  /* Ken Burns 呼吸效果动画 */
-  animation: ken-burns 30s ease-in-out infinite alternate;
-  
-  /* 初始透明度为0，通过JS加载完成后设为1，实现淡入效果 */
-  opacity: 0; 
-  transition: opacity 1s ease-in-out;
+  opacity: 0;
+  transition: opacity 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* 确保所有前景内容都在背景之上 */
+.loading-bg-layer.active {
+  opacity: 1;
+  animation: ken-burns 30s ease-in-out infinite alternate;
+}
+
+/* 确保前景内容高亮显示 */
 .loader, 
 .loading-bar-container, 
-.loading-percent {
-  position: relative;
-  z-index: 10; /* 提升层级 */
-}
-
-/* 提示和动画容器保持绝对定位，但确保层级在背景之上 */
-.loading-tips-container, 
+.loading-percent,
+.loading-tips-container,
 .loading-chase-container {
-  z-index: 10; /* 提升层级，但保持原有的绝对定位 */
+  position: relative;
+  z-index: 10;
 }
 
 /* Ken Burns 动画关键帧 */
