@@ -103,7 +103,7 @@
   height: 100vh;
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(5px);
-  z-index: 10000;
+  z-index: 11000 !important; /* 提升层级，高于 Main Menu (10000) */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -131,7 +131,7 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  transform: scale(1.072, 1.06218) !important;
+  transform: scale(1.072, 1.06218); /* 默认缩放，不带 !important */
   z-index: 100; /* 可选，防止被遮挡 */
 }
 
@@ -140,7 +140,7 @@ div.leaderboard-content {
 }
 
 leaderboard-panel > div.leaderboard-content {
-  transform: scale(1.072, 1.06218) !important;
+  /* transform 已移至基础样式，不再使用 !important */
   position: relative; /* 确保 z-index 生效 */
   z-index: 100; /* 可选，防止被遮挡 */
 }
@@ -629,5 +629,25 @@ td.character-cell {
   border-color: var(--accent-gold) !important;
   font-weight: bold !important;
   font-size: 18px !important;
+}
+
+/* ======================================================================== */
+/* 排行榜专属入场动画 - 整合了特定的缩放比例和滑入效果 */
+/* ======================================================================== */
+.leaderboard-animate-enter {
+  animation: leaderboardSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes leaderboardSlideUp {
+  from {
+    opacity: 0;
+    /* 保持原有的缩放比例，同时向下偏移 50px */
+    transform: translateY(50px) scale(1.072, 1.06218);
+  }
+  to {
+    opacity: 1;
+    /* 保持原有的缩放比例，回到原位 */
+    transform: translateY(0) scale(1.072, 1.06218);
+  }
 }
 

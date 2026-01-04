@@ -17,6 +17,13 @@
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   /* 移除 animation: fadeIn，由 JS 的 .modal-animate-enter 控制 */
+  opacity: 1;
+  transition: opacity 0.3s ease; /* 新增 */
+}
+
+/* 配合 OverlayManager 的淡出类 */
+.achievement-overlay.overlay-fade-out {
+  opacity: 0;
 }
 
 .achievement-overlay.hidden {

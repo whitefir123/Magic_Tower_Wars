@@ -1643,22 +1643,55 @@ class Game {
     const settingsOverlay = document.getElementById('settings-overlay');
     if (!settingsOverlay) return;
     
-    // Load saved settings
     this.loadSettingsUI();
     
-    // Show settings overlay
+    // 1. 显示 Overlay 并添加淡入类
+    settingsOverlay.classList.remove('hidden');
     settingsOverlay.style.setProperty('display', 'flex', 'important');
     
-    // Setup event listeners
+    // 强制重排以确保过渡生效
+    void settingsOverlay.offsetWidth;
+    
+    settingsOverlay.classList.remove('overlay-fade-out');
+    settingsOverlay.classList.add('overlay-fade-in');
+    
+    // 2. 模态框进场动画
+    const modal = settingsOverlay.querySelector('.settings-modal');
+    if (modal) {
+      modal.classList.remove('modal-animate-exit');
+      modal.classList.add('modal-animate-enter');
+    }
+    
     this.setupSettingsEventListeners();
   }
 
   closeSettings() {
     const settingsOverlay = document.getElementById('settings-overlay');
-    if (settingsOverlay) {
-      settingsOverlay.style.setProperty('display', 'none', 'important');
+    if (!settingsOverlay) return;
+    
+    // 1. 模态框离场动画
+    const modal = settingsOverlay.querySelector('.settings-modal');
+    if (modal) {
+      modal.classList.remove('modal-animate-enter');
+      modal.classList.add('modal-animate-exit');
     }
-    // Save settings to localStorage
+    
+    // 2. 背景淡出
+    settingsOverlay.classList.remove('overlay-fade-in');
+    settingsOverlay.classList.add('overlay-fade-out');
+    
+    // 3. 延时隐藏 (250ms 匹配动画时长)
+    setTimeout(() => {
+      settingsOverlay.classList.add('hidden');
+      settingsOverlay.style.setProperty('display', 'none', 'important');
+      
+      // 清理动画类，为下次打开做准备
+      settingsOverlay.classList.remove('overlay-fade-out');
+      if (modal) {
+        modal.classList.remove('modal-animate-exit');
+      }
+    }, 250);
+
     this.saveSettings();
   }
 
@@ -1764,11 +1797,23 @@ class Game {
         mainMenu.classList.add('scene-active');
       });
       
-      // 恢复菜单按钮组状态
+      // 恢复菜单按钮组状态 - 强制重置为初始状态
       const mainGroup = document.getElementById('menu-group-main');
       const extrasGroup = document.getElementById('menu-group-extras');
-      if (mainGroup) { mainGroup.classList.add('active'); mainGroup.classList.remove('hidden'); }
-      if (extrasGroup) { extrasGroup.classList.add('hidden'); extrasGroup.classList.remove('active'); }
+      
+      if (mainGroup) {
+        // 清除所有位置类和隐藏类
+        mainGroup.classList.remove('menu-pos-left', 'menu-pos-right', 'hidden');
+        // 强制设置为中心可见
+        mainGroup.classList.add('menu-pos-center', 'active');
+      }
+      
+      if (extrasGroup) {
+        // 清除所有位置类和激活类
+        extrasGroup.classList.remove('menu-pos-center', 'menu-pos-left', 'active');
+        // 强制设置为右侧隐藏
+        extrasGroup.classList.add('menu-pos-right', 'hidden');
+      }
     }
   }
 
@@ -3091,12 +3136,18 @@ class Game {
     const mainGroup = document.getElementById('menu-group-main');
     const extrasGroup = document.getElementById('menu-group-extras');
     if (mainGroup) {
-      mainGroup.classList.add('active');
-      mainGroup.classList.remove('hidden');
+      // Reset main group to center position
+      mainGroup.classList.remove('menu-pos-left');
+      mainGroup.classList.add('menu-pos-center');
+      // Remove old classes
+      mainGroup.classList.remove('hidden', 'active');
     }
     if (extrasGroup) {
-      extrasGroup.classList.add('hidden');
-      extrasGroup.classList.remove('active');
+      // Reset extras group to right position (hidden)
+      extrasGroup.classList.remove('menu-pos-center');
+      extrasGroup.classList.add('menu-pos-right');
+      // Remove old classes
+      extrasGroup.classList.remove('hidden', 'active');
     }
     
     // 关键修复：彻底隐藏其他所有界面，防止隐形遮挡
@@ -3316,10 +3367,17 @@ class Game {
         const extrasGroup = document.getElementById('menu-group-extras');
         
         if (mainGroup && extrasGroup) {
-          mainGroup.classList.add('hidden');
-          mainGroup.classList.remove('active');
-          extrasGroup.classList.add('active');
-          extrasGroup.classList.remove('hidden');
+          // Main group: slide out to left
+          mainGroup.classList.remove('menu-pos-center');
+          mainGroup.classList.add('menu-pos-left');
+          // Remove old classes
+          mainGroup.classList.remove('hidden', 'active');
+          
+          // Extras group: slide in from right to center
+          extrasGroup.classList.remove('menu-pos-right');
+          extrasGroup.classList.add('menu-pos-center');
+          // Remove old classes
+          extrasGroup.classList.remove('hidden', 'active');
           
           // Play book flip sound effect
           if (this.audio) this.audio.playBookFlip();
@@ -3335,10 +3393,17 @@ class Game {
         const extrasGroup = document.getElementById('menu-group-extras');
         
         if (mainGroup && extrasGroup) {
-          extrasGroup.classList.add('hidden');
-          extrasGroup.classList.remove('active');
-          mainGroup.classList.add('active');
-          mainGroup.classList.remove('hidden');
+          // Extras group: slide out to right
+          extrasGroup.classList.remove('menu-pos-center');
+          extrasGroup.classList.add('menu-pos-right');
+          // Remove old classes
+          extrasGroup.classList.remove('hidden', 'active');
+          
+          // Main group: slide in from left to center
+          mainGroup.classList.remove('menu-pos-left');
+          mainGroup.classList.add('menu-pos-center');
+          // Remove old classes
+          mainGroup.classList.remove('hidden', 'active');
           
           // Play book flip sound effect
           if (this.audio) this.audio.playBookFlip();

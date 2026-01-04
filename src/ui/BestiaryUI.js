@@ -167,11 +167,8 @@ export class BestiaryUI {
     // Apply smooth transition animation
     const modal = this.elements.overlay.querySelector('.bestiary-modal');
     if (modal) {
-      // Remove animation class to restart animation on re-open
-      modal.classList.remove('modal-animate-enter');
-      // Force reflow to restart animation
+      modal.classList.remove('modal-animate-exit');
       void modal.offsetWidth;
-      // Add animation class
       modal.classList.add('modal-animate-enter');
     }
 
@@ -183,9 +180,30 @@ export class BestiaryUI {
    */
   close() {
     if (this.elements.overlay) {
-      this.elements.overlay.classList.add('hidden');
-      this.elements.overlay.style.display = 'none';
-      this.elements.overlay.style.pointerEvents = 'none'; // 🔴 恢复为不可交互，防止误触
+      // 1. 内容离场动画
+      const modal = this.elements.overlay.querySelector('.bestiary-modal');
+      if (modal) {
+        modal.classList.remove('modal-animate-enter');
+        modal.classList.add('modal-animate-exit');
+      }
+
+      // 2. 背景淡出
+      this.elements.overlay.classList.remove('overlay-fade-in'); // 确保移除淡入类
+      this.elements.overlay.classList.add('overlay-fade-out');
+
+      // 3. 延时隐藏
+      setTimeout(() => {
+        this.elements.overlay.classList.add('hidden');
+        this.elements.overlay.style.display = 'none';
+        this.elements.overlay.style.pointerEvents = 'none';
+        
+        // 重置状态
+        this.elements.overlay.classList.remove('overlay-fade-out');
+        if (modal) {
+          modal.classList.remove('modal-animate-exit');
+        }
+      }, 250);
+      
       this.isOpen = false;
       console.log('✓ BestiaryUI 已关闭');
     }

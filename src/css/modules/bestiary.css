@@ -42,7 +42,13 @@
   z-index: 10001;
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
-  animation: fadeIn 0.3s ease-out;
+  opacity: 1;
+  transition: opacity 0.3s ease; /* 新增 */
+}
+
+/* 配合 OverlayManager 的淡出类 */
+.bestiary-overlay.overlay-fade-out {
+  opacity: 0;
 }
 
 /* 🔴 关键修复：移除 animation 属性，让 JS 的 .modal-animate-enter 类控制动画 */

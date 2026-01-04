@@ -156,13 +156,18 @@ export class LeaderboardUI {
    * 打开排行榜面板
    */
   async open() {
-    const container = document.getElementById('leaderboard-panel');
+    let container = document.getElementById('leaderboard-panel');
     if (!container) {
       this.ensureLeaderboardContainer();
     }
-
-    // 显示面板
-    container.classList.remove('hidden');
+    // 重新获取（确保不为null）
+    const el = document.getElementById('leaderboard-panel');
+    if (!el) return;
+    
+    // 🔴 关键修复：清除 hidden 类并强制设置 display，覆盖 close() 留下的样式
+    el.classList.remove('hidden');
+    el.style.display = 'flex';
+    el.style.opacity = '1'; // 确保可见
     
     // 暂停游戏（如果游戏已开始）
     if (this.game.gameStarted) {
@@ -170,15 +175,13 @@ export class LeaderboardUI {
       this.game.inputStack = [];
     }
 
-    // Apply smooth transition animation
-    const content = container.querySelector('.leaderboard-content');
+    // 动画处理
+    const content = el.querySelector('.leaderboard-content');
     if (content) {
-      // Remove animation class to restart animation on re-open
-      content.classList.remove('modal-animate-enter');
-      // Force reflow to restart animation
-      void content.offsetWidth;
-      // Add animation class
-      content.classList.add('modal-animate-enter');
+      content.classList.remove('modal-animate-exit'); // 移除离场类
+      content.classList.remove('leaderboard-animate-enter'); // 移除旧类
+      void content.offsetWidth; // 强制重排
+      content.classList.add('modal-animate-enter'); // 添加新进场类
     }
 
     // 根据当前标签页加载相应的排行榜数据
@@ -195,7 +198,27 @@ export class LeaderboardUI {
   close() {
     const container = document.getElementById('leaderboard-panel');
     if (container) {
-      container.classList.add('hidden');
+      // 1. 移除入场动画，添加离场动画
+      const content = container.querySelector('.leaderboard-content');
+      if (content) {
+        content.classList.remove('leaderboard-animate-enter');
+        content.classList.add('modal-animate-exit');
+      }
+
+      // 2. 背景淡出 (利用 CSS transition)
+      container.style.opacity = '0';
+
+      // 3. 等待动画结束后隐藏
+      setTimeout(() => {
+        container.classList.add('hidden');
+        container.style.display = 'none'; // 确保完全隐藏
+        
+        // 重置状态供下次使用
+        container.style.opacity = '1'; 
+        if (content) {
+          content.classList.remove('modal-animate-exit');
+        }
+      }, 250);
     }
 
     // 恢复游戏（如果游戏已开始）

@@ -184,24 +184,40 @@
 }
 
 /* ========================================================================
-   Standardized Modal Animation - Fade In + Slide Up
+   Standardized Modal Animation - Smooth Scale & Fade
    ======================================================================== */
 
-/* Standard animation class for modal content containers */
+/* 进场动画：弹性放大 + 上浮淡入 */
 .modal-animate-enter {
-  animation: modalEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  opacity: 0;
-  transform: translateY(30px);
+  animation: modalEnterSmooth 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform, opacity;
 }
 
-@keyframes modalEnter {
-  from {
+@keyframes modalEnterSmooth {
+  0% {
     opacity: 0;
-    transform: translateY(30px);
+    transform: scale(0.95) translateY(10px);
   }
-  to {
+  100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 离场动画：轻微缩小 + 下沉淡出 (更自然) */
+.modal-animate-exit {
+  animation: modalExitSmooth 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes modalExitSmooth {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
   }
 }
 

@@ -102,22 +102,45 @@
   align-items: center;
   justify-content: center;
   width: calc(100% - 60px);
-  opacity: 1;
-  pointer-events: auto !important; /* 强制开启 */
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   z-index: 30; /* 确保在侧边栏内部最高 */
 }
 
-.menu-group.hidden {
+/* 位置状态类 - 左侧位置（隐藏） */
+.menu-pos-left {
   opacity: 0;
-  pointer-events: none;
-  transform: translateY(-50%) translateX(-20px);
+  transform: translateY(-50%) translateX(-50px);
+  pointer-events: none !important;
+  visibility: hidden; /* 额外保险：移出渲染树 */
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), visibility 0s 0.4s; /* 延迟隐藏 visibility 以保留淡出动画 */
 }
 
-.menu-group.active {
+/* 🔴 关键修复：强制禁用隐藏组内按钮的交互，覆盖 .btn-menu 的 auto !important */
+.menu-pos-left .btn-menu {
+  pointer-events: none !important;
+}
+
+/* 位置状态类 - 右侧位置（隐藏） */
+.menu-pos-right {
+  opacity: 0;
+  transform: translateY(-50%) translateX(50px);
+  pointer-events: none !important;
+  visibility: hidden; /* 额外保险：移出渲染树 */
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), visibility 0s 0.4s; /* 延迟隐藏 visibility 以保留淡出动画 */
+}
+
+/* 🔴 关键修复：强制禁用隐藏组内按钮的交互，覆盖 .btn-menu 的 auto !important */
+.menu-pos-right .btn-menu {
+  pointer-events: none !important;
+}
+
+/* 位置状态类 - 中心位置（可见） */
+.menu-pos-center {
   opacity: 1;
-  pointer-events: auto !important; /* 🔴 关键修复：强制开启交互 */
   transform: translateY(-50%) translateX(0);
+  pointer-events: auto !important;
+  visibility: visible;
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), visibility 0s 0s; /* 立即显示 */
 }
 
 .menu-buttons {
