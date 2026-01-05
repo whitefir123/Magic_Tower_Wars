@@ -174,8 +174,8 @@ export class Entity {
   drawStatusIcons(ctx, camX, camY) {
     if (!this.statuses || this.statuses.length === 0) return;
     
-    const screenX = this.visualX - camX;
-    const screenY = this.visualY - camY;
+    const screenX = this.visualX;
+    const screenY = this.visualY;
     const iconSize = 12; // 图标大小
     const iconSpacing = 2; // 图标间距
     const yOffset = -20; // 在实体上方20像素
@@ -981,8 +981,8 @@ export class Monster extends Entity {
     
     // 额外绘制激怒层数 (如果有)
     if (this.enrageStacks > 0) {
-      const screenX = this.visualX - camX;
-      const screenY = this.visualY - camY;
+      const screenX = this.visualX;
+      const screenY = this.visualY;
       
       // 在血条或名字上方绘制红色激怒点
       const x = screenX + TILE_SIZE - 8; // 右上角
@@ -1832,8 +1832,8 @@ export class Player extends Entity {
     if (!comboState || comboState.comboCount === 0 || comboState.maxCombo === 0) return;
     
     // Position: Arc center at sprite center, arc extends to the right
-    const centerX = this.visualX - camX + TILE_SIZE / 2;
-    const centerY = this.visualY - camY + TILE_SIZE / 2;
+    const centerX = this.visualX + TILE_SIZE / 2;
+    const centerY = this.visualY + TILE_SIZE / 2;
     const radius = 24; // Distance from center
     const startAngle = -Math.PI / 4; // -45 degrees
     const endAngle = Math.PI / 4;    // +45 degrees

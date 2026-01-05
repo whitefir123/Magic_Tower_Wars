@@ -1083,7 +1083,7 @@ export class CombatSystem {
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
             const offsetX = (Math.random() - 0.5) * 15;
             const offsetY = -10 - Math.random() * 10;
-            const dodgeText = game.floatingTextPool.create(monster.visualX + offsetX, monster.visualY + offsetY, '闪避!', '#00ffff');
+            const dodgeText = game.floatingTextPool.create(monster.visualX + offsetX, monster.visualY + offsetY, '闪避!', '#ffffff');
             game.floatingTexts.push(dodgeText);
           }
           return 'BOUNCE'; // 闪避，不造成伤害
