@@ -1143,7 +1143,7 @@ export class CombatSystem {
         if (dmgToPlay > 0) {
           player.takeDamage(dmgToPlay);
           if (game.settings && game.settings.showDamageNumbers !== false) {
-            const playerDamageText = game.floatingTextPool.create(player.visualX, player.visualY - 10, `-${dmgToPlay}`, '#e74c3c');
+            const playerDamageText = game.floatingTextPool.create(player.visualX, player.visualY - 10, `-${dmgToPlay}`, '#ffffff'); // 怪物主动反击飘字为白色
             game.floatingTexts.push(playerDamageText);
           }
           if (dmgToPlay > 10) game.camera.shakeTimer = Math.max(game.camera.shakeTimer || 0, 10);
@@ -1730,7 +1730,7 @@ export class CombatSystem {
           // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
           const offsetX = (Math.random() - 0.5) * 15;
           const offsetY = -20 - Math.random() * 10;
-          const reflectText = game.floatingTextPool.create(player.visualX + offsetX, player.visualY + offsetY, `-${thornsDamage}`, '#999999');
+          const reflectText = game.floatingTextPool.create(player.visualX + offsetX, player.visualY + offsetY, `-${thornsDamage}`, '#ffffff'); // 怪物被动反击飘字为白色
           game.floatingTexts.push(reflectText);
         }
       }
@@ -1741,7 +1741,7 @@ export class CombatSystem {
       
       // 显示伤害数字 (飘字)
       let damageText = `-${dmgToMon}`;
-      let damageColor = '#ffffff';
+      let damageColor = '#ff0000'; // 玩家攻击怪物的伤害飘字为红色
       let floatingTextType = 'NORMAL';
       
       if (slashApplied && isCrit) { damageText = `斩击暴击！-${dmgToMon}`; damageColor = '#ff00ff'; }
@@ -1781,7 +1781,7 @@ export class CombatSystem {
             // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
             const offsetX = (Math.random() - 0.5) * 15;
             const offsetY = -10 - Math.random() * 10;
-            const playerDamageText = game.floatingTextPool.create(player.visualX + offsetX, player.visualY + offsetY, `-${dmgToPlay}`, '#e74c3c');
+            const playerDamageText = game.floatingTextPool.create(player.visualX + offsetX, player.visualY + offsetY, `-${dmgToPlay}`, '#ffffff'); // 怪物主动反击飘字为白色
             game.floatingTexts.push(playerDamageText);
           }
           if (dmgToPlay > 10) game.camera.shakeTimer = Math.max(game.camera.shakeTimer || 0, 10);
@@ -2141,7 +2141,7 @@ export class CombatSystem {
     if (finalDamage > 0) {
       if (game.settings && game.settings.showDamageNumbers !== false) {
         let dmgText = `-${finalDamage}`;
-        let color = '#e74c3c';
+        let color = '#ffffff'; // 怪物主动攻击玩家的伤害飘字为白色
         let type = 'NORMAL';
         
         if (isCrit) {

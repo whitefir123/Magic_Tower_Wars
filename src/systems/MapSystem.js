@@ -16,6 +16,7 @@ export class MapSystem {
     this.fogParticles = []; // Array of FogParticle objects for dynamic fog
     this.explored = []; // 2D array to track which tiles have been explored (seen before)
     this.visible = []; // 2D array to track which tiles are currently visible
+    this.lightSources = []; // Array of light sources for colored lighting effects
     this.difficultyMultiplier = difficultyMultiplier; // @deprecated 保留用于向后兼容
     this.ascensionLevel = 1; // 新的噩梦层级（1-25）
     this.lastMerchantFloor = 0; // 追踪地精商人上次出现的楼层数（0表示从未出现）
@@ -1631,7 +1632,118 @@ export class MapSystem {
       ctx.restore();
     }
     
-    // ===== LAYER 4: 光照闪烁效果（可选） =====
+    // ===== LAYER 4: 彩色光照渲染层 =====
+    // Render colored lighting effects (player and elemental states)
+    if (lightingEnabled && player) {
+      ctx.save();
+      
+      // 收集光源
+      this.lightSources = [];
+      
+      // 玩家默认微弱暖光
+      const playerWorldX = player.visualX + TILE_SIZE / 2;
+      const playerWorldY = player.visualY + TILE_SIZE / 2;
+      this.lightSources.push({
+        x: playerWorldX,
+        y: playerWorldY,
+        radius: 2.5 * TILE_SIZE,
+        color: 'rgba(255, 200, 150, 0.3)', // 微弱暖光
+        intensity: 0.3
+      });
+      
+      // 检查玩家技能预备状态
+      if (player.states) {
+        // scorchPrimed (火) - 橙红色强光
+        if (player.states.scorchPrimed) {
+          this.lightSources.push({
+            x: playerWorldX,
+            y: playerWorldY,
+            radius: 4 * TILE_SIZE,
+            color: 'rgba(255, 100, 50, 0.6)', // 橙红色强光
+            intensity: 0.6
+          });
+        }
+        
+        // freezePrimed (冰) - 冰蓝色强光
+        if (player.states.freezePrimed) {
+          this.lightSources.push({
+            x: playerWorldX,
+            y: playerWorldY,
+            radius: 4 * TILE_SIZE,
+            color: 'rgba(100, 200, 255, 0.6)', // 冰蓝色强光
+            intensity: 0.6
+          });
+        }
+      }
+      
+      // 检查怪物燃烧效果（可选）
+      this.monsters.forEach(monster => {
+        if (!monster || !monster.visualX || !monster.visualY) return;
+        
+        // 检查是否有燃烧状态
+        let hasBurn = false;
+        if (monster.statuses && monster.statuses.length > 0) {
+          hasBurn = monster.statuses.some(s => s.type === 'BURN');
+        }
+        if (!hasBurn && monster.activeDoTs && monster.activeDoTs.length > 0) {
+          hasBurn = monster.activeDoTs.some(dot => dot.type === 'BURN');
+        }
+        
+        if (hasBurn) {
+          const monsterWorldX = monster.visualX + TILE_SIZE / 2;
+          const monsterWorldY = monster.visualY + TILE_SIZE / 2;
+          this.lightSources.push({
+            x: monsterWorldX,
+            y: monsterWorldY,
+            radius: 2 * TILE_SIZE,
+            color: 'rgba(255, 150, 50, 0.4)', // 微弱橙色光源
+            intensity: 0.4
+          });
+        }
+      });
+      
+      // 使用 lighter 混合模式渲染光源
+      ctx.globalCompositeOperation = 'lighter';
+      
+      // 遍历光源，绘制光晕
+      this.lightSources.forEach(light => {
+        // 检查光源是否在可见范围内
+        if (light.x < cameraLeft - light.radius || light.x > cameraRight + light.radius ||
+            light.y < cameraTop - light.radius || light.y > cameraBottom + light.radius) {
+          return; // 跳过屏幕外的光源
+        }
+        
+        // 创建径向渐变
+        const gradient = ctx.createRadialGradient(
+          light.x, light.y, 0,                    // 内圆（中心）
+          light.x, light.y, light.radius          // 外圆（边缘）
+        );
+        
+        // 解析颜色和强度
+        const colorMatch = light.color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+        if (!colorMatch) return;
+        
+        const r = parseInt(colorMatch[1]);
+        const g = parseInt(colorMatch[2]);
+        const b = parseInt(colorMatch[3]);
+        const baseAlpha = colorMatch[4] ? parseFloat(colorMatch[4]) : 1.0;
+        
+        // 中心最亮，边缘渐隐
+        gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${baseAlpha})`);
+        gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${baseAlpha * 0.6})`);
+        gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+        
+        // 绘制光晕
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(light.x, light.y, light.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      
+      ctx.restore();
+    }
+    
+    // ===== LAYER 5: 光照闪烁效果（可选） =====
     // Optional: Add subtle light flicker effect
     if (game && game.config && game.config.enableLightFlicker) {
       const flickerAmount = Math.sin(Date.now() * 0.002) * 0.05; // ±0.05 alpha variation
@@ -1652,7 +1764,7 @@ export class MapSystem {
       ctx.restore();
     }
     
-    // ===== LAYER 5: 战争迷雾粒子（最顶层） =====
+    // ===== LAYER 6: 战争迷雾粒子（最顶层） =====
     // 绘制战争迷雾粒子（在所有其他元素之后）
     if (game && game.config && game.config.enableFog) {
       const fogImage = this.loader.getImage('TEX_FOG');
