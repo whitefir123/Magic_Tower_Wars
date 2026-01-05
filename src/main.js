@@ -985,7 +985,17 @@ class Game {
                   this.map.removeItem(it); this.ui.updateStats(this.player);
                 }
               }
-              if (tile === TILE.STAIRS_DOWN) this.nextLevel();
+              if (tile === TILE.STAIRS_DOWN) {
+                // 检查是否有 Boss 存活
+                const hasBoss = this.map.monsters.some(m => m.type === 'BOSS');
+                
+                if (hasBoss) {
+                  this.ui.logMessage('一股强大的邪恶力量封锁了楼梯... 必须先击败领主！', 'warning');
+                  return; // 阻止下楼
+                }
+                
+                this.nextLevel();
+              }
             }
           }
         }
