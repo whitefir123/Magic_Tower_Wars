@@ -20,6 +20,68 @@
  * create index idx_daily_leaderboard_date_score on daily_leaderboard (run_date, score desc);
  */
 
+/**
+ * 赛季制排行榜系统 - 数据库表结构 SQL
+ * 
+ * -- 1. 创建赛季定义表
+ * CREATE TABLE seasons (
+ *   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+ *   code VARCHAR(20) UNIQUE NOT NULL,      -- 代号，如 'S1'
+ *   name VARCHAR(50) NOT NULL,             -- 名称，如 '启航赛季'
+ *   start_at TIMESTAMP WITH TIME ZONE NOT NULL,
+ *   end_at TIMESTAMP WITH TIME ZONE NOT NULL,
+ *   is_active BOOLEAN DEFAULT true,        -- 用于紧急停用
+ *   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+ * );
+ * 
+ * -- 创建索引以加速时间范围查询
+ * CREATE INDEX idx_seasons_dates ON seasons (start_at, end_at);
+ * 
+ * -- 2. 修改排行榜表，添加赛季关联
+ * -- 如果 leaderboard 表已经有数据，新列将默认为 NULL (即非赛季/全局历史数据)
+ * ALTER TABLE leaderboard 
+ * ADD COLUMN season_id UUID REFERENCES seasons(id);
+ * 
+ * -- 创建联合索引加速赛季排名查询
+ * CREATE INDEX idx_leaderboard_season_score ON leaderboard (season_id, score DESC);
+ * 
+ * -- 3. 创建赛季奖励领取记录表
+ * CREATE TABLE season_rewards (
+ *   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+ *   user_id UUID REFERENCES users(id),     -- 领奖用户
+ *   season_id UUID REFERENCES seasons(id), -- 对应赛季
+ *   rank INTEGER NOT NULL,                 -- 结算时的排名
+ *   rewards JSONB NOT NULL,                -- 奖励内容快照 { "soulCrystals": 100 }
+ *   claimed_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+ *   
+ *   -- 唯一约束：确保每个用户每个赛季只能领一次
+ *   UNIQUE(user_id, season_id)
+ * );
+ * 
+ * -- 4. 配置行级安全策略 (RLS)
+ * -- 开启 RLS
+ * ALTER TABLE seasons ENABLE ROW LEVEL SECURITY;
+ * ALTER TABLE season_rewards ENABLE ROW LEVEL SECURITY;
+ * 
+ * -- 策略：Seasons (所有人可读，仅管理员可写/通过Dashboard写)
+ * CREATE POLICY "Allow public read access to seasons" ON seasons FOR SELECT USING (true);
+ * 
+ * -- 策略：Season Rewards (用户只能读写自己的领奖记录)
+ * -- 注意：这里假设前端直接插入领奖记录。在无后端环境中，这依赖客户端逻辑。
+ * CREATE POLICY "Allow users to read own rewards" ON season_rewards FOR SELECT USING (true);
+ * CREATE POLICY "Allow users to insert own rewards" ON season_rewards FOR INSERT WITH CHECK (true);
+ * 
+ * -- 5. 插入第一个赛季 (示例：S1赛季，从今天开始，持续30天)
+ * -- 你可以在 SQL Editor 中手动修改这个日期，或者运行后在 Table Editor 中修改
+ * INSERT INTO seasons (code, name, start_at, end_at)
+ * VALUES (
+ *   'S1', 
+ *   '启航·创世赛季', 
+ *   NOW(), 
+ *   NOW() + INTERVAL '30 days'
+ * );
+ */
+
 const SUPABASE_URL = 'https://iggnwszpgggwubbofwoj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnZ253c3pwZ2dnd3ViYm9md29qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0OTIwNjUsImV4cCI6MjA4MjA2ODA2NX0.NuAL14Xiv5ZYpbwttUPJG1t4nWo0imBi8t8HZgSbC-k';
 
@@ -28,6 +90,7 @@ class SupabaseService {
     this.supabase = null;
     this.userId = null;
     this.isInitialized = false;
+    this.currentSeason = null; // 当前赛季
   }
 
   /**
@@ -512,7 +575,8 @@ class SupabaseService {
         time_seconds: scoreData.timeSeconds || 0,
         difficulty: scoreData.difficulty || 'normal',
         character: scoreData.character || 'unknown',
-        details: scoreData.details || {}
+        details: scoreData.details || {},
+        season_id: this.currentSeason ? this.currentSeason.id : null // 关联当前赛季（如果有）
       };
 
       const { data, error } = await this.supabase
@@ -1070,6 +1134,369 @@ class SupabaseService {
     } catch (error) {
       console.error('[SupabaseService] getFallenAdventurer 错误 - 错误详情:', JSON.stringify(error, null, 2));
       return null;
+    }
+  }
+
+  /**
+   * 获取当前赛季
+   * 查询条件：start_at <= NOW() AND end_at >= NOW() AND is_active = true
+   * @returns {Promise<Object|null>} 当前赛季对象，如果没有则返回 null
+   */
+  async fetchCurrentSeason() {
+    if (!this.isInitialized) {
+      if (!await this.initialize()) {
+        console.warn('[SupabaseService] 服务未初始化，无法获取当前赛季');
+        return null;
+      }
+    }
+
+    try {
+      const now = new Date().toISOString(); // 使用 UTC 时间
+      
+      const { data, error } = await this.supabase
+        .from('seasons')
+        .select('*')
+        .lte('start_at', now) // start_at <= NOW()
+        .gte('end_at', now)   // end_at >= NOW()
+        .eq('is_active', true)
+        .order('start_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        // PGRST116 是 "Row not found" 的标准错误码，这是正常的（表示没有当前赛季）
+        if (error.code === 'PGRST116') {
+          console.log('[SupabaseService] 当前没有进行中的赛季');
+          this.currentSeason = null;
+          return null;
+        }
+        console.error('[SupabaseService] 获取当前赛季失败 - 错误详情:', JSON.stringify(error, null, 2));
+        return null;
+      }
+
+      this.currentSeason = data;
+      console.log('[SupabaseService] 当前赛季:', data.name, `(${data.code})`);
+      return data;
+    } catch (error) {
+      console.error('[SupabaseService] fetchCurrentSeason 错误 - 错误详情:', JSON.stringify(error, null, 2));
+      return null;
+    }
+  }
+
+  /**
+   * 获取赛季排行榜
+   * @param {string} seasonId - 赛季ID（可选，如果不提供则使用当前赛季）
+   * @param {number} limit - 获取的记录数量（默认 50）
+   * @param {string} difficulty - 筛选难度（可选，如 'normal', 'hard', 'nightmare'）
+   * @returns {Object} { success: boolean, data: Array, error: string|null }
+   */
+  async getSeasonalLeaderboard(seasonId = null, limit = 50, difficulty = null) {
+    if (!this.isInitialized) {
+      if (!await this.initialize()) {
+        console.warn('[SupabaseService] 服务未初始化，无法获取赛季排行榜');
+        return { 
+          success: false, 
+          data: [], 
+          error: '服务未初始化',
+          errorCode: 'SERVICE_NOT_INITIALIZED'
+        };
+      }
+    }
+
+    // 如果没有提供 seasonId，使用当前赛季
+    const targetSeasonId = seasonId || (this.currentSeason ? this.currentSeason.id : null);
+    
+    if (!targetSeasonId) {
+      return {
+        success: false,
+        data: [],
+        error: '当前没有进行中的赛季',
+        errorCode: 'NO_CURRENT_SEASON'
+      };
+    }
+
+    // 创建 AbortController 用于超时控制
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.warn('[SupabaseService] 请求超时（10秒）');
+    }, 10000); // 10秒超时
+
+    try {
+      // 增加查询数量以确保去重后能填满 UI 的显示数量
+      const fetchLimit = Math.max(limit * 2, 100);
+      
+      let query = this.supabase
+        .from('leaderboard')
+        .select(`
+          id,
+          score,
+          floor,
+          kills,
+          damage,
+          time_seconds,
+          difficulty,
+          character,
+          details,
+          created_at,
+          user_id,
+          users (nickname)
+        `)
+        .eq('season_id', targetSeasonId) // 只查询该赛季的记录
+        .order('score', { ascending: false })
+        .limit(fetchLimit);
+
+      // 如果指定了难度，添加筛选条件
+      if (difficulty) {
+        query = query.eq('difficulty', difficulty);
+      }
+
+      // 执行查询并应用超时控制
+      const queryPromise = query;
+      const timeoutPromise = new Promise((_, reject) => {
+        controller.signal.addEventListener('abort', () => {
+          reject(new Error('Request timeout - 请求超时，服务器可能正在休眠'));
+        });
+      });
+
+      // 使用 Promise.race 实现超时
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+
+      // 清除超时定时器
+      clearTimeout(timeoutId);
+
+      if (error) {
+        console.error('[SupabaseService] 获取赛季排行榜失败 - 错误详情:', JSON.stringify(error, null, 2));
+        return { 
+          success: false, 
+          data: [], 
+          error: error.message || error.hint || '获取赛季排行榜失败',
+          errorCode: error.code,
+          errorDetails: error
+        };
+      }
+
+      // 格式化数据
+      const formattedData = data.map((entry) => ({
+        rank: 0, // 临时占位，稍后会重新计算
+        nickname: entry.users?.nickname || '匿名',
+        userId: entry.user_id, // 用于去重
+        score: entry.score,
+        floor: entry.floor,
+        kills: entry.kills,
+        damage: entry.damage,
+        timeSeconds: entry.time_seconds,
+        difficulty: entry.difficulty,
+        character: entry.character,
+        details: entry.details,
+        createdAt: entry.created_at
+      }));
+
+      // 去重处理：同一用户只保留最高分的一条记录
+      const userBestScores = new Map();
+      
+      formattedData.forEach(entry => {
+        const userKey = entry.userId || entry.nickname;
+        
+        if (!userKey) {
+          return;
+        }
+        
+        const existing = userBestScores.get(userKey);
+        
+        if (!existing || entry.score > existing.score) {
+          userBestScores.set(userKey, entry);
+        }
+      });
+
+      // 将 Map 转换为数组，并按分数降序排序
+      const deduplicatedData = Array.from(userBestScores.values())
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit) // 只取前 limit 条
+        .map((entry, index) => ({
+          ...entry,
+          rank: index + 1 // 重新计算排名
+        }));
+
+      console.log(`[SupabaseService] 获取赛季排行榜成功，原始记录 ${formattedData.length} 条，去重后 ${deduplicatedData.length} 条`);
+      return { success: true, data: deduplicatedData, error: null };
+    } catch (error) {
+      // 清除超时定时器
+      clearTimeout(timeoutId);
+      
+      console.error('[SupabaseService] getSeasonalLeaderboard 错误 - 错误详情:', JSON.stringify(error, null, 2));
+      
+      // 检测超时错误
+      const isTimeout = error.name === 'AbortError' || error.message?.includes('timeout');
+      const errorMessage = isTimeout 
+        ? 'Request timeout - 请求超时，服务器可能正在休眠' 
+        : (error.message || '网络错误，请检查连接');
+      
+      return { 
+        success: false, 
+        data: [], 
+        error: errorMessage,
+        errorCode: isTimeout ? 'TIMEOUT' : error.code,
+        errorDetails: error
+      };
+    }
+  }
+
+  /**
+   * 检查并领取上赛季奖励
+   * 核心业务逻辑：
+   * 1. 查找上赛季（end_at < NOW()，按 end_at 降序取第一条）
+   * 2. 检查是否已领奖
+   * 3. 查询用户在上赛季的最高分和排名
+   * 4. 计算奖励并插入 season_rewards 表
+   * @returns {Promise<Object>} { claimed: boolean, rank: number|null, reward: number|null, season: Object|null }
+   */
+  async checkAndClaimSeasonRewards() {
+    if (!this.isInitialized) {
+      if (!await this.initialize()) {
+        console.warn('[SupabaseService] 服务未初始化，无法检查赛季奖励');
+        return { claimed: false, rank: null, reward: null, season: null };
+      }
+    }
+
+    if (!this.userId) {
+      console.warn('[SupabaseService] 用户未登录，无法检查赛季奖励');
+      return { claimed: false, rank: null, reward: null, season: null };
+    }
+
+    try {
+      const now = new Date().toISOString(); // 使用 UTC 时间
+
+      // 步骤 1: 查找上赛季（已结束的赛季，按结束时间降序取第一条）
+      const { data: lastSeason, error: seasonError } = await this.supabase
+        .from('seasons')
+        .select('*')
+        .lt('end_at', now) // end_at < NOW()
+        .order('end_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (seasonError) {
+        // PGRST116 是 "Row not found" 的标准错误码，表示没有上赛季
+        if (seasonError.code === 'PGRST116') {
+          console.log('[SupabaseService] 没有上赛季，无需领取奖励');
+          return { claimed: false, rank: null, reward: null, season: null };
+        }
+        console.error('[SupabaseService] 查找上赛季失败 - 错误详情:', JSON.stringify(seasonError, null, 2));
+        return { claimed: false, rank: null, reward: null, season: null };
+      }
+
+      if (!lastSeason) {
+        console.log('[SupabaseService] 没有上赛季');
+        return { claimed: false, rank: null, reward: null, season: null };
+      }
+
+      // 步骤 2: 检查是否已领奖
+      const { data: existingReward, error: rewardCheckError } = await this.supabase
+        .from('season_rewards')
+        .select('*')
+        .eq('user_id', this.userId)
+        .eq('season_id', lastSeason.id)
+        .single();
+
+      if (rewardCheckError && rewardCheckError.code !== 'PGRST116') {
+        // 非 "Row not found" 错误才是真正的错误
+        console.error('[SupabaseService] 检查奖励记录失败 - 错误详情:', JSON.stringify(rewardCheckError, null, 2));
+        return { claimed: false, rank: null, reward: null, season: lastSeason };
+      }
+
+      if (existingReward) {
+        console.log('[SupabaseService] 上赛季奖励已领取，排名:', existingReward.rank);
+        return { 
+          claimed: true, 
+          rank: existingReward.rank, 
+          reward: existingReward.rewards?.soulCrystals || 0,
+          season: lastSeason,
+          alreadyClaimed: true
+        };
+      }
+
+      // 步骤 3: 查询用户在上赛季的最高分记录
+      const { data: userBestRun, error: bestRunError } = await this.supabase
+        .from('leaderboard')
+        .select('score')
+        .eq('user_id', this.userId)
+        .eq('season_id', lastSeason.id)
+        .order('score', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (bestRunError) {
+        // PGRST116 表示用户没有参与上赛季
+        if (bestRunError.code === 'PGRST116') {
+          console.log('[SupabaseService] 用户未参与上赛季，无奖励');
+          return { claimed: false, rank: null, reward: null, season: lastSeason };
+        }
+        console.error('[SupabaseService] 查询用户最高分失败 - 错误详情:', JSON.stringify(bestRunError, null, 2));
+        return { claimed: false, rank: null, reward: null, season: lastSeason };
+      }
+
+      if (!userBestRun || !userBestRun.score) {
+        console.log('[SupabaseService] 用户在上赛季没有成绩');
+        return { claimed: false, rank: null, reward: null, season: lastSeason };
+      }
+
+      const userScore = userBestRun.score;
+
+      // 步骤 4: 计算排名（统计分数高于用户的记录数量）
+      const { count, error: countError } = await this.supabase
+        .from('leaderboard')
+        .select('*', { count: 'exact', head: true })
+        .eq('season_id', lastSeason.id)
+        .gt('score', userScore); // score > userScore
+
+      if (countError) {
+        console.error('[SupabaseService] 计算排名失败 - 错误详情:', JSON.stringify(countError, null, 2));
+        return { claimed: false, rank: null, reward: null, season: lastSeason };
+      }
+
+      // 排名 = 高于用户分数的记录数 + 1
+      const rank = (count || 0) + 1;
+
+      // 步骤 5: 计算奖励
+      let rewardAmount = 50; // 默认参与奖
+      if (rank === 1) {
+        rewardAmount = 1000;
+      } else if (rank >= 2 && rank <= 10) {
+        rewardAmount = 500;
+      } else if (rank >= 11 && rank <= 100) {
+        rewardAmount = 200;
+      } else if (rank >= 101 && rank <= 1000) {
+        rewardAmount = 100;
+      }
+
+      // 步骤 6: 插入奖励记录
+      const { data: rewardRecord, error: insertError } = await this.supabase
+        .from('season_rewards')
+        .insert([{
+          user_id: this.userId,
+          season_id: lastSeason.id,
+          rank: rank,
+          rewards: { soulCrystals: rewardAmount }
+        }])
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('[SupabaseService] 插入奖励记录失败 - 错误详情:', JSON.stringify(insertError, null, 2));
+        return { claimed: false, rank: rank, reward: rewardAmount, season: lastSeason };
+      }
+
+      console.log(`[SupabaseService] 上赛季奖励领取成功！排名: ${rank}, 奖励: ${rewardAmount} 水晶`);
+      return { 
+        claimed: true, 
+        rank: rank, 
+        reward: rewardAmount,
+        season: lastSeason
+      };
+    } catch (error) {
+      console.error('[SupabaseService] checkAndClaimSeasonRewards 错误 - 错误详情:', JSON.stringify(error, null, 2));
+      return { claimed: false, rank: null, reward: null, season: null };
     }
   }
 }

@@ -627,6 +627,28 @@ class Game {
         this.showNicknameModal();
       } else {
         console.log('[Leaderboard] 用户已登录:', userStatus.nickname);
+        
+        // 获取当前赛季
+        await supabaseService.fetchCurrentSeason();
+        
+        // 检查并领取上赛季奖励
+        const claimResult = await supabaseService.checkAndClaimSeasonRewards();
+        if (claimResult.claimed && !claimResult.alreadyClaimed) {
+          // 发放奖励
+          if (claimResult.reward && this.metaSaveSystem) {
+            this.metaSaveSystem.addSoulCrystals(claimResult.reward);
+            console.log(`[Leaderboard] 上赛季奖励已发放: ${claimResult.reward} 灵魂水晶`);
+            
+            // 显示奖励弹窗
+            if (this.leaderboardUI) {
+              this.leaderboardUI.showSeasonRewardModal({
+                rank: claimResult.rank,
+                reward: claimResult.reward,
+                season: claimResult.season
+              });
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('[Leaderboard] 初始化用户失败:', error);

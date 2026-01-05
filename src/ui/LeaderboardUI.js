@@ -8,7 +8,8 @@ export class LeaderboardUI {
     this.game = game;
     this.currentData = [];
     this.selectedDifficulty = null; // null 表示所有难度
-    this.currentTab = 'global'; // 'global' 或 'daily'
+    this.currentTab = 'global'; // 'global'、'seasonal' 或 'daily'
+    this.seasonCountdownInterval = null; // 赛季倒计时定时器
     
     // 创建排行榜容器（如果不存在）
     this.ensureLeaderboardContainer();
@@ -32,7 +33,13 @@ export class LeaderboardUI {
           
           <div class="leaderboard-tabs">
             <button class="tab-btn active" data-tab="global">全局排行榜</button>
+            <button class="tab-btn" data-tab="seasonal">当前赛季</button>
             <button class="tab-btn" data-tab="daily">每日挑战</button>
+          </div>
+          
+          <div id="season-info" class="season-info hidden">
+            <div class="season-name" id="season-name">-</div>
+            <div class="season-countdown" id="season-countdown">-</div>
           </div>
           
           <div id="leaderboard-global-content">
@@ -59,6 +66,38 @@ export class LeaderboardUI {
                   </tr>
                 </thead>
                 <tbody id="leaderboard-tbody">
+                  <tr>
+                    <td colspan="9" class="loading-row">加载中...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <div id="leaderboard-seasonal-content" class="hidden">
+            <div class="leaderboard-filters">
+              <button class="filter-btn active" data-difficulty="">全部</button>
+              <button class="filter-btn" data-difficulty="normal">普通</button>
+              <button class="filter-btn" data-difficulty="hard">困难</button>
+              <button class="filter-btn" data-difficulty="nightmare">噩梦</button>
+            </div>
+            
+            <div class="leaderboard-table-wrapper">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th>排名</th>
+                    <th>昵称</th>
+                    <th>分数</th>
+                    <th>层数</th>
+                    <th>击杀</th>
+                    <th>伤害</th>
+                    <th>时间</th>
+                    <th>难度</th>
+                    <th>角色</th>
+                  </tr>
+                </thead>
+                <tbody id="seasonal-leaderboard-tbody">
                   <tr>
                     <td colspan="9" class="loading-row">加载中...</td>
                   </tr>
@@ -110,16 +149,28 @@ export class LeaderboardUI {
         });
       });
 
-      // 绑定难度筛选按钮事件
+      // 绑定难度筛选按钮事件（全局和赛季共用）
       const filterBtns = container.querySelectorAll('.filter-btn');
       filterBtns.forEach(btn => {
         btn.addEventListener('click', () => {
           const difficulty = btn.getAttribute('data-difficulty');
-          this.filterByDifficulty(difficulty);
           
-          // 更新按钮状态
-          filterBtns.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
+          // 根据当前Tab决定调用哪个筛选方法
+          if (this.currentTab === 'seasonal') {
+            this.filterSeasonalByDifficulty(difficulty);
+          } else {
+            this.filterByDifficulty(difficulty);
+          }
+          
+          // 更新按钮状态（只更新当前Tab的筛选按钮）
+          const currentTabContent = this.currentTab === 'seasonal' 
+            ? document.getElementById('leaderboard-seasonal-content')
+            : document.getElementById('leaderboard-global-content');
+          if (currentTabContent) {
+            const currentFilterBtns = currentTabContent.querySelectorAll('.filter-btn');
+            currentFilterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+          }
         });
       });
     }
@@ -127,25 +178,47 @@ export class LeaderboardUI {
 
   /**
    * 切换标签页
-   * @param {string} tab - 'global' 或 'daily'
+   * @param {string} tab - 'global'、'seasonal' 或 'daily'
    */
   switchTab(tab) {
     this.currentTab = tab;
     
     const globalContent = document.getElementById('leaderboard-global-content');
+    const seasonalContent = document.getElementById('leaderboard-seasonal-content');
     const dailyContent = document.getElementById('leaderboard-daily-content');
+    const seasonInfo = document.getElementById('season-info');
+    
+    // 隐藏所有内容
+    if (globalContent) globalContent.classList.add('hidden');
+    if (seasonalContent) seasonalContent.classList.add('hidden');
+    if (dailyContent) dailyContent.classList.add('hidden');
+    if (seasonInfo) seasonInfo.classList.add('hidden');
     
     if (tab === 'daily') {
       // 显示每日挑战内容
-      if (globalContent) globalContent.classList.add('hidden');
       if (dailyContent) dailyContent.classList.remove('hidden');
+      
+      // 停止赛季倒计时
+      this.stopSeasonCountdown();
       
       // 加载每日排行榜
       this.loadDailyLeaderboard();
+    } else if (tab === 'seasonal') {
+      // 显示赛季排行榜内容
+      if (seasonalContent) seasonalContent.classList.remove('hidden');
+      if (seasonInfo) seasonInfo.classList.remove('hidden');
+      
+      // 加载赛季排行榜
+      this.loadSeasonalLeaderboard();
+      
+      // 启动赛季倒计时
+      this.startSeasonCountdown();
     } else {
       // 显示全局排行榜内容
       if (globalContent) globalContent.classList.remove('hidden');
-      if (dailyContent) dailyContent.classList.add('hidden');
+      
+      // 停止赛季倒计时
+      this.stopSeasonCountdown();
       
       // 加载全局排行榜
       this.loadLeaderboard(this.selectedDifficulty);
@@ -187,6 +260,9 @@ export class LeaderboardUI {
     // 根据当前标签页加载相应的排行榜数据
     if (this.currentTab === 'daily') {
       await this.loadDailyLeaderboard();
+    } else if (this.currentTab === 'seasonal') {
+      await this.loadSeasonalLeaderboard();
+      this.startSeasonCountdown();
     } else {
       await this.loadLeaderboard();
     }
@@ -428,11 +504,19 @@ export class LeaderboardUI {
   }
 
   /**
-   * 按难度筛选
+   * 按难度筛选（全局排行榜）
    */
   async filterByDifficulty(difficulty) {
     this.selectedDifficulty = difficulty || null;
     await this.loadLeaderboard(this.selectedDifficulty);
+  }
+
+  /**
+   * 按难度筛选（赛季排行榜）
+   */
+  async filterSeasonalByDifficulty(difficulty) {
+    this.selectedDifficulty = difficulty || null;
+    await this.loadSeasonalLeaderboard();
   }
 
   /**
@@ -866,6 +950,299 @@ export class LeaderboardUI {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    `;
+
+    modal.classList.add('active');
+
+    // 点击背景关闭
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+  }
+
+  /**
+   * 加载赛季排行榜
+   */
+  async loadSeasonalLeaderboard() {
+    const tbody = document.getElementById('seasonal-leaderboard-tbody');
+    if (!tbody) return;
+
+    // 显示加载状态
+    tbody.innerHTML = '<tr><td colspan="9" class="loading-row">⏳ 加载中...</td></tr>';
+
+    try {
+      // 获取当前赛季
+      const currentSeason = supabaseService.currentSeason;
+      
+      if (!currentSeason) {
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-row">当前处于休赛期</td></tr>';
+        
+        // 更新赛季信息显示
+        const seasonNameEl = document.getElementById('season-name');
+        const seasonCountdownEl = document.getElementById('season-countdown');
+        if (seasonNameEl) seasonNameEl.textContent = '当前处于休赛期';
+        if (seasonCountdownEl) seasonCountdownEl.textContent = '-';
+        
+        return;
+      }
+
+      // 更新赛季信息显示
+      const seasonNameEl = document.getElementById('season-name');
+      if (seasonNameEl) {
+        seasonNameEl.textContent = `${currentSeason.code} ${currentSeason.name}`;
+      }
+
+      // 获取赛季排行榜数据（支持难度筛选）
+      const result = await supabaseService.getSeasonalLeaderboard(currentSeason.id, 50, this.selectedDifficulty);
+      
+      if (!result.success) {
+        console.error('[LeaderboardUI] 赛季排行榜加载失败:', result.error);
+        this.renderSeasonalErrorState(result.error);
+        return;
+      }
+
+      const data = result.data || [];
+      this.currentData = data;
+
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-row">暂无记录</td></tr>';
+        return;
+      }
+
+      // 渲染表格
+      this.renderSeasonalTable(data);
+    } catch (error) {
+      console.error('[LeaderboardUI] 加载赛季排行榜异常:', JSON.stringify(error, null, 2));
+      
+      // 检测是否为超时错误
+      const isTimeout = error.name === 'AbortError' || 
+                        error.message?.includes('timeout') || 
+                        error.message?.includes('Timeout') ||
+                        error.message?.includes('timed out');
+      
+      this.renderSeasonalErrorState(error.message || '未知错误', isTimeout);
+    }
+  }
+
+  /**
+   * 渲染赛季排行榜表格
+   */
+  renderSeasonalTable(data) {
+    const tbody = document.getElementById('seasonal-leaderboard-tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    data.forEach(entry => {
+      const row = document.createElement('tr');
+      row.className = 'leaderboard-row';
+      row.setAttribute('data-entry', JSON.stringify(entry));
+      
+      // 根据排名添加特殊样式
+      if (entry.rank === 1) row.classList.add('rank-1');
+      else if (entry.rank === 2) row.classList.add('rank-2');
+      else if (entry.rank === 3) row.classList.add('rank-3');
+
+      // 格式化难度显示
+      const difficultyMap = {
+        'normal': '普通',
+        'hard': '困难',
+        'nightmare': '噩梦'
+      };
+      const difficultyText = difficultyMap[entry.difficulty] || entry.difficulty;
+
+      // 格式化角色显示
+      const characterMap = {
+        'WARRIOR': '战士',
+        'MAGE': '法师',
+        'ROGUE': '盗贼'
+      };
+      const characterText = characterMap[entry.character] || entry.character;
+
+      // 格式化时间显示 (MM:SS)
+      const timeStr = this.formatTime(entry.timeSeconds || 0);
+
+      row.innerHTML = `
+        <td class="rank-cell">${this.getRankIcon(entry.rank)}</td>
+        <td class="nickname-cell">${this.escapeHtml(entry.nickname)}</td>
+        <td class="score-cell">${this.formatNumber(entry.score)}</td>
+        <td class="floor-cell">${entry.floor}</td>
+        <td class="kills-cell">${entry.kills || 0}</td>
+        <td class="damage-cell">${this.formatNumber(entry.damage || 0)}</td>
+        <td class="time-cell">${timeStr}</td>
+        <td class="difficulty-cell">${difficultyText}</td>
+        <td class="character-cell">${characterText}</td>
+      `;
+
+      // 点击行显示详情
+      row.addEventListener('click', () => {
+        this.showDetailModal(entry);
+      });
+
+      tbody.appendChild(row);
+    });
+  }
+
+  /**
+   * 渲染赛季排行榜错误状态
+   */
+  renderSeasonalErrorState(errorMessage, isTimeout = false) {
+    const tbody = document.getElementById('seasonal-leaderboard-tbody');
+    if (!tbody) return;
+
+    // 生成唯一的重试按钮 ID
+    const retryBtnId = 'seasonal-leaderboard-retry-btn-' + Date.now();
+
+    // 根据错误类型显示不同的消息
+    let errorIcon = '';
+    let errorTitle = '赛季排行榜加载失败';
+    let errorDesc = this.escapeHtml(errorMessage);
+
+    if (isTimeout) {
+      errorIcon = '';
+      errorTitle = '连接超时或服务器休眠中';
+      errorDesc = 'Connection Timeout - 服务器可能正在休眠，请点击重试唤醒';
+    } else if (errorMessage?.includes('network') || errorMessage?.includes('网络')) {
+      errorIcon = '';
+      errorTitle = '网络连接失败';
+      errorDesc = '请检查您的网络连接';
+    } else if (errorMessage?.includes('NO_CURRENT_SEASON') || errorMessage?.includes('休赛期')) {
+      errorIcon = '';
+      errorTitle = '当前处于休赛期';
+      errorDesc = '没有进行中的赛季，请等待新赛季开始';
+    }
+
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="9" class="error-state-cell">
+          <div class="error-state-container">
+            <div class="error-icon">${errorIcon}</div>
+            <div class="error-title">${errorTitle}</div>
+            <div class="error-message">${errorDesc}</div>
+            <button id="${retryBtnId}" class="btn-retry">
+              重试 (Retry)
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+
+    // 绑定重试按钮事件
+    setTimeout(() => {
+      const retryBtn = document.getElementById(retryBtnId);
+      if (retryBtn) {
+        retryBtn.addEventListener('click', () => {
+          console.log('[LeaderboardUI] 用户点击赛季排行榜重试按钮');
+          this.loadSeasonalLeaderboard();
+        });
+      }
+    }, 100);
+
+    // 显示 Toast 提示
+    this.showErrorToast(`${errorIcon} ${errorTitle}`);
+  }
+
+  /**
+   * 启动赛季倒计时
+   */
+  startSeasonCountdown() {
+    // 清除之前的定时器
+    this.stopSeasonCountdown();
+
+    const updateCountdown = () => {
+      const currentSeason = supabaseService.currentSeason;
+      const countdownEl = document.getElementById('season-countdown');
+      
+      if (!currentSeason || !countdownEl) {
+        return;
+      }
+
+      const now = new Date();
+      const endDate = new Date(currentSeason.end_at);
+      const diff = endDate - now;
+
+      if (diff <= 0) {
+        countdownEl.textContent = '赛季已结束';
+        this.stopSeasonCountdown();
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      if (days > 0) {
+        countdownEl.textContent = `剩余 ${days}天 ${hours}小时`;
+      } else if (hours > 0) {
+        countdownEl.textContent = `剩余 ${hours}小时 ${minutes}分钟`;
+      } else if (minutes > 0) {
+        countdownEl.textContent = `剩余 ${minutes}分钟 ${seconds}秒`;
+      } else {
+        countdownEl.textContent = `剩余 ${seconds}秒`;
+      }
+    };
+
+    // 立即更新一次
+    updateCountdown();
+
+    // 每秒更新一次
+    this.seasonCountdownInterval = setInterval(updateCountdown, 1000);
+  }
+
+  /**
+   * 停止赛季倒计时
+   */
+  stopSeasonCountdown() {
+    if (this.seasonCountdownInterval) {
+      clearInterval(this.seasonCountdownInterval);
+      this.seasonCountdownInterval = null;
+    }
+  }
+
+  /**
+   * 显示赛季奖励弹窗
+   * @param {Object} rewardData - 奖励数据 { rank, reward, season }
+   */
+  showSeasonRewardModal(rewardData) {
+    const { rank, reward, season } = rewardData;
+
+    // 创建模态框
+    let modal = document.getElementById('season-reward-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'season-reward-modal';
+      modal.className = 'modal-overlay';
+      document.body.appendChild(modal);
+    }
+
+    const seasonName = season ? `${season.code} ${season.name}` : '上赛季';
+
+    modal.innerHTML = `
+      <div class="modal-content season-reward-content">
+        <div class="modal-header">
+          <h3>🎉 赛季奖励结算</h3>
+          <button class="close-btn" onclick="document.getElementById('season-reward-modal').remove()">×</button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="reward-section">
+            <div class="reward-season">${seasonName}</div>
+            <div class="reward-rank">第 ${rank} 名</div>
+            <div class="reward-amount">
+              <span class="reward-label">获得奖励：</span>
+              <span class="reward-value">${this.formatNumber(reward)} 灵魂水晶</span>
+            </div>
+            <div class="reward-note">奖励已自动发放到您的账户</div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button class="btn-primary" onclick="document.getElementById('season-reward-modal').remove()">确定</button>
         </div>
       </div>
     `;
