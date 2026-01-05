@@ -40,6 +40,8 @@ class Game {
     this.roguelike = new RoguelikeSystem(this);
     this.loadingUI = new LoadingUI();
     this.inputStack = [];
+    this.inputBuffer = []; // 输入缓冲系统
+    this.INPUT_BUFFER_WINDOW = 150; // 输入缓冲窗口（毫秒）
     this.isPaused = false;
     
     // 初始化元进度存档系统（灵魂水晶和天赋）
@@ -354,8 +356,22 @@ class Game {
         return;
       }
       const dir = normalizeKey(e.key);
-      if (dir) { if (!this.inputStack.includes(dir)) this.inputStack.push(dir); e.preventDefault(); }
-      if (e.key === ' ') { e.preventDefault(); if (this.player && this.player.stats.rage >= 100) this.activateUltimate(); }
+      if (dir) { 
+        // 输入缓冲系统：记录按键到 buffer
+        if (this.inputBuffer.length < 2) {
+          this.inputBuffer.push({ key: dir, timestamp: Date.now() });
+        }
+        if (!this.inputStack.includes(dir)) this.inputStack.push(dir); 
+        e.preventDefault(); 
+      }
+      if (e.key === ' ') { 
+        // 攻击键也记录到 buffer
+        if (this.inputBuffer.length < 2) {
+          this.inputBuffer.push({ key: ' ', timestamp: Date.now() });
+        }
+        e.preventDefault(); 
+        if (this.player && this.player.stats.rage >= 100) this.activateUltimate(); 
+      }
     });
     
     window.addEventListener('keyup', (e) => {
@@ -960,6 +976,185 @@ class Game {
     requestAnimationFrame(t => this.loop(t));
   }
 
+  /**
+   * 处理输入指令（移动或攻击）
+   * @param {string} key - 按键（方向键或空格）
+   * @returns {boolean} - 是否成功处理了输入
+   */
+  processInput(key) {
+    if (!this.player || this.player.isMoving || this.player.pendingCombat) {
+      return false;
+    }
+    
+    // 处理攻击键（空格）
+    if (key === ' ') {
+      if (this.player && this.player.stats.rage >= 100) {
+        this.activateUltimate();
+        return true;
+      }
+      return false;
+    }
+    
+    // 处理方向键
+    let dx = 0, dy = 0;
+    if (key === 'ArrowUp') { dy = -1; this.player.sprite.setDirection(1); }
+    if (key === 'ArrowDown') { dy = 1; this.player.sprite.setDirection(0); }
+    if (key === 'ArrowLeft') { dx = -1; this.player.sprite.setDirection(2); }
+    if (key === 'ArrowRight') { dx = 1; this.player.sprite.setDirection(3); }
+    
+    if (dx === 0 && dy === 0) {
+      return false; // 不是有效的方向键
+    }
+    
+    const nx = this.player.x + dx;
+    const ny = this.player.y + dy;
+    const tile = this.map.grid[ny][nx];
+    
+    if (tile === TILE.WALL) {
+      return false; // 撞墙，不处理
+    }
+    
+    if (tile === TILE.DOOR) {
+      if (this.player.stats.keys > 0) { 
+        this.player.stats.keys--; 
+        this.map.grid[ny][nx] = TILE.FLOOR; 
+        this.ui.logMessage('门已打开'); 
+        this.ui.updateStats(this.player); 
+        if (this.audio) this.audio.playDoorOpen();
+      } else { 
+        this.ui.logMessage('门已上锁！需要钥匙'); 
+      }
+      return true; // 处理了开门
+    }
+    
+    const monster = this.map.getMonsterAt(nx, ny);
+    if (monster) {
+      // 攻击速度系统：检查攻击冷却时间
+      const now = Date.now();
+      const attackCooldown = this.player.getAttackCooldown ? this.player.getAttackCooldown() : 1000;
+      
+      if (now - this.player.lastAttackTime >= attackCooldown) {
+        // 攻击冷却完成，触发攻击
+        this.player.startCombatSlide(monster);
+        this.player.lastAttackTime = now;
+        return true;
+      } else {
+        // 攻击冷却中，不执行任何操作
+        return false;
+      }
+    }
+    
+    const npc = this.map.getNpcAt(nx, ny);
+    if (npc) { 
+      if (npc.type === 'GAMBLER') {
+        this.openGambler();
+      } else {
+        this.ui.openShop();
+      }
+      return true; // 处理了NPC交互
+    }
+    
+    // 检查交互对象
+    const obj = this.map.getObjectAt(nx, ny);
+    
+    if (obj && obj.type === 'INTERACTIVE_FORGE') {
+      this.openForge();
+      return true; // 处理了铁匠交互
+    }
+    
+    if (obj && (obj.type === 'OBJ_SHRINE_HEAL' || obj.type === 'OBJ_SHRINE_POWER')) {
+      this.handleShrineInteraction(obj);
+      return true; // 处理了神龛交互
+    }
+    
+    if (obj && (obj.type === 'OBJ_CRATE' || obj.type === 'OBJ_BARREL') && !obj.destroyed) {
+      this.handleDestructibleInteraction(obj);
+      return true; // 处理了可破坏对象
+    }
+    
+    if (obj && obj.type === 'OBJ_ALTAR_CURSED' && !obj.activated) {
+      this.handleAltarInteraction(obj);
+      return true; // 处理了诅咒祭坛交互
+    }
+    
+    if (obj && obj.type === 'OBJ_ALTAR_PLACEHOLDER') {
+      const parentAltar = this.map.getObjectAt(obj.parentAltar.x, obj.parentAltar.y);
+      if (parentAltar && !parentAltar.activated) {
+        this.handleAltarInteraction(parentAltar);
+        return true; // 处理了祭坛占位符交互
+      }
+    }
+    
+    // 可以移动，执行移动
+    this.player.startMove(nx, ny);
+    
+    // 拾取物品
+    let it = this.map.getItemAt(nx, ny);
+    if (!it) it = this.map.getItemAt(this.player.x, this.player.y);
+    if (it) {
+      if (it.type === 'ITEM_EQUIP') {
+        const def = getItemDefinition(it.itemId);
+        if (def && !this.player.equipment[def.type]) {
+          this.player.equip(it.itemId);
+          this.map.removeItem(it);
+          if (this.audio) this.audio.playCloth();
+        } else {
+          const added = this.player.addToInventory(it.itemId);
+          if (added) {
+            this.map.removeItem(it);
+            if (def) {
+              const itemName = def.nameZh || def.name;
+              this.ui.logMessage(`已添加 ${itemName} 到背包`, 'gain');
+            }
+            if (this.audio) this.audio.playCloth();
+          } else {
+            this.ui.logMessage('背包已满！', 'info');
+          }
+        }
+        this.ui.updateStats(this.player);
+      } else if (it.type === 'ITEM_CONSUMABLE') {
+        const def = EQUIPMENT_DB[it.itemId];
+        const added = this.player.addToInventory(it.itemId);
+        if (added) {
+          this.map.removeItem(it);
+          if (def) {
+            const itemName = def.nameZh || def.name;
+            this.ui.logMessage(`发现了 ${itemName}！`, 'gain');
+          }
+          if (this.audio) this.audio.playCloth();
+        } else {
+          this.ui.logMessage('背包已满！', 'info');
+        }
+        this.ui.updateStats(this.player);
+      } else {
+        if (it.type.includes('KEY')) { 
+          this.player.stats.keys++; 
+          this.ui.logMessage('发现了一把钥匙！', 'gain'); 
+          if (this.audio) this.audio.playCoins({ forceCategory: 'gameplay' });
+        }
+        if (it.type.includes('CHEST')) { 
+          this.generateChestLoot(it.x, it.y);
+          if (this.audio) this.audio.playCoins({ forceCategory: 'gameplay' });
+        }
+        this.map.removeItem(it);
+        this.ui.updateStats(this.player);
+      }
+    }
+    
+    // 检查楼梯
+    if (tile === TILE.STAIRS_DOWN) {
+      const hasBoss = this.map.monsters.some(m => m.type === 'BOSS');
+      if (hasBoss) {
+        this.ui.logMessage('一股强大的邪恶力量封锁了楼梯... 必须先击败领主！', 'warning');
+        return true; // 处理了楼梯检查（虽然被阻止）
+      }
+      this.nextLevel();
+      return true; // 处理了下楼
+    }
+    
+    return true; // 成功处理了移动
+  }
+
   update(dt) {
     // Guard: ensure player exists before proceeding
     if (!this.player) return;
@@ -979,162 +1174,39 @@ class Game {
       this.player.postKillDelay = 0; // Clear delay once expired
     }
     
-    if (!this.player.isMoving && this.inputStack.length > 0 && !this.player.pendingCombat && !playerFrozen && !postKillDelayActive) {
-      const key = this.inputStack[this.inputStack.length - 1];
-      let dx = 0, dy = 0;
-      if (key === 'ArrowUp') { dy = -1; this.player.sprite.setDirection(1); }
-      if (key === 'ArrowDown') { dy = 1; this.player.sprite.setDirection(0); }
-      if (key === 'ArrowLeft') { dx = -1; this.player.sprite.setDirection(2); }
-      if (key === 'ArrowRight') { dx = 1; this.player.sprite.setDirection(3); }
-      const nx = this.player.x + dx; const ny = this.player.y + dy; const tile = this.map.grid[ny][nx];
-      if (tile !== TILE.WALL) {
-        if (tile === TILE.DOOR) {
-          if (this.player.stats.keys > 0) { 
-            this.player.stats.keys--; 
-            this.map.grid[ny][nx] = TILE.FLOOR; 
-            this.ui.logMessage('门已打开'); 
-            this.ui.updateStats(this.player); 
-            // 播放开门音效
-            if (this.audio) this.audio.playDoorOpen();
-          }
-          else { this.ui.logMessage('门已上锁！需要钥匙'); }
-        } else {
-          const monster = this.map.getMonsterAt(nx, ny);
-          if (monster) {
-            // ========== 攻击速度系统：自动攻击等待逻辑 ==========
-            // 检查攻击冷却时间
-            const now = Date.now();
-            const attackCooldown = this.player.getAttackCooldown ? this.player.getAttackCooldown() : 1000;
-            
-            if (now - this.player.lastAttackTime >= attackCooldown) {
-              // 攻击冷却完成，触发攻击
-              this.player.startCombatSlide(monster);
-              this.player.lastAttackTime = now;
-            } else {
-              // 攻击冷却中，不执行任何操作（不移动，不触发碰撞动画）
-              // 玩家保持静止，等待冷却完成
-            }
-          } else {
-            const npc = this.map.getNpcAt(nx, ny);
-            if (npc) { 
-              // 区分NPC类型
-              if (npc.type === 'GAMBLER') {
-                this.openGambler();
-              } else {
-                this.ui.openShop();
-              }
-            }
-            else {
-              // Check for interactive objects (shrines block movement, traps don't)
-              const obj = this.map.getObjectAt(nx, ny);
-              
-              // Check for forge (blacksmith)
-              if (obj && obj.type === 'INTERACTIVE_FORGE') {
-                this.openForge();
-                return; // Don't move
-              }
-              
-              if (obj && (obj.type === 'OBJ_SHRINE_HEAL' || obj.type === 'OBJ_SHRINE_POWER')) {
-                // Shrine blocks movement - show interaction prompt
-                this.handleShrineInteraction(obj);
-                return; // Don't move
-              }
-              // Check for destructible objects (crates, barrels)
-              if (obj && (obj.type === 'OBJ_CRATE' || obj.type === 'OBJ_BARREL') && !obj.destroyed) {
-                // Destructible object - destroy it without moving
-                this.handleDestructibleInteraction(obj);
-                return; // Don't move
-              }
-              // Check for cursed altar
-              if (obj && obj.type === 'OBJ_ALTAR_CURSED' && !obj.activated) {
-                // Altar blocks movement - show interaction prompt
-                this.handleAltarInteraction(obj);
-                return; // Don't move
-              }
-              // Check for altar placeholder (second tile of altar)
-              if (obj && obj.type === 'OBJ_ALTAR_PLACEHOLDER') {
-                // Find the parent altar and interact with it
-                const parentAltar = this.map.getObjectAt(obj.parentAltar.x, obj.parentAltar.y);
-                if (parentAltar && !parentAltar.activated) {
-                  this.handleAltarInteraction(parentAltar);
-                  return; // Don't move
-                }
-              }
-              this.player.startMove(nx, ny);
-              // Pickup
-              let it = this.map.getItemAt(nx, ny); if (!it) it = this.map.getItemAt(this.player.x, this.player.y);
-              if (it) {
-                if (it.type === 'ITEM_EQUIP') {
-                  // 支持动态生成的装备
-                  const def = getItemDefinition(it.itemId);
-                  // 如果该装备对应的槽位为空，直接自动装备
-                  if (def && !this.player.equipment[def.type]) {
-                    this.player.equip(it.itemId);
-                    this.map.removeItem(it);
-                    // 播放装备音效
-                    if (this.audio) this.audio.playCloth();
-                  } else {
-                    // 槽位已占用，放入背包
-                    const added = this.player.addToInventory(it.itemId);
-                    if (added) {
-                      this.map.removeItem(it);
-                      if (def) {
-                        const itemName = def.nameZh || def.name;
-                        this.ui.logMessage(`已添加 ${itemName} 到背包`, 'gain');
-                      }
-                      // 播放布料音效
-                      if (this.audio) this.audio.playCloth();
-                    } else {
-                      this.ui.logMessage('背包已满！', 'info');
-                    }
-                  }
-                  this.ui.updateStats(this.player);
-                } else if (it.type === 'ITEM_CONSUMABLE') {
-                  const def = EQUIPMENT_DB[it.itemId];
-                  const added = this.player.addToInventory(it.itemId);
-                  if (added) {
-                    this.map.removeItem(it);
-                    if (def) {
-                      const itemName = def.nameZh || def.name;
-                      this.ui.logMessage(`发现了 ${itemName}！`, 'gain');
-                    }
-                    // 播放药水拾取音效
-                    if (this.audio) this.audio.playCloth();
-                  } else {
-                    this.ui.logMessage('背包已满！', 'info');
-                  }
-                  this.ui.updateStats(this.player);
-                } else {
-                  if (it.type.includes('KEY')) { 
-                    this.player.stats.keys++; 
-                    this.ui.logMessage('发现了一把钥匙！', 'gain'); 
-                    // 播放钥匙拾取音效（使用金币音效，游戏内逻辑）
-                    if (this.audio) this.audio.playCoins({ forceCategory: 'gameplay' });
-                  }
-                  if (it.type.includes('CHEST')) { 
-                    // Generate random loot from chest
-                    this.generateChestLoot(it.x, it.y);
-                    // 播放宝箱打开音效（游戏内逻辑）
-                    if (this.audio) this.audio.playCoins({ forceCategory: 'gameplay' });
-                  }
-                  this.map.removeItem(it); this.ui.updateStats(this.player);
-                }
-              }
-              if (tile === TILE.STAIRS_DOWN) {
-                // 检查是否有 Boss 存活
-                const hasBoss = this.map.monsters.some(m => m.type === 'BOSS');
-                
-                if (hasBoss) {
-                  this.ui.logMessage('一股强大的邪恶力量封锁了楼梯... 必须先击败领主！', 'warning');
-                  return; // 阻止下楼
-                }
-                
-                this.nextLevel();
-              }
-            }
-          }
+    // 输入缓冲系统：优先检查 buffer
+    let bufferProcessed = false;
+    if (!this.player.isMoving && this.inputBuffer.length > 0 && !this.player.pendingCombat && !playerFrozen && !postKillDelayActive) {
+      const now = Date.now();
+      // 查找有效的 buffer 指令
+      for (let i = 0; i < this.inputBuffer.length; i++) {
+        const input = this.inputBuffer[i];
+        if (now - input.timestamp <= this.INPUT_BUFFER_WINDOW) {
+          // 找到有效指令，执行它
+          const key = input.key;
+          bufferProcessed = this.processInput(key);
+          // 执行后立即清空 buffer
+          this.inputBuffer = [];
+          break; // 只执行第一个有效指令
         }
       }
+      // 清理过期的 buffer 条目
+      this.inputBuffer = this.inputBuffer.filter(input => now - input.timestamp <= this.INPUT_BUFFER_WINDOW);
+    }
+    
+    // 如果 buffer 已处理，跳过 inputStack 检查
+    if (bufferProcessed) {
+      return;
+    }
+    
+    // 原有的 inputStack 逻辑（长按移动）
+    if (!this.player.isMoving && this.inputStack.length > 0 && !this.player.pendingCombat && !playerFrozen && !postKillDelayActive) {
+      const key = this.inputStack[this.inputStack.length - 1];
+      // 使用 processInput 方法处理输入
+      this.processInput(key);
+      // 注意：原有的移动逻辑已移至 processInput 方法中
+      // 为了保持向后兼容，这里保留原有的逻辑结构，但实际处理已由 processInput 完成
+      return; // processInput 已处理所有逻辑，直接返回
     }
 
     this.player.updateVisuals(dt); 

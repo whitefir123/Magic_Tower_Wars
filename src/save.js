@@ -1,6 +1,6 @@
 // save.js - 存档和读取系统
 import { TILE_SIZE, TILE, EQUIPMENT_DB, CHARACTERS } from './constants.js';
-import { createStandardizedItem } from './data/items.js';
+import { createStandardizedItem, serializeItem, deserializeItem } from './data/items.js';
 import { RUNE_POOL, RUNE_RARITY_MULTIPLIERS } from './data/Runes.js';
 import { Player } from './entities.js';
 
@@ -110,53 +110,11 @@ export class SaveSystem {
           tetherRadius: dot.tetherRadius || null,
           sourceId: dot.sourceId || (dot.source ? (dot.source === player ? 'player' : null) : null) // 统一使用sourceId
         })) : [],
-        // 背包（序列化物品实例对象）
-        inventory: player.inventory.map(item => {
-          if (!item) return null;
-          if (typeof item === 'string') return item; // 旧代码兼容
-          if (typeof item === 'object') {
-            // 序列化物品实例对象（保留所有属性）
-            return {
-              itemId: item.itemId || item.id,
-              uid: item.uid,
-              quality: item.quality,
-              enhanceLevel: item.enhanceLevel,
-              stats: item.stats,
-              baseStats: item.baseStats,
-              // 保留其他属性
-              ...Object.fromEntries(
-                Object.entries(item).filter(([key]) => 
-                  !['itemId', 'uid', 'quality', 'enhanceLevel', 'stats', 'baseStats'].includes(key)
-                )
-              )
-            };
-          }
-          return item;
-        }),
-        // 装备（序列化物品实例对象）
+        // 背包（使用新的序列化系统）
+        inventory: player.inventory.map(item => serializeItem(item)),
+        // 装备（使用新的序列化系统）
         equipment: Object.fromEntries(
-          Object.entries(player.equipment || {}).map(([slot, item]) => {
-            if (!item) return [slot, null];
-            if (typeof item === 'string') return [slot, item]; // 旧代码兼容
-            if (typeof item === 'object') {
-              // 序列化物品实例对象
-              return [slot, {
-                itemId: item.itemId || item.id,
-                uid: item.uid,
-                quality: item.quality,
-                enhanceLevel: item.enhanceLevel,
-                stats: item.stats,
-                baseStats: item.baseStats,
-                // 保留其他属性
-                ...Object.fromEntries(
-                  Object.entries(item).filter(([key]) => 
-                    !['itemId', 'uid', 'quality', 'enhanceLevel', 'stats', 'baseStats'].includes(key)
-                  )
-                )
-              }];
-            }
-            return [slot, item];
-          })
+          Object.entries(player.equipment || {}).map(([slot, item]) => [slot, serializeItem(item)])
         ),
         // ✅ v2.1: 保存符文状态
         runeState: player.runeState ? {
@@ -368,202 +326,39 @@ export class SaveSystem {
         player.activeDoTs = [];
       }
 
-      // 恢复背包（反序列化物品实例对象）
+      // 恢复背包（使用新的反序列化系统）
       if (saveData.inventory && Array.isArray(saveData.inventory)) {
-        player.inventory = saveData.inventory.map(item => {
-          if (!item) return null;
+        player.inventory = saveData.inventory.map(itemData => {
+          if (!itemData) return null;
           
-          // ✅ v2.0: 如果读取到字符串类型的旧数据，自动转换为标准对象
-          if (typeof item === 'string') {
-            console.log(`[SaveSystem] 检测到旧格式物品（字符串）: ${item}，正在转换为标准对象...`);
-            const standardized = createStandardizedItem(item, {
-              level: 1,
-              affixes: [],
-              uniqueEffect: null,
-              setId: null
-            });
-            if (standardized) {
-              return standardized;
-            }
-            // 如果转换失败，返回 null
-            return null;
+          // 使用新的反序列化函数
+          const restored = deserializeItem(itemData);
+          
+          // 关键：还原对象后，必须立即调用 recalculateStats 来生成运行时的 stats 属性
+          if (restored && game.blacksmithSystem) {
+            game.blacksmithSystem.recalculateStats(restored);
           }
           
-          if (typeof item === 'object' && item.itemId) {
-            // 反序列化物品实例对象
-            // 从数据库获取基础定义并合并
-            const itemDef = EQUIPMENT_DB[item.itemId];
-            if (itemDef) {
-              const restored = {
-                ...itemDef,
-                ...item, // 实例属性优先
-                stats: item.stats || itemDef.stats || {},
-                baseStats: item.baseStats || itemDef.baseStats || (itemDef.stats ? { ...itemDef.stats } : {})
-              };
-              
-              // ✅ v2.0: 确保恢复的对象有标准结构
-              if (!restored.uid) {
-                // 如果没有 uid，生成一个
-                restored.uid = `restored_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-              }
-              if (!restored.meta) {
-                // ✅ FIX: 如果没有 meta，创建标准 meta 对象，包含 sockets 数组
-                restored.meta = {
-                  level: item.level || 1,
-                  affixes: item.affixes || [],
-                  uniqueEffect: item.uniqueEffect || null,
-                  setId: item.setId || null,
-                  sockets: item.sockets || [] // ✅ 宝石镶嵌系统：确保 sockets 被保留
-                };
-              } else if (!restored.meta.sockets) {
-              // ✅ FIX: 如果 meta 存在但没有 sockets，根据品质生成孔位（旧存档兼容性）
-              const quality = restored.quality || item.quality || 'COMMON';
-              const socketCount = generateSocketsForQuality(quality);
-              const sockets = [];
-              for (let i = 0; i < socketCount; i++) {
-                sockets.push({ status: 'EMPTY', gemId: null });
-              }
-              restored.meta.sockets = item.sockets || sockets;
-              }
-              if (!restored.id) {
-                // 如果没有 id，使用 itemId
-                restored.id = item.itemId;
-              }
-              
-              return restored;
-            }
-            // 如果数据库中没有，检查是否是动态生成的物品（有 uid）
-            if (item.uid) {
-              // 动态生成的物品，直接返回（应该已经有标准结构）
-              // ✅ FIX: 确保有 meta 字段，包含 sockets 数组
-              if (!item.meta) {
-                item.meta = {
-                  level: item.level || 1,
-                  affixes: item.affixes || [],
-                  uniqueEffect: item.uniqueEffect || null,
-                  setId: item.setId || null,
-                  sockets: item.sockets || [] // ✅ 宝石镶嵌系统：确保 sockets 被保留
-                };
-              } else if (!item.meta.sockets) {
-              // ✅ FIX: 如果 meta 存在但没有 sockets，根据品质生成孔位（旧存档兼容性）
-              const quality = item.quality || 'COMMON';
-              const socketCount = generateSocketsForQuality(quality);
-              const sockets = [];
-              for (let i = 0; i < socketCount; i++) {
-                sockets.push({ status: 'EMPTY', gemId: null });
-              }
-              item.meta.sockets = item.sockets || sockets;
-              }
-              return item;
-            }
-            return item; // 如果数据库中没有,直接返回序列化的对象
-          }
-          return item;
+          return restored;
         });
       }
 
-      // 恢复装备（反序列化物品实例对象）
+      // 恢复装备（使用新的反序列化系统）
       if (saveData.equipment && typeof saveData.equipment === 'object') {
         const restoredEquipment = {};
-        for (const [slot, item] of Object.entries(saveData.equipment)) {
-          if (!item) {
+        for (const [slot, itemData] of Object.entries(saveData.equipment)) {
+          if (!itemData) {
             restoredEquipment[slot] = null;
-          } else if (typeof item === 'string') {
-            // ✅ v2.0: 如果读取到字符串类型的旧数据，自动转换为标准对象
-            console.log(`[SaveSystem] 检测到旧格式装备（字符串）: ${item}，正在转换为标准对象...`);
-            const standardized = createStandardizedItem(item, {
-              level: 1,
-              affixes: [],
-              uniqueEffect: null,
-              setId: null
-            });
-            restoredEquipment[slot] = standardized || null;
-          } else if (typeof item === 'object' && item.itemId) {
-            // 反序列化物品实例对象
-            const itemDef = EQUIPMENT_DB[item.itemId];
-            if (itemDef) {
-              const restored = {
-                ...itemDef,
-                ...item, // 实例属性优先
-                stats: item.stats || itemDef.stats || {},
-                baseStats: item.baseStats || itemDef.baseStats || (itemDef.stats ? { ...itemDef.stats } : {})
-              };
-              
-              // ✅ v2.0: 确保恢复的对象有标准结构
-              if (!restored.uid) {
-                // 如果没有 uid，生成一个
-                restored.uid = `restored_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-              }
-              if (!restored.meta) {
-                // ✅ FIX: 如果没有 meta，创建标准 meta 对象，并根据品质生成孔位（旧存档兼容性）
-                const quality = restored.quality || item.quality || 'COMMON';
-                const socketCount = generateSocketsForQuality(quality);
-                const sockets = [];
-                for (let i = 0; i < socketCount; i++) {
-                  sockets.push({ status: 'EMPTY', gemId: null });
-                }
-                
-                restored.meta = {
-                  level: item.level || 1,
-                  affixes: item.affixes || [],
-                  uniqueEffect: item.uniqueEffect || null,
-                  setId: item.setId || null,
-                  sockets: sockets // ✅ 宝石镶嵌系统：为旧存档的高品质装备补发孔位
-                };
-              } else if (!restored.meta.sockets) {
-                // ✅ FIX: 如果 meta 存在但没有 sockets，根据品质生成孔位（旧存档兼容性）
-                const quality = restored.quality || item.quality || 'COMMON';
-                const socketCount = generateSocketsForQuality(quality);
-                const sockets = [];
-                for (let i = 0; i < socketCount; i++) {
-                  sockets.push({ status: 'EMPTY', gemId: null });
-                }
-                restored.meta.sockets = sockets;
-              }
-              if (!restored.id) {
-                // 如果没有 id，使用 itemId
-                restored.id = item.itemId;
-              }
-              
-              restoredEquipment[slot] = restored;
-            } else {
-              // 如果数据库中没有，检查是否是动态生成的物品（有 uid）
-              if (item.uid) {
-                // 动态生成的物品，直接使用（应该已经有标准结构）
-                // ✅ FIX: 确保有 meta 字段，包含 sockets 数组（旧存档兼容性）
-                if (!item.meta) {
-                  // 根据品质生成孔位（旧存档兼容性）
-                  const quality = item.quality || 'COMMON';
-                  const socketCount = generateSocketsForQuality(quality);
-                  const sockets = [];
-                  for (let i = 0; i < socketCount; i++) {
-                    sockets.push({ status: 'EMPTY', gemId: null });
-                  }
-                  
-                  item.meta = {
-                    level: item.level || 1,
-                    affixes: item.affixes || [],
-                    uniqueEffect: item.uniqueEffect || null,
-                    setId: item.setId || null,
-                    sockets: item.sockets || sockets // ✅ 优先使用存档中的 sockets，否则根据品质生成
-                  };
-                } else if (!item.meta.sockets) {
-                  // ✅ FIX: 如果 meta 存在但没有 sockets，根据品质生成孔位（旧存档兼容性）
-                  const quality = item.quality || 'COMMON';
-                  const socketCount = generateSocketsForQuality(quality);
-                  const sockets = [];
-                  for (let i = 0; i < socketCount; i++) {
-                    sockets.push({ status: 'EMPTY', gemId: null });
-                  }
-                  item.meta.sockets = item.sockets || sockets;
-                }
-                restoredEquipment[slot] = item;
-              } else {
-                restoredEquipment[slot] = item; // 如果数据库中没有,直接使用序列化的对象
-              }
-            }
           } else {
-            restoredEquipment[slot] = item;
+            // 使用新的反序列化函数
+            const restored = deserializeItem(itemData);
+            
+            // 关键：还原对象后，必须立即调用 recalculateStats 来生成运行时的 stats 属性
+            if (restored && game.blacksmithSystem) {
+              game.blacksmithSystem.recalculateStats(restored);
+            }
+            
+            restoredEquipment[slot] = restored;
           }
         }
         player.equipment = restoredEquipment;

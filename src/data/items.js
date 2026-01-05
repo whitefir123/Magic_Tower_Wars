@@ -1168,3 +1168,144 @@ export function getItemDefinition(itemId) {
   // 回退到静态数据库
   return EQUIPMENT_DB[itemId] || null;
 }
+
+/**
+ * 序列化物品对象（Item Serialization 2.0）
+ * 精简存档体积，只保存必要字段
+ * @param {Object} item - 物品对象
+ * @returns {Object} 序列化后的数据
+ */
+export function serializeItem(item) {
+  if (!item) return null;
+  
+  // 如果是字符串（旧格式），直接返回
+  if (typeof item === 'string') {
+    return item;
+  }
+  
+  // 提取核心字段
+  const serialized = {
+    itemId: item.itemId || item.id,
+    uid: item.uid,
+    quality: item.quality,
+    enhanceLevel: item.enhanceLevel,
+    meta: item.meta || {}
+  };
+  
+  // 检查是否为动态物品
+  const isDynamicItem = item.uid && (
+    item.uid.includes('PROCGEN') || 
+    (item.meta && item.meta.archetype)
+  );
+  
+  // 动态物品：必须保存 baseStats
+  if (isDynamicItem && item.baseStats) {
+    serialized.baseStats = { ...item.baseStats };
+  }
+  
+  // 静态物品：不保存 baseStats 和 stats（从数据库恢复）
+  // 注意：meta 中的 sockets、affixes 等已包含在 meta 字段中
+  
+  return serialized;
+}
+
+/**
+ * 反序列化物品对象（Item Serialization 2.0）
+ * 从序列化数据还原物品对象
+ * @param {Object|string} data - 序列化数据（对象或字符串ID）
+ * @returns {Object|null} 还原的物品对象
+ */
+export function deserializeItem(data) {
+  if (!data) return null;
+  
+  // 向后兼容：如果读取到字符串ID（旧存档），视为静态物品
+  if (typeof data === 'string') {
+    const itemDef = EQUIPMENT_DB[data];
+    if (!itemDef) {
+      console.warn(`[deserializeItem] 未找到物品定义: ${data}`);
+      return null;
+    }
+    // 创建标准物品对象
+    return createStandardizedItem(itemDef, {
+      level: 1,
+      affixes: [],
+      uniqueEffect: null,
+      setId: null
+    });
+  }
+  
+  // 新格式：从数据库获取模板
+  const itemId = data.itemId || data.id;
+  if (!itemId) {
+    console.warn('[deserializeItem] 缺少 itemId');
+    return null;
+  }
+  
+  const itemDef = EQUIPMENT_DB[itemId];
+  if (!itemDef) {
+    // 可能是动态生成的物品，尝试从动态物品池查找
+    if (window.__dynamicItems && window.__dynamicItems.has(itemId)) {
+      const dynamicItem = window.__dynamicItems.get(itemId);
+      // 合并数据
+      const restored = {
+        ...dynamicItem,
+        ...data,
+        itemId: itemId,
+        id: itemId
+      };
+      // 如果 data 中有 baseStats，覆盖模板的 baseStats
+      if (data.baseStats) {
+        restored.baseStats = { ...data.baseStats };
+      }
+      // 确保 meta 和 sockets 结构完整
+      if (!restored.meta) {
+        restored.meta = {};
+      }
+      if (!restored.meta.sockets && data.meta && data.meta.sockets) {
+        restored.meta.sockets = data.meta.sockets;
+      }
+      return restored;
+    }
+    console.warn(`[deserializeItem] 未找到物品定义: ${itemId}`);
+    return null;
+  }
+  
+  // 合并模板和数据
+  const restored = {
+    ...itemDef,
+    ...data,
+    itemId: itemId,
+    id: itemId
+  };
+  
+  // 如果 data 中有 baseStats，覆盖模板的 baseStats
+  if (data.baseStats) {
+    restored.baseStats = { ...data.baseStats };
+  } else if (itemDef.stats && !restored.baseStats) {
+    // 如果没有 baseStats，使用 stats 作为 baseStats
+    restored.baseStats = { ...itemDef.stats };
+  }
+  
+  // 确保 meta 结构完整
+  if (!restored.meta) {
+    restored.meta = {
+      level: data.meta?.level || 1,
+      affixes: data.meta?.affixes || [],
+      uniqueEffect: data.meta?.uniqueEffect || null,
+      setId: data.meta?.setId || null,
+      sockets: data.meta?.sockets || []
+    };
+  } else {
+    // 确保 sockets 存在
+    if (!restored.meta.sockets) {
+      restored.meta.sockets = data.meta?.sockets || [];
+    }
+  }
+  
+  // 确保 uid 存在
+  if (!restored.uid) {
+    restored.uid = data.uid || generateUID();
+  }
+  
+  return restored;
+}
