@@ -856,7 +856,13 @@ class Game {
     // Check if player is frozen - cannot move or act
     const playerFrozen = this.player.hasStatus && this.player.hasStatus('FREEZE');
     
-    if (!this.player.isMoving && this.inputStack.length > 0 && !this.player.pendingCombat && !playerFrozen) {
+    // ✅ FIX: Check post-kill delay to prevent immediate movement after killing a monster
+    const postKillDelayActive = this.player.postKillDelay && Date.now() < this.player.postKillDelay;
+    if (postKillDelayActive) {
+      this.player.postKillDelay = 0; // Clear delay once expired
+    }
+    
+    if (!this.player.isMoving && this.inputStack.length > 0 && !this.player.pendingCombat && !playerFrozen && !postKillDelayActive) {
       const key = this.inputStack[this.inputStack.length - 1];
       let dx = 0, dy = 0;
       if (key === 'ArrowUp') { dy = -1; this.player.sprite.setDirection(1); }
@@ -878,7 +884,19 @@ class Game {
         } else {
           const monster = this.map.getMonsterAt(nx, ny);
           if (monster) {
-            this.player.startCombatSlide(monster);
+            // ========== 攻击速度系统：自动攻击等待逻辑 ==========
+            // 检查攻击冷却时间
+            const now = Date.now();
+            const attackCooldown = this.player.getAttackCooldown ? this.player.getAttackCooldown() : 1000;
+            
+            if (now - this.player.lastAttackTime >= attackCooldown) {
+              // 攻击冷却完成，触发攻击
+              this.player.startCombatSlide(monster);
+              this.player.lastAttackTime = now;
+            } else {
+              // 攻击冷却中，不执行任何操作（不移动，不触发碰撞动画）
+              // 玩家保持静止，等待冷却完成
+            }
           } else {
             const npc = this.map.getNpcAt(nx, ny);
             if (npc) { 
@@ -1108,6 +1126,8 @@ class Game {
         this.player.destY = this.player.visualY; 
         this.player.pendingCombat = null; 
         this.player.isMoving = false;
+        // ✅ FIX: Post-kill movement bug - Add delay to prevent immediate movement into empty tile
+        this.player.postKillDelay = Date.now() + 150; // 150ms grace period after kill
       }
       else if (res === 'BOUNCE') { this.player.cancelCombatSlide(); this.player.isMoving = true; }
     }

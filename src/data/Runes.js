@@ -708,6 +708,114 @@ export const RUNE_POOL = [
         }
       }
     }
+  },
+  
+  // ========== 攻击速度类符文 ==========
+  
+  // Swiftness (Common)
+  {
+    id: 'swiftness',
+    name: 'Swiftness',
+    nameZh: '迅捷',
+    type: 'STAT',
+    rarity: 'COMMON',
+    spawnWeight: 1.0,
+    description: '攻击速度 +{{value}}',
+    onObtain: (player, value = 0.10) => {
+      if (!player.runeState) {
+        player.runeState = {
+          effects: {},
+          bonusStats: { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0 }
+        };
+      }
+      if (!player.runeState.bonusStats) {
+        player.runeState.bonusStats = { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0 };
+      }
+      player.runeState.bonusStats.atk_speed = (player.runeState.bonusStats.atk_speed || 0) + value;
+    }
+  },
+  
+  // Zeal (Rare)
+  {
+    id: 'zeal',
+    name: 'Zeal',
+    nameZh: '狂热',
+    type: 'STAT',
+    rarity: 'RARE',
+    spawnWeight: 1.0,
+    description: '攻击速度 +{{value}}',
+    onObtain: (player, value = 0.25) => {
+      if (!player.runeState) {
+        player.runeState = {
+          effects: {},
+          bonusStats: { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0 }
+        };
+      }
+      if (!player.runeState.bonusStats) {
+        player.runeState.bonusStats = { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0 };
+      }
+      player.runeState.bonusStats.atk_speed = (player.runeState.bonusStats.atk_speed || 0) + value;
+    }
+  },
+  
+  // Godspeed (Legendary)
+  {
+    id: 'godspeed',
+    name: 'Godspeed',
+    nameZh: '神速',
+    type: 'STAT',
+    rarity: 'LEGENDARY',
+    spawnWeight: 0.4,
+    description: '攻击速度 +{{value}}，移动速度 +0.1',
+    onObtain: (player, value = 0.50) => {
+      if (!player.runeState) {
+        player.runeState = {
+          effects: {},
+          bonusStats: { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0 }
+        };
+      }
+      if (!player.runeState.bonusStats) {
+        player.runeState.bonusStats = { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0 };
+      }
+      player.runeState.bonusStats.atk_speed = (player.runeState.bonusStats.atk_speed || 0) + value;
+      
+      // 增加移动速度
+      if (player.moveSpeed !== undefined) {
+        player.moveSpeed = (player.moveSpeed || 0.25) + 0.1;
+      }
+    }
+  },
+  
+  // Clunky (Cursed)
+  {
+    id: 'clunky',
+    name: 'Clunky',
+    nameZh: '笨重',
+    type: 'CURSE',
+    rarity: 'CURSED',
+    spawnWeight: 0.2,
+    description: '攻击力 +10%，攻击速度 -0.50',
+    onObtain: (player) => {
+      if (!player.runeState) {
+        player.runeState = {
+          effects: {},
+          bonusStats: { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0, p_atk_percent: 0, m_atk_percent: 0 }
+        };
+      }
+      if (!player.runeState.bonusStats) {
+        player.runeState.bonusStats = { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0, p_atk_percent: 0, m_atk_percent: 0 };
+      }
+      // 攻击速度 -0.50
+      player.runeState.bonusStats.atk_speed = (player.runeState.bonusStats.atk_speed || 0) - 0.50;
+      // 攻击力 +10% (百分比加成)
+      player.runeState.bonusStats.p_atk_percent = (player.runeState.bonusStats.p_atk_percent || 0) + 0.10;
+      player.runeState.bonusStats.m_atk_percent = (player.runeState.bonusStats.m_atk_percent || 0) + 0.10;
+      
+      // 存储诅咒数据用于显示
+      if (!player.runes) player.runes = {};
+      if (!player.runes.curses) player.runes.curses = [];
+      player.runes.curses.push('clunky');
+    }
   }
 ];
 

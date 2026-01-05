@@ -7,6 +7,7 @@ export const CHARACTERS = {
     name: '战士',
     desc: '平衡型战士，拥有中等的攻击和防御。',
     stats: { hp: 100, maxHp: 100, p_atk: 15, p_def: 5, m_atk: 0, m_def: 0, rage: 0 },
+    base_as: 1.0,
     skills: {
       PASSIVE: { name: '铁皮', iconIndex: 0, desc: '防御力提升20%' },
       ACTIVE: { id: 'slash', name: '斩击', key: 'Q', cd: 5000, iconIndex: 1, desc: '下次攻击造成150%伤害' },
@@ -19,6 +20,7 @@ export const CHARACTERS = {
     name: '法师',
     desc: '高伤害低生命的魔法使者。',
     stats: { hp: 60, maxHp: 60, p_atk: 5, p_def: 2, m_atk: 20, m_def: 10, rage: 0 },
+    base_as: 0.8,
     skills: {
       PASSIVE: { name: '魔力流', iconIndex: 3, desc: '魔攻提升25%' },
       ACTIVE: { id: 'scorch', name: '灼烧', key: 'Q', cd: 8000, iconIndex: 4, desc: '下次攻击附加灼烧：每秒造成目标最大生命2%伤害，持续5秒' },
@@ -31,6 +33,7 @@ export const CHARACTERS = {
     name: '盗贼',
     desc: '速度型角色，擅长闪避和爆发伤害。',
     stats: { hp: 70, maxHp: 70, p_atk: 18, p_def: 5, m_atk: 8, m_def: 4, rage: 0 },
+    base_as: 1.3,
     skills: {
       PASSIVE: { name: '影舞', iconIndex: 6, desc: '闪避率提升20%' },
       ACTIVE: { id: 'backstab', name: '背刺', key: 'Q', cd: 6000, iconIndex: 7, desc: '下次攻击从背后发动，造成200%伤害' },
@@ -43,6 +46,7 @@ export const CHARACTERS = {
     name: '圣骑士',
     desc: '防御型坦克，拥有强大的防护能力。',
     stats: { hp: 120, maxHp: 120, p_atk: 12, p_def: 12, m_atk: 8, m_def: 8, rage: 0 },
+    base_as: 0.7,
     skills: {
       PASSIVE: { name: '圣盾', iconIndex: 0, desc: '防御力提升30%' },
       ACTIVE: { id: 'shield_bash', name: '盾击', key: 'Q', cd: 5500, iconIndex: 1 },
@@ -55,6 +59,7 @@ export const CHARACTERS = {
     name: '游侠',
     desc: '远程输出角色，攻击速度快。',
     stats: { hp: 80, maxHp: 80, p_atk: 16, p_def: 6, m_atk: 10, m_def: 5, rage: 0 },
+    base_as: 1.2,
     skills: {
       PASSIVE: { name: '快速射击', iconIndex: 3, desc: '攻击速度提升40%' },
       ACTIVE: { id: 'multi_shot', name: '多重射击', key: 'Q', cd: 7000, iconIndex: 4 },
@@ -67,6 +72,7 @@ export const CHARACTERS = {
     name: '死灵法师',
     desc: '诅咒系法师，可以召唤亡灵仆从。',
     stats: { hp: 75, maxHp: 75, p_atk: 10, p_def: 4, m_atk: 22, m_def: 7, rage: 0 },
+    base_as: 0.75,
     skills: {
       PASSIVE: { name: '死亡光环', iconIndex: 6, desc: '魔攻提升20%' },
       ACTIVE: { id: 'curse_bolt', name: '诅咒箭', key: 'Q', cd: 8500, iconIndex: 7 },

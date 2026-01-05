@@ -487,6 +487,10 @@ export class UIManager {
     setText('ui-matk', totals.m_atk);
     setText('ui-pdef', totals.p_def);
     setText('ui-mdef', totals.m_def);
+    
+    // ========== 攻击速度系统：设置攻击速度工具提示 ==========
+    // ✅ 为物攻和魔攻添加工具提示，显示攻击速度
+    this.setupAttackSpeedTooltips(player);
     setText('ui-keys', player.stats.keys);
     setText('ui-gold', player.stats.gold ?? 0);
     setText('ui-lvl', player.stats.lvl);
@@ -529,6 +533,34 @@ export class UIManager {
     
     // ✅ v2.1: 更新符文状态面板
     this.updateRuneStats(player);
+  }
+  
+  /**
+   * 设置攻击速度工具提示（当鼠标悬停在物攻/魔攻上时显示）
+   * @param {Object} player - 玩家对象
+   */
+  setupAttackSpeedTooltips(player) {
+    // 使用更兼容的方式查找 stat-row 元素
+    const patkEl = document.getElementById('ui-patk');
+    const matkEl = document.getElementById('ui-matk');
+    const patkRow = patkEl?.closest('.stat-row') || patkEl?.parentElement;
+    const matkRow = matkEl?.closest('.stat-row') || matkEl?.parentElement;
+    
+    // 获取攻击速度
+    const attackSpeed = player.getAttackSpeed ? player.getAttackSpeed() : 1.0;
+    const attackSpeedText = `${attackSpeed.toFixed(2)}/s`;
+    
+    // 设置物攻工具提示
+    if (patkRow) {
+      patkRow.title = `物理攻击\n攻击速度: ${attackSpeedText}`;
+      patkRow.style.cursor = 'help';
+    }
+    
+    // 设置魔攻工具提示
+    if (matkRow) {
+      matkRow.title = `魔法攻击\n攻击速度: ${attackSpeedText}`;
+      matkRow.style.cursor = 'help';
+    }
   }
   
   /**

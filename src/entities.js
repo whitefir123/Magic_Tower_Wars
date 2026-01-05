@@ -393,20 +393,14 @@ export class Monster extends Entity {
     // 距离 = 曼哈顿距离 (|x - playerX| + |y - playerY|)
     this.minSpawnDistance = MONSTER_STATS[type]?.minSpawnDistance ?? 0;
     
-    // 设置怪物攻击冷却时间（毫秒）
-    // 根据怪物特性调整：快速怪物攻击频率高，慢速怪物攻击频率低
-    const attackCooldownMap = {
-      'SLIME': 2000,        // 史莱姆：2秒（慢速，低频率）
-      'BAT': 1200,          // 蝙蝠：1.2秒（快速，高频率）
-      'VOID': 1500,         // 虚空晶体：1.5秒（中等速度，中等频率）
-      'SKELETON': 1800,     // 骷髅：1.8秒（较慢，低频率）
-      'SWAMP': 2200,        // 沼泽居民：2.2秒（很慢，低频率）
-      'CLOCKWORK': 2500,    // 发条骑士：2.5秒（非常慢，很低频率）
-      'REAPER': 1000,       // 死神收割者：1秒（快速，高频率）
-      'GOLEM': 3000,        // 岩浆巨人：3秒（最慢，最低频率）
-      'BOSS': 1500          // 黑暗领主：1.5秒（快速，中等频率）
-    };
-    const baseAttackCooldown = attackCooldownMap[type] || 1500;
+    // 设置怪物基础攻击速度（APS）
+    // 从 MONSTER_STATS 获取 base_as，如果没有则使用默认值 1.0
+    const baseAS = MONSTER_STATS[type]?.base_as || 1.0;
+    this.base_as = baseAS;
+    
+    // 计算基础攻击冷却时间（毫秒）
+    // 公式：Attack_Interval_MS = 1000 / Base_APS
+    const baseAttackCooldown = 1000 / baseAS;
     // 应用攻击冷却时间修饰符（负数表示冷却时间减少，攻击更快）
     this.baseAttackCooldown = Math.max(100, baseAttackCooldown * (1 + ascConfig.atkCooldownMult));
     this.lastAttackTime = 0;
@@ -869,8 +863,11 @@ export class Monster extends Entity {
     if (this.type === 'BOSS' && this.ascConfig && this.ascConfig.bossEnrage) {
       const hpPercent = this.stats.hp / this.stats.maxHp;
       if (hpPercent < 0.5) {
-        // Boss狂暴：攻击冷却时间减少30%（攻击速度+30%）
-        return Math.max(100, Math.floor(this.baseAttackCooldown * 0.7));
+        // Boss狂暴：攻击速度+30%，即冷却时间减少
+        // 新APS = base_as * 1.3
+        const enragedAS = (this.base_as || 1.0) * 1.3;
+        const enragedCooldown = 1000 / enragedAS;
+        return Math.max(100, Math.floor(enragedCooldown * (1 + this.ascConfig.atkCooldownMult)));
       }
     }
     // 正常情况或非Boss，返回基础攻击冷却时间
@@ -1139,7 +1136,10 @@ export class Player extends Entity {
         hp: 0,
         crit_rate: 0,
         dodge: 0,
-        gold_rate: 0
+        gold_rate: 0,
+        atk_speed: 0,
+        p_atk_percent: 0,
+        m_atk_percent: 0
       }
     };
     
@@ -1157,6 +1157,10 @@ export class Player extends Entity {
       lastAttackTime: 0,
       weaponType: null
     };
+    
+    // ========== 攻击速度系统：初始化攻击计时器 ==========
+    this.lastAttackTime = 0; // 用于攻击冷却时间追踪
+    this.postKillDelay = 0; // 用于防止击杀后立即移动的延迟标志
   }
   
   // Handle status tick effects for player
@@ -1313,9 +1317,13 @@ export class Player extends Entity {
   getTotalStats() {
     // ========== 第一阶段：基础统计 ==========
     // ✅ 防御性初始化：确保所有属性都有默认值，防止NaN
+    // ✅ CRITICAL: Store BASE stats before any modifications (for percentage calculations)
+    const basePAtk = this.stats.p_atk || 0;
+    const baseMAtk = this.stats.m_atk || 0;
+    
     const total = { 
-      p_atk: this.stats.p_atk || 0, 
-      m_atk: this.stats.m_atk || 0, 
+      p_atk: basePAtk, 
+      m_atk: baseMAtk, 
       p_def: this.stats.p_def || 0, 
       m_def: this.stats.m_def || 0, 
       dodge: 0.05, // 基础闪避率5%
@@ -1532,6 +1540,19 @@ export class Player extends Entity {
         total.dodge = (total.dodge || 0) + bonus.dodge;
       }
       
+      // 累加攻击速度（用于后续计算）
+      if (bonus.atk_speed !== undefined) {
+        total.atk_speed = (total.atk_speed || 0) + bonus.atk_speed;
+      }
+      
+      // 存储百分比攻击加成（在第五阶段应用）
+      if (bonus.p_atk_percent !== undefined) {
+        total.p_atk_percent = (total.p_atk_percent || 0) + bonus.p_atk_percent;
+      }
+      if (bonus.m_atk_percent !== undefined) {
+        total.m_atk_percent = (total.m_atk_percent || 0) + bonus.m_atk_percent;
+      }
+      
       // 限制百分比属性上限
       total.crit_rate = Math.min(total.crit_rate || 0, 1.0);
       total.dodge = Math.min(total.dodge || 0, 1.0);
@@ -1597,7 +1618,48 @@ export class Player extends Entity {
     total.crit_rate = Math.min(total.crit_rate || 0, 1.0);
     total.dodge = Math.min(total.dodge || 0, 1.0);
     
+    // ========== 第七阶段：应用百分比攻击加成 ==========
+    // ✅ CRITICAL FIX: 百分比加成只应用于BASE stat，不是total
+    // Formula: Total_Stat = Base_Stat + Flat_Bonuses + (Base_Stat * Percent_Bonus)
+    // Example: Base 200 + Flat 50 + (200 * 0.5) = 350 (NOT 375)
+    if (total.p_atk_percent) {
+      const percentBonus = Math.floor(basePAtk * total.p_atk_percent);
+      total.p_atk += percentBonus;
+    }
+    if (total.m_atk_percent) {
+      const percentBonus = Math.floor(baseMAtk * total.m_atk_percent);
+      total.m_atk += percentBonus;
+    }
+    
+    // ========== 第八阶段：计算最终攻击速度 ==========
+    // ✅ 攻击速度系统：Base_APS + Bonus_APS，上限 7.0 APS，下限 0.1 APS
+    const baseAS = this.charConfig?.base_as || 1.0;
+    const bonusAS = total.atk_speed || 0;
+    const finalAS = Math.max(0.1, Math.min(7.0, baseAS + bonusAS)); // ✅ Safety clamp: min 0.1 APS, max 7.0 APS
+    total.atk_speed = finalAS;
+    
     return total;
+  }
+  
+  /**
+   * 获取当前攻击速度 (APS - Attacks Per Second)
+   * @returns {number} 攻击速度（每秒攻击次数）
+   */
+  getAttackSpeed() {
+    const totals = this.getTotalStats();
+    return totals.atk_speed || 1.0;
+  }
+  
+  /**
+   * 获取当前攻击冷却时间（毫秒）
+   * @returns {number} 攻击间隔（毫秒）
+   */
+  getAttackCooldown() {
+    const aps = this.getAttackSpeed();
+    // ✅ Safety: APS is already clamped to [0.1, 7.0] in getTotalStats(), so no division by zero
+    // 公式：Attack_Interval_MS = 1000 / Final_APS
+    const safeAPS = Math.max(0.1, aps); // Extra safety check (should never be needed)
+    return 1000 / safeAPS;
   }
   /**
    * 装备物品

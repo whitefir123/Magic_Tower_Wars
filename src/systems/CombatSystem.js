@@ -1055,6 +1055,13 @@ export class CombatSystem {
       player.combatState.lastTargetId = monsterId;
       player.combatState.lastAttackTime = now;
       
+      // ========== 攻击速度系统：更新攻击计时器 ==========
+      // ✅ 更新玩家的 lastAttackTime（用于攻击冷却时间追踪）
+      // 注意：即使攻击被闪避或格挡，冷却时间也应该开始计算
+      if (player.lastAttackTime !== undefined) {
+        player.lastAttackTime = now;
+      }
+      
       // Set maxCombo based on weapon type
       const mastery = WEAPON_MASTERY[weaponType];
       if (mastery) {
