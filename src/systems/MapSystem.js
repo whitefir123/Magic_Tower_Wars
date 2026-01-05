@@ -235,9 +235,12 @@ export class MapSystem {
       for (let y = 1; y < this.height - 1; y++) {
         for (let x = 1; x < this.width - 1; x++) {
           if (this.grid[y][x] === TILE.FLOOR && !(x === start.cx && y === start.cy)) {
-            // 检查是否与NPC重叠
+            // 检查是否与NPC、怪物、物品或其他对象重叠
             const isNpcTile = this.npcs.some(npc => npc.x === x && npc.y === y);
-            if (!isNpcTile) {
+            const hasMonster = this.getMonsterAt(x, y);
+            const hasItem = this.getItemAt(x, y);
+            const hasObject = this.objects.some(o => o.x === x && o.y === y);
+            if (!isNpcTile && !hasMonster && !hasItem && !hasObject) {
               floorTiles.push({ x, y });
             }
           }
@@ -268,7 +271,12 @@ export class MapSystem {
           }
         }
         
-        if (isFarEnough) {
+        // ✅ FIX: Double-check that position is still available (defensive check)
+        const hasMonster = this.getMonsterAt(candidate.x, candidate.y);
+        const hasItem = this.getItemAt(candidate.x, candidate.y);
+        const hasObject = this.objects.some(o => o.x === candidate.x && o.y === candidate.y);
+        
+        if (isFarEnough && !hasMonster && !hasItem && !hasObject) {
           // 找到合适位置，放置铁砧
           this.objects.push({
             type: 'INTERACTIVE_FORGE',
@@ -284,6 +292,13 @@ export class MapSystem {
       // 如果尝试多次后仍找不到合适位置，则强制放置（避免完全不生成）
       if (!forgePlaced && floorTiles.length > 0) {
         const fallbackTile = floorTiles[this._randomInt(0, floorTiles.length - 1)];
+        // ✅ FIX: Clear any conflicting objects before force-placing forge
+        const monster = this.getMonsterAt(fallbackTile.x, fallbackTile.y);
+        const item = this.getItemAt(fallbackTile.x, fallbackTile.y);
+        if (monster) this.monsters = this.monsters.filter(m => m !== monster);
+        if (item) this.items = this.items.filter(i => i !== item);
+        this.objects = this.objects.filter(o => !(o.x === fallbackTile.x && o.y === fallbackTile.y));
+        
         this.objects.push({
           type: 'INTERACTIVE_FORGE',
           x: fallbackTile.x,
@@ -511,7 +526,8 @@ export class MapSystem {
     for (let y = 1; y < this.height - 1; y++) {
       for (let x = 1; x < this.width - 1; x++) {
         if (this.grid[y][x] !== TILE.FLOOR) continue;
-        if (this.getMonsterAt(x, y) || this.getItemAt(x, y) || this.objects.find(o => o.x === x && o.y === y)) continue;
+        // ✅ FIX: Use direct check to ensure traps and other objects are properly detected
+        if (this.getMonsterAt(x, y) || this.getItemAt(x, y) || this.objects.some(o => o.x === x && o.y === y)) continue;
         // Count walls around this tile (dead end = 3 walls)
         let wallCount = 0;
         if (this.grid[y-1][x] === TILE.WALL) wallCount++;
@@ -544,7 +560,8 @@ export class MapSystem {
       const dx = this._randomInt(1, this.width - 2);
       const dy = this._randomInt(1, this.height - 2);
       if (this.grid[dy][dx] !== TILE.FLOOR) continue;
-      if (this.getMonsterAt(dx, dy) || this.getItemAt(dx, dy) || this.getObjectAt(dx, dy)) continue;
+      // ✅ FIX: Use direct check to ensure traps and other objects are properly detected
+      if (this.getMonsterAt(dx, dy) || this.getItemAt(dx, dy) || this.objects.some(o => o.x === dx && o.y === dy)) continue;
       // Avoid start and stairs
       if ((dx === start.cx && dy === start.cy) || (dx === endRoom.cx && dy === endRoom.cy)) continue;
       
@@ -602,7 +619,8 @@ export class MapSystem {
         // 检查该位置是否仍然可用
         if (this.getMonsterAt(ax, ay) || this.getMonsterAt(ax + 1, ay)) continue;
         if (this.getItemAt(ax, ay) || this.getItemAt(ax + 1, ay)) continue;
-        if (this.getObjectAt(ax, ay) || this.getObjectAt(ax + 1, ay)) continue;
+        // ✅ FIX: Use direct check to ensure traps and other objects are properly detected
+        if (this.objects.some(o => (o.x === ax && o.y === ay) || (o.x === ax + 1 && o.y === ay))) continue;
         
         // Place the Altar at (ax, ay) - it will visually span to (ax+1, ay)
         this.objects.push({
