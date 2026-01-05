@@ -1,7 +1,7 @@
 // UIManager.js - 主 UI 管理器
 // 负责协调各个 UI 组件，提供公共接口，不负责具体 DOM 渲染
 
-import { TILE_SIZE, ICON_GRID_COLS, ICON_GRID_ROWS, EQUIPMENT_DB, ASSETS } from '../constants.js';
+import { TILE_SIZE, ICON_GRID_COLS, ICON_GRID_ROWS, EQUIPMENT_DB, ASSETS, RUNE_RARITY_MULTIPLIERS } from '../constants.js';
 import { Mascot } from './Mascot.js';
 import { OverlayManager } from './OverlayManager.js';
 import { InventoryUI } from './InventoryUI.js';
@@ -963,6 +963,64 @@ export class UIManager {
   }
 
   /**
+   * 格式化符文描述文本（替换占位符为具体数值）
+   * @param {Object} rune - 符文对象
+   * @param {number} floor - 当前层数（默认1）
+   * @returns {string} 格式化后的描述文本
+   */
+  formatRuneDescription(rune, floor = 1) {
+    if (!rune || !rune.description) {
+      return '';
+    }
+
+    // 根据符文稀有度获取倍率
+    const multiplier = RUNE_RARITY_MULTIPLIERS[rune.rarity] || 1.0;
+
+    // 根据符文类型和ID计算value（只针对STAT类符文）
+    let value = 1;
+    if (rune.type === 'STAT') {
+      if (rune.id && (rune.id.includes('might') || rune.id.includes('brutal'))) {
+        value = Math.floor(1 * multiplier * (1 + floor * 0.1));
+      } else if (rune.id && (rune.id.includes('iron') || rune.id.includes('fortress'))) {
+        value = Math.floor(1 * multiplier * (1 + floor * 0.1));
+      } else if (rune.id && (rune.id.includes('arcana') || rune.id.includes('arcane'))) {
+        value = Math.floor(1 * multiplier * (1 + floor * 0.1));
+      } else if (rune.id && (rune.id.includes('ward') || rune.id.includes('barrier'))) {
+        value = Math.floor(1 * multiplier * (1 + floor * 0.1));
+      } else if (rune.id && (rune.id.includes('vitality') || rune.id.includes('life'))) {
+        value = Math.floor(10 * multiplier * (1 + floor * 0.1));
+      } else if (rune.id && (rune.id.includes('precision') || rune.id.includes('deadly') || rune.id.includes('assassin'))) {
+        value = Math.floor(5 * multiplier);
+      } else if (rune.id && (rune.id.includes('agility') || rune.id.includes('phantom'))) {
+        value = Math.floor(5 * multiplier);
+      }
+    }
+
+    // 生成描述文本（先替换通用占位符）
+    let description = rune.description || '';
+    description = description.replace(/\{\{value\}\}/g, value);
+
+    // 特殊占位符替换（对于特殊符文，再次替换{{value}}为硬编码值）
+    if (rune.id === 'glass_cannon') {
+      description = description.replace(/\{\{hpLoss\}\}/g, '30');
+    } else if (rune.id === 'greed') {
+      description = description.replace(/\{\{damageIncrease\}\}/g, '30');
+    } else if (rune.id === 'thunder') {
+      description = description.replace(/\{\{value\}\}/g, '15');
+      description = description.replace(/\{\{chainDamage\}\}/g, '50');
+    } else if (rune.id === 'vampire') {
+      description = description.replace(/\{\{value\}\}/g, '15');
+    } else if (rune.id === 'execute') {
+      description = description.replace(/\{\{value\}\}/g, '30');
+      description = description.replace(/\{\{executeDamage\}\}/g, '50');
+    } else if (rune.id === 'multicast') {
+      description = description.replace(/\{\{value\}\}/g, '25');
+    }
+
+    return description;
+  }
+
+  /**
    * 渲染每日挑战模式信息
    * @param {Object} config - 每日挑战配置
    */
@@ -1041,10 +1099,13 @@ export class UIManager {
         // 防御性检查：确保 startingRune 存在且有必要的属性
         if (config.startingRune && config.startingRune.name) {
           const rune = config.startingRune;
+          const runeName = rune.nameZh || rune.name; // 修复：使用中文名
+          const runeDesc = this.formatRuneDescription(rune, 1); // 修复：格式化描述
+
           relicContainer.innerHTML = `
             <div class="daily-relic-item">
-              <span class="relic-name">${rune.name || '未知遗物'}</span>
-              <span class="relic-desc">${rune.description || ''}</span>
+              <span class="relic-name">${runeName}</span>
+              <span class="relic-desc">${runeDesc}</span>
             </div>
           `;
         } else {
