@@ -1499,8 +1499,15 @@ export class MapSystem {
           const drawX = e.obj.visualX + dodgeOffsetX;
           const drawY = e.obj.visualY;
           
-          // Check if this is an elite monster and apply visual effects
-          if (e.obj.isElite && e.obj.affixes && e.obj.affixes.length > 0) {
+          // Check if this is a Fallen Adventurer (Ghost) - apply grayscale filter
+          if (e.obj.type === 'FALLEN_ADVENTURER' || e.obj.isFallenAdventurer) {
+            ctx.save();
+            // 应用灰色滤镜和透明度
+            ctx.filter = 'grayscale(100%) opacity(0.8)';
+            e.obj.sprite.draw(ctx, drawX, drawY);
+            ctx.restore(); // 重置 filter
+          } else if (e.obj.isElite && e.obj.affixes && e.obj.affixes.length > 0) {
+            // Check if this is an elite monster and apply visual effects
             this._drawEliteMonster(ctx, e.obj, drawX);
           } else {
             e.obj.sprite.draw(ctx, drawX, drawY);
@@ -1676,11 +1683,25 @@ export class MapSystem {
         }
       }
       
-      // 检查怪物燃烧效果（可选）
+      // 增强怪物光源逻辑
       this.monsters.forEach(monster => {
         if (!monster || !monster.visualX || !monster.visualY) return;
         
-        // 检查是否有燃烧状态
+        const monsterWorldX = monster.visualX + TILE_SIZE / 2;
+        const monsterWorldY = monster.visualY + TILE_SIZE / 2;
+        
+        // 1. 精英怪物：微弱红色光源
+        if (monster.isElite) {
+          this.lightSources.push({
+            x: monsterWorldX,
+            y: monsterWorldY,
+            radius: 2.5 * TILE_SIZE,
+            color: 'rgba(255, 50, 50, 0.3)', // 微弱红色光源
+            intensity: 0.3
+          });
+        }
+        
+        // 2. 检查是否有燃烧状态（BURN）
         let hasBurn = false;
         if (monster.statuses && monster.statuses.length > 0) {
           hasBurn = monster.statuses.some(s => s.type === 'BURN');
@@ -1690,13 +1711,30 @@ export class MapSystem {
         }
         
         if (hasBurn) {
-          const monsterWorldX = monster.visualX + TILE_SIZE / 2;
-          const monsterWorldY = monster.visualY + TILE_SIZE / 2;
           this.lightSources.push({
             x: monsterWorldX,
             y: monsterWorldY,
             radius: 2 * TILE_SIZE,
             color: 'rgba(255, 150, 50, 0.4)', // 微弱橙色光源
+            intensity: 0.4
+          });
+        }
+        
+        // 3. 检查是否有感电状态（SHOCK）或感电DoT（ELECTRO_CHARGED）
+        let hasElectro = false;
+        if (monster.statuses && monster.statuses.length > 0) {
+          hasElectro = monster.statuses.some(s => s.type === 'SHOCK');
+        }
+        if (!hasElectro && monster.activeDoTs && monster.activeDoTs.length > 0) {
+          hasElectro = monster.activeDoTs.some(dot => dot.type === 'ELECTRO_CHARGED');
+        }
+        
+        if (hasElectro) {
+          this.lightSources.push({
+            x: monsterWorldX,
+            y: monsterWorldY,
+            radius: 2 * TILE_SIZE,
+            color: 'rgba(200, 100, 255, 0.4)', // 微弱紫色光源
             intensity: 0.4
           });
         }

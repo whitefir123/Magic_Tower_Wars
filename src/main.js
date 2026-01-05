@@ -3,7 +3,7 @@ import { TILE_SIZE, MAP_WIDTH, MAP_HEIGHT, TILE, EQUIPMENT_DB, BUFF_POOL, DRAFT_
 import { Camera, FloatingText } from './utils.js';
 import { ResourceManager } from './utils/ResourceManager.js';
 import { FloatingTextPool, FogParticlePool } from './utils/ObjectPool.js';
-import { Player, Monster } from './entities.js';
+import { Player, Monster, FallenAdventurer } from './entities.js';
 import { MapSystem } from './systems/MapSystem.js';
 import { CombatSystem } from './systems/CombatSystem.js';
 import { RoguelikeSystem } from './systems/RoguelikeSystem.js';
@@ -791,6 +791,101 @@ class Game {
     // 成就系统：检测层开始
     if (this.achievementSystem) {
       this.achievementSystem.check('onLevelStart');
+    }
+    
+    // 异步生成 Ghost（堕落冒险者）
+    // 有概率遇到其他玩家的死亡记录
+    if (!this.isDailyMode && Math.random() < 0.3) { // 30% 概率
+      this.spawnFallenAdventurer(this.player.stats.floor);
+    }
+  }
+  
+  /**
+   * 生成堕落冒险者（Ghost）
+   * @param {number} floor - 当前楼层
+   */
+  async spawnFallenAdventurer(floor) {
+    try {
+      const ghostData = await supabaseService.getFallenAdventurer(floor);
+      if (!ghostData) {
+        return; // 没有可用的死亡记录
+      }
+      
+      // 寻找一个空闲位置放置 Ghost
+      const startX = this.player.x || 1;
+      const startY = this.player.y || 1;
+      const maxAttempts = 50;
+      let placed = false;
+      
+      for (let attempt = 0; attempt < maxAttempts && !placed; attempt++) {
+        // 随机选择一个位置（距离玩家至少3格）
+        const offsetX = Math.floor(Math.random() * 10) - 5;
+        const offsetY = Math.floor(Math.random() * 10) - 5;
+        const x = startX + offsetX;
+        const y = startY + offsetY;
+        
+        // 检查位置是否有效
+        if (x < 1 || x >= this.map.width - 1 || y < 1 || y >= this.map.height - 1) {
+          continue;
+        }
+        
+        // 检查位置是否可通行且空闲
+        if (!this.map.isWalkable(x, y, false)) {
+          continue;
+        }
+        
+        // 检查是否已有怪物或物品
+        if (this.map.getMonsterAt(x, y) || this.map.getItemAt(x, y)) {
+          continue;
+        }
+        
+        // 检查距离玩家是否足够远（至少3格）
+        const distToPlayer = Math.abs(x - startX) + Math.abs(y - startY);
+        if (distToPlayer < 3) {
+          continue;
+        }
+        
+        // 创建 FallenAdventurer 实例
+        const ascensionLevel = this.selectedAscensionLevel ?? 1;
+        const ghost = new FallenAdventurer(
+          ghostData,
+          x,
+          y,
+          this.loader,
+          TILE,
+          floor,
+          ascensionLevel
+        );
+        
+        // 添加到怪物列表
+        this.map.monsters.push(ghost);
+        placed = true;
+        
+        console.log(`[Game] 生成了堕落冒险者: ${ghost.nickname} 在第 ${floor} 层 (${x}, ${y})`);
+      }
+      
+      if (!placed) {
+        console.log(`[Game] 无法找到合适位置放置堕落冒险者（第 ${floor} 层）`);
+      }
+    } catch (error) {
+      console.error('[Game] 生成堕落冒险者失败:', error);
+    }
+  }
+  
+  /**
+   * 上传玩家死亡记录（异步，不阻塞）
+   * @param {Object} deathData - 死亡数据
+   */
+  async uploadPlayerDeath(deathData) {
+    try {
+      const result = await supabaseService.uploadPlayerDeath(deathData);
+      if (result.success) {
+        console.log('[Game] 死亡记录上传成功');
+      } else {
+        console.warn('[Game] 死亡记录上传失败:', result.message);
+      }
+    } catch (error) {
+      console.error('[Game] 上传死亡记录异常:', error);
     }
   }
 
@@ -4175,6 +4270,27 @@ class Game {
       
       // 上传成绩到排行榜（异步，不阻塞界面）
       this.submitScoreToLeaderboard(floor, kills, keys, timeSeconds);
+      
+      // 上传死亡记录（如果是死亡且非每日挑战模式）
+      if (isDeath && !this.isDailyMode) {
+        this.uploadPlayerDeath({
+          nickname: localStorage.getItem('leaderboard_nickname') || '匿名',
+          floor: floor,
+          x: this.player.x || 1,
+          y: this.player.y || 1,
+          level: this.player.stats.lvl || 1,
+          stats: {
+            maxHp: this.player.stats.maxHp || 100,
+            hp: this.player.stats.hp || 0,
+            p_atk: this.player.stats.p_atk || 0,
+            m_atk: this.player.stats.m_atk || 0,
+            p_def: this.player.stats.p_def || 0,
+            m_def: this.player.stats.m_def || 0
+          },
+          equipment: this.player.equipment || {},
+          charId: this.player.charConfig?.id || 'WARRIOR'
+        });
+      }
       
       this.isPaused = true; this.inputStack = [];
       const overlay = document.getElementById('leaderboard-overlay'); if (!overlay) return;

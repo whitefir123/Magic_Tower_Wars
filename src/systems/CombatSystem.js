@@ -1970,6 +1970,69 @@ export class CombatSystem {
           if (consumable) game.map.addConsumableAt(consumable.id, monster.x, monster.y);
         }
         
+        // 检查是否是 FallenAdventurer（Ghost），处理特殊掉落
+        if (monster.type === 'FALLEN_ADVENTURER' || monster.isFallenAdventurer) {
+          const currentPlayerId = localStorage.getItem('leaderboard_user_id');
+          const dropResult = monster.getDrop(currentPlayerId);
+          
+          if (dropResult.isSelf) {
+            // 自己的尸体：显示特殊消息
+            if (game.ui) {
+              game.ui.logMessage('你安息了自己的过往... (获得少量水晶)', 'info');
+            }
+            // 水晶已在 getDrop 中添加
+          } else {
+            // 他人的尸体：给予奖励
+            // 水晶已在 getDrop 中添加
+            
+            // 装备掉落
+            if (dropResult.equipment) {
+              game.map.addEquipAt(dropResult.equipment, monster.x, monster.y);
+              if (game.ui) {
+                const itemName = dropResult.equipment.nameZh || dropResult.equipment.name || '装备';
+                game.ui.logMessage(`获得了 ${itemName}！`, 'gain');
+              }
+            }
+            
+            // 属性掠夺
+            if (dropResult.statBonus) {
+              const { key, value } = dropResult.statBonus;
+              const statNames = {
+                maxHp: '最大生命',
+                hp: '生命',
+                p_atk: '物理攻击',
+                m_atk: '魔法攻击',
+                p_def: '物理防御',
+                m_def: '魔法防御'
+              };
+              const statName = statNames[key] || key;
+              
+              // 应用属性加成
+              if (key === 'maxHp' || key === 'hp') {
+                player.stats.maxHp = (player.stats.maxHp || 100) + value;
+                player.stats.hp = Math.min(player.stats.hp || 100, player.stats.maxHp);
+              } else if (player.stats[key] !== undefined) {
+                player.stats[key] = (player.stats[key] || 0) + value;
+              }
+              
+              // 显示浮动文字
+              if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
+                const bonusText = game.floatingTextPool.create(
+                  monster.visualX,
+                  monster.visualY - 30,
+                  `吸收了 ${monster.nickname || '冒险者'} 的力量！${statName} +${value}`,
+                  '#ffaa00'
+                );
+                game.floatingTexts.push(bonusText);
+              }
+              
+              if (game.ui) {
+                game.ui.logMessage(`吸收了 ${monster.nickname || '冒险者'} 的力量！${statName} +${value}`, 'gain');
+              }
+            }
+          }
+        }
+        
         game.killCount = (game.killCount || 0) + 1;
         if (game.achievementSystem) game.achievementSystem.check('onKill');
         if (game.roguelike && game.roguelike.triggerDraft) {
@@ -1978,9 +2041,11 @@ export class CombatSystem {
         
         game.map.removeMonster(monster);
         
-        // 钥匙掉落判定
-        const keyRandom = rng ? rng.next() : Math.random();
-        if (keyRandom < 0.2) game.map.addItem('ITEM_KEY_BRONZE', monster.x, monster.y);
+        // 钥匙掉落判定（FallenAdventurer 不掉落钥匙）
+        if (monster.type !== 'FALLEN_ADVENTURER' && !monster.isFallenAdventurer) {
+          const keyRandom = rng ? rng.next() : Math.random();
+          if (keyRandom < 0.2) game.map.addItem('ITEM_KEY_BRONZE', monster.x, monster.y);
+        }
         game.ui.updateStats(player);
         player.pendingCombat = null;
         player.isMoving = false;

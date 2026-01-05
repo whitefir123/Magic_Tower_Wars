@@ -961,6 +961,117 @@ class SupabaseService {
       };
     }
   }
+
+  /**
+   * 上传玩家死亡记录
+   * @param {Object} deathData - 死亡数据
+   * @param {string} deathData.nickname - 玩家昵称
+   * @param {number} deathData.floor - 死亡楼层
+   * @param {number} deathData.x - 死亡坐标 X
+   * @param {number} deathData.y - 死亡坐标 Y
+   * @param {number} deathData.level - 玩家等级
+   * @param {Object} deathData.stats - 玩家属性快照
+   * @param {Object} deathData.equipment - 玩家装备快照
+   * @param {string} deathData.charId - 职业 ID
+   * @returns {Object} { success: boolean, message: string }
+   */
+  async uploadPlayerDeath(deathData) {
+    if (!this.isInitialized) {
+      if (!await this.initialize()) {
+        console.warn('[SupabaseService] 服务未初始化，无法上传死亡记录');
+        return { success: false, message: '服务未初始化' };
+      }
+    }
+
+    // 从 localStorage 获取 user_id
+    const userId = localStorage.getItem('leaderboard_user_id');
+    if (!userId) {
+      console.warn('[SupabaseService] 用户未登录，无法上传死亡记录');
+      return { success: false, message: '用户未登录' };
+    }
+
+    try {
+      const { nickname, floor, x, y, level, stats, equipment, charId } = deathData;
+
+      const deathRecord = {
+        user_id: userId,
+        nickname: nickname || '匿名',
+        floor: floor || 1,
+        x: x || 1,
+        y: y || 1,
+        level: level || 1,
+        stats: stats || {},
+        equipment: equipment || {},
+        char_id: charId || null // 存储职业ID
+      };
+
+      const { data, error } = await this.supabase
+        .from('deaths')
+        .insert([deathRecord])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[SupabaseService] 上传死亡记录失败 - 错误详情:', JSON.stringify(error, null, 2));
+        return { 
+          success: false, 
+          message: error.message || '上传失败，请重试'
+        };
+      }
+
+      console.log('[SupabaseService] 死亡记录上传成功');
+      return { success: true, message: '死亡记录已上传' };
+    } catch (error) {
+      console.error('[SupabaseService] uploadPlayerDeath 错误 - 错误详情:', JSON.stringify(error, null, 2));
+      return { 
+        success: false, 
+        message: error.message || '网络错误，请检查连接'
+      };
+    }
+  }
+
+  /**
+   * 获取堕落冒险者（Ghost）
+   * @param {number} floor - 当前楼层
+   * @returns {Object|null} 死亡记录数据，如果获取失败返回 null
+   */
+  async getFallenAdventurer(floor) {
+    if (!this.isInitialized) {
+      if (!await this.initialize()) {
+        console.warn('[SupabaseService] 服务未初始化，无法获取堕落冒险者');
+        return null;
+      }
+    }
+
+    try {
+      // 查询该楼层的死亡记录，限制20条，然后前端随机选择
+      const { data, error } = await this.supabase
+        .from('deaths')
+        .select('*')
+        .eq('floor', floor)
+        .limit(20);
+
+      if (error) {
+        console.error('[SupabaseService] 获取堕落冒险者失败 - 错误详情:', JSON.stringify(error, null, 2));
+        return null;
+      }
+
+      if (!data || data.length === 0) {
+        console.log(`[SupabaseService] 第 ${floor} 层没有死亡记录`);
+        return null;
+      }
+
+      // 随机选择一条记录
+      const randomIndex = Math.floor(Math.random() * data.length);
+      const selectedRecord = data[randomIndex];
+
+      console.log(`[SupabaseService] 获取到堕落冒险者: ${selectedRecord.nickname} (第 ${floor} 层)`);
+      return selectedRecord;
+    } catch (error) {
+      console.error('[SupabaseService] getFallenAdventurer 错误 - 错误详情:', JSON.stringify(error, null, 2));
+      return null;
+    }
+  }
 }
 
 // 导出单例

@@ -1,5 +1,5 @@
 // entities.js
-import { TILE_SIZE, MONSTER_STATS, EQUIPMENT_DB, COMBAT_CONFIG, STATUS_TYPES, ELITE_AFFIXES, ELITE_SPAWN_CONFIG, ASSETS, getAscensionLevel, FATIGUE_CONFIG, getItemDefinition } from './constants.js';
+import { TILE_SIZE, MONSTER_STATS, EQUIPMENT_DB, COMBAT_CONFIG, STATUS_TYPES, ELITE_AFFIXES, ELITE_SPAWN_CONFIG, ASSETS, getAscensionLevel, FATIGUE_CONFIG, getItemDefinition, CHARACTERS } from './constants.js';
 import { createStandardizedItem } from './data/items.js';
 import { getSetConfig } from './data/sets.js';
 import { Sprite, FloatingText } from './utils.js';
@@ -2242,5 +2242,175 @@ export class Player extends Entity {
    */
   getRelics() {
     return Array.from(this.relics.values());
+  }
+}
+
+/**
+ * 堕落冒险者（Ghost）- 继承自 Monster
+ * 使用已死亡玩家的数据生成，作为特殊怪物出现
+ */
+export class FallenAdventurer extends Monster {
+  constructor(ghostData, x, y, loader, TILE, floor = 1, ascensionLevel = 1) {
+    // 使用 'FALLEN_ADVENTURER' 作为类型，但需要自定义属性
+    super('SLIME', x, y, loader, 1, TILE, floor, ascensionLevel); // 使用 SLIME 作为基础类型，后续会覆盖属性
+    
+    this.type = 'FALLEN_ADVENTURER';
+    this.ghostData = ghostData;
+    this.originalStats = JSON.parse(JSON.stringify(ghostData.stats || {}));
+    this.originalUserId = ghostData.user_id || null;
+    this.originalCharId = ghostData.char_id || 'WARRIOR';
+    this.nickname = ghostData.nickname || '未知冒险者';
+    
+    // 设置名字
+    this.displayName = `堕落的 ${this.nickname}`;
+    
+    // 使用玩家的职业贴图（PLAYER assetKey）
+    // 所有职业都使用 PLAYER 贴图，通过 animationType 区分
+    this.sprite = new Sprite({ 
+      assetKey: 'PLAYER', 
+      loader, 
+      destHeight: 56, 
+      animationType: 'player' 
+    });
+    
+    // 数值平衡：基于原始属性
+    const originalStats = this.originalStats;
+    const originalMaxHp = originalStats.maxHp || originalStats.hp || 100;
+    const originalPAtk = originalStats.p_atk || 0;
+    const originalMAtk = originalStats.m_atk || 0;
+    const originalDef = originalStats.p_def || originalStats.m_def || 0;
+    
+    // 重新计算属性（基于原始属性，应用平衡系数）
+    this.stats.hp = Math.floor(originalMaxHp * 3); // HP = 原始 * 3
+    this.stats.maxHp = this.stats.hp;
+    
+    // 攻击力 = 原始 * 0.8（削弱）
+    this.stats.p_atk = Math.floor(originalPAtk * 0.8);
+    this.stats.m_atk = Math.floor(originalMAtk * 0.8);
+    
+    // 防御保持不变
+    this.stats.p_def = originalStats.p_def || 0;
+    this.stats.m_def = originalStats.m_def || 0;
+    
+    // 设置基础属性（用于掉落计算）
+    this.stats.goldYield = 0; // Ghost 不掉落金币
+    this.stats.xpYield = 0; // Ghost 不掉落经验
+    
+    // 设置移动速度和攻击速度（使用基础值）
+    this.moveSpeed = 0.12;
+    this.base_as = 1.0;
+    this.baseAttackCooldown = 1000;
+    this.lastAttackTime = 0;
+    
+    // 战斗状态
+    this.inCombat = false;
+    this.lastDamageTime = 0;
+    this.combatTimeout = 8000;
+    this.battleTimer = 0;
+    this.enrageStacks = 0;
+    
+    // 标记为特殊类型
+    this.isFallenAdventurer = true;
+  }
+  
+  /**
+   * 获取掉落物品（重写 Monster 的掉落逻辑）
+   * @param {string} currentPlayerId - 当前玩家ID（从 localStorage 获取）
+   * @returns {Object} 掉落数据 { isSelf: boolean, crystal: number, equipment: Object|null, statBonus: Object|null }
+   */
+  getDrop(currentPlayerId) {
+    const game = window.game;
+    
+    // 判断是否是自己的尸体
+    const isSelf = this.originalUserId === currentPlayerId;
+    
+    if (isSelf) {
+      // 自己的尸体：掉落少量灵魂水晶
+      const crystalAmount = 2 + Math.floor(Math.random() * 2); // 2-3个
+      
+      if (game && game.metaSaveSystem) {
+        game.metaSaveSystem.addSoulCrystals(crystalAmount);
+      }
+      
+      return {
+        isSelf: true,
+        crystal: crystalAmount
+      };
+    } else {
+      // 他人的尸体：正常掉落
+      const crystalAmount = 5 + Math.floor(Math.random() * 5); // 5-9个
+      
+      if (game && game.metaSaveSystem) {
+        game.metaSaveSystem.addSoulCrystals(crystalAmount);
+      }
+      
+      // 装备掉落：30% 概率随机选取一件身上的装备
+      let droppedEquipment = null;
+      const equipment = this.ghostData.equipment || {};
+      const equipmentSlots = ['WEAPON', 'ARMOR', 'HELM', 'BOOTS', 'RING', 'AMULET', 'ACCESSORY'];
+      const equippedItems = equipmentSlots.filter(slot => equipment[slot] !== null && equipment[slot] !== undefined);
+      
+      if (equippedItems.length > 0 && Math.random() < 0.3) {
+        const randomSlot = equippedItems[Math.floor(Math.random() * equippedItems.length)];
+        const itemData = equipment[randomSlot];
+        
+        if (itemData) {
+          // 创建新的装备实例，清除 uid 生成新的
+          if (typeof itemData === 'object' && itemData.itemId) {
+            // 使用 createStandardizedItem 创建新实例
+            const newItem = createStandardizedItem(itemData.itemId, {
+              level: itemData.meta?.level || itemData.level || 1,
+              affixes: itemData.meta?.affixes || itemData.affixes || [],
+              uniqueEffect: itemData.meta?.uniqueEffect || itemData.uniqueEffect || null,
+              setId: itemData.meta?.setId || itemData.setId || null
+            });
+            
+            if (newItem) {
+              droppedEquipment = newItem;
+            }
+          } else if (typeof itemData === 'string') {
+            // 如果是字符串ID，直接创建
+            const newItem = createStandardizedItem(itemData, {
+              level: 1,
+              affixes: [],
+              uniqueEffect: null,
+              setId: null
+            });
+            
+            if (newItem) {
+              droppedEquipment = newItem;
+            }
+          }
+        }
+      }
+      
+      // 属性掠夺：随机选取一项原始属性，计算其 7% 的值
+      const statKeys = ['maxHp', 'p_atk', 'm_atk', 'p_def', 'm_def'];
+      const availableStats = statKeys.filter(key => {
+        const value = this.originalStats[key] || this.originalStats[key === 'maxHp' ? 'hp' : key];
+        return value && value > 0;
+      });
+      
+      let statBonus = null;
+      if (availableStats.length > 0) {
+        const randomStatKey = availableStats[Math.floor(Math.random() * availableStats.length)];
+        const originalValue = this.originalStats[randomStatKey] || this.originalStats[randomStatKey === 'maxHp' ? 'hp' : randomStatKey] || 0;
+        const bonusValue = Math.floor(originalValue * 0.07); // 7%
+        
+        if (bonusValue > 0) {
+          statBonus = {
+            key: randomStatKey,
+            value: bonusValue
+          };
+        }
+      }
+      
+      return {
+        isSelf: false,
+        crystal: crystalAmount,
+        equipment: droppedEquipment,
+        statBonus: statBonus
+      };
+    }
   }
 }
