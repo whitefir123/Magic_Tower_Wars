@@ -5,7 +5,7 @@ export const MONSTER_STATS = {
   SLIME: { 
     name: "Slime", 
     cnName: "史莱姆",
-    hp: 30, maxHp: 30, p_atk: 8, m_atk: 0, p_def: 2, m_def: 0, 
+    hp: 120, maxHp: 120, p_atk: 6, m_atk: 0, p_def: 0, m_def: 0, 
     xp: 10, gold: 5, rageYield: 2, 
     minSpawnDistance: 0,
     desc: "Gooey blob. Physical poke.",
@@ -19,7 +19,7 @@ export const MONSTER_STATS = {
   BAT: { 
     name: "Bat", 
     cnName: "蝙蝠",
-    hp: 28, maxHp: 28, p_atk: 6, m_atk: 14, p_def: 1, m_def: 6, 
+    hp: 80, maxHp: 80, p_atk: 5, m_atk: 8, p_def: 0, m_def: 0, 
     xp: 15, gold: 8, rageYield: 3, 
     minSpawnDistance: 15,
     desc: "Skittish and magical screech.",
@@ -33,7 +33,7 @@ export const MONSTER_STATS = {
   SKELETON: { 
     name: "Skeleton", 
     cnName: "骷髅战士",
-    hp: 55, maxHp: 55, p_atk: 16, m_atk: 0, p_def: 6, m_def: 2, 
+    hp: 160, maxHp: 160, p_atk: 9, m_atk: 0, p_def: 4, m_def: 2, 
     xp: 20, gold: 12, rageYield: 4, 
     minSpawnDistance: 15,
     desc: "Bone warrior, sturdy against blades.",
@@ -47,7 +47,7 @@ export const MONSTER_STATS = {
   VOID: { 
     name: "Void Crystal", 
     cnName: "虚空晶体",
-    hp: 35, maxHp: 35, p_atk: 6, m_atk: 18, p_def: 2, m_def: 9, 
+    hp: 100, maxHp: 100, p_atk: 0, m_atk: 12, p_def: 1, m_def: 8, 
     xp: 25, gold: 15, rageYield: 5, 
     minSpawnDistance: 20,
     desc: "Glass cannon of arcane force.",
@@ -61,7 +61,7 @@ export const MONSTER_STATS = {
   SWAMP: { 
     name: "Swamp Dweller", 
     cnName: "沼泽居民",
-    hp: 70, maxHp: 70, p_atk: 22, m_atk: 10, p_def: 8, m_def: 5, 
+    hp: 240, maxHp: 240, p_atk: 14, m_atk: 10, p_def: 5, m_def: 3, 
     xp: 30, gold: 20, rageYield: 6, 
     minSpawnDistance: 30,
     desc: "Bog lurker, resilient and steady.",
@@ -75,7 +75,7 @@ export const MONSTER_STATS = {
   CLOCKWORK: { 
     name: "Clockwork Knight", 
     cnName: "发条骑士",
-    hp: 85, maxHp: 85, p_atk: 28, m_atk: 6, p_def: 16, m_def: 6, 
+    hp: 350, maxHp: 350, p_atk: 18, m_atk: 6, p_def: 12, m_def: 8, 
     xp: 40, gold: 28, rageYield: 7, 
     minSpawnDistance: 30,
     desc: "Heavily armored automaton.",
@@ -89,7 +89,7 @@ export const MONSTER_STATS = {
   REAPER: { 
     name: "Crimson Reaper", 
     cnName: "死神收割者",
-    hp: 55, maxHp: 55, p_atk: 8, m_atk: 42, p_def: 3, m_def: 10, 
+    hp: 150, maxHp: 150, p_atk: 8, m_atk: 22, p_def: 3, m_def: 8, 
     xp: 45, gold: 30, rageYield: 8, 
     minSpawnDistance: 30,
     desc: "Deadly arcane scythe-wielder.",
@@ -103,7 +103,7 @@ export const MONSTER_STATS = {
   GOLEM: { 
     name: "Magma Golem", 
     cnName: "岩浆巨人",
-    hp: 150, maxHp: 150, p_atk: 36, m_atk: 0, p_def: 26, m_def: 8, 
+    hp: 600, maxHp: 600, p_atk: 25, m_atk: 0, p_def: 15, m_def: 10, 
     xp: 50, gold: 40, rageYield: 10, 
     minSpawnDistance: 30,
     desc: "Molten colossus, shrugs off blades.",
@@ -117,7 +117,7 @@ export const MONSTER_STATS = {
   GHOST: {
     name: "Shadow Ghost",
     cnName: "幽灵",
-    hp: 40, maxHp: 40, p_atk: 12, m_atk: 18, p_def: 2, m_def: 8,
+    hp: 110, maxHp: 110, p_atk: 0, m_atk: 14, p_def: 2, m_def: 5,
     xp: 30, gold: 15, rageYield: 5,
     minSpawnDistance: 20,
     desc: "Invisible wraith, strikes from shadows.",
@@ -131,7 +131,7 @@ export const MONSTER_STATS = {
   BOSS: { 
     name: "Dark Lord", 
     cnName: "黑暗领主",
-    hp: 260, maxHp: 260, p_atk: 32, m_atk: 32, p_def: 16, m_def: 16, 
+    hp: 3000, maxHp: 3000, p_atk: 22, m_atk: 22, p_def: 10, m_def: 10, 
     xp: 500, gold: 200, rageYield: 50, 
     minSpawnDistance: 50,
     desc: "Floor Master.",
