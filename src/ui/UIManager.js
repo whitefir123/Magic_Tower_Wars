@@ -8,6 +8,7 @@ import { InventoryUI } from './InventoryUI.js';
 import { BestiaryUI } from './BestiaryUI.js';
 import { ShopUI } from './ShopUI.js';
 import { GamblerUI } from './GamblerUI.js';
+import { PatchNotesUI } from './PatchNotesUI.js';
 import { globalTooltipManager } from '../utils/TooltipManager.js';
 import { DailyChallengeSystem } from '../systems/DailyChallengeSystem.js';
 import { supabaseService } from '../services/SupabaseService.js';
@@ -78,11 +79,14 @@ export class UIManager {
       enableAnimations: true
     });
     
+    this.patchNotesUI = new PatchNotesUI();
+    
     // 注册弹窗到 OverlayManager
     this.overlayManager.register('inventory', this.inventoryUI);
     this.overlayManager.register('bestiary', this.bestiaryUI);
     this.overlayManager.register('shop', this.shopUI);
     this.overlayManager.register('gambler', this.gamblerUI);
+    this.overlayManager.register('patchnotes', this.patchNotesUI);
     
     console.log('✓ UIManager 已初始化（使用独立组件架构）');
   }

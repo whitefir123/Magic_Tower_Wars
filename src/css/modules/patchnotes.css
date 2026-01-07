@@ -1,0 +1,405 @@
+/* ========================================================================
+   PATCH NOTES MODULE - 更新公告系统样式
+   ======================================================================== */
+
+/* 入口按钮 - 主菜单右上角 */
+.patch-notes-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  background-image: url('https://i.postimg.cc/rz6Zd70L/gonggaoanniu1.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: transparent;
+  border: none;
+  color: transparent;
+  font-size: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+  z-index: 10001;
+  user-select: none;
+  padding: 0;
+}
+
+.patch-notes-btn:hover {
+  transform: scale(1.1);
+}
+
+.patch-notes-btn:active {
+  transform: scale(0.95);
+}
+
+/* 红点通知 */
+.notification-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 12px;
+  height: 12px;
+  background: #ff0000;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+  z-index: 1;
+  box-shadow: 0 0 4px rgba(255, 0, 0, 0.8);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.2);
+  }
+}
+
+/* 弹窗 Overlay */
+.patch-notes-overlay {
+  /* 继承 modal-overlay 的基础样式 */
+  z-index: 20001 !important; /* 确保在主菜单之上 */
+}
+
+.patch-notes-content {
+  width: 600px;
+  height: 800px;
+  max-width: 90vw;
+  max-height: 85vh;
+  background-image: url('https://i.postimg.cc/pr0XRYpw/gonggao1.png') !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 100px 60px 80px 60px !important;
+  box-shadow: none !important;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 版本块容器 */
+.patch-version-block {
+  margin-bottom: 25px;
+  padding: 15px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(62, 39, 35, 0.3);
+  transition: all 0.3s ease;
+}
+
+.patch-version-block.latest {
+  border-bottom: 2px solid rgba(62, 39, 35, 0.5);
+}
+
+.patch-version-block:not(.latest):hover {
+  border-bottom-color: rgba(62, 39, 35, 0.4);
+}
+
+.patch-version-block:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+/* 版本头部（只显示"最新"徽章） */
+.patch-version-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 0;
+  border-bottom: none;
+  height: 39px;
+}
+
+.patch-version-number {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #3e2723;
+  font-family: var(--font-header, 'Arial', sans-serif);
+  text-shadow: none;
+}
+
+.patch-version-block.latest .patch-version-number {
+  font-size: 1.4rem;
+  color: #5d4037;
+  font-weight: 900;
+}
+
+.patch-version-date {
+  display: none; /* 日期已移到标题中 */
+}
+
+.patch-version-badge {
+  margin-left: auto;
+  padding: 4px 12px;
+  background: rgba(62, 39, 35, 0.8);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(62, 39, 35, 0.5);
+}
+
+/* 版本标题（包含版本号、标题和日期） */
+.patch-version-title {
+  font-size: 1.2rem;
+  color: #3e2723;
+  font-family: var(--font-header, 'Arial', sans-serif);
+  margin-bottom: 15px;
+  font-weight: 700;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.patch-version-block.latest .patch-version-title {
+  font-size: 1.4rem;
+  color: #5d4037;
+  font-weight: 900;
+}
+
+/* 版本号在标题中的样式 */
+.patch-version-title .patch-version-number {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+
+.patch-version-title-date {
+  font-size: 0.9rem;
+  color: #5d4037;
+  font-family: var(--font-body, 'Arial', sans-serif);
+  font-weight: normal;
+}
+
+/* 条目列表 */
+.patch-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.patch-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding: 4px 0;
+  line-height: 1.3;
+  font-family: var(--font-body, 'Arial', sans-serif);
+  color: #3e2723;
+}
+
+.patch-item:last-child {
+  margin-bottom: 0;
+}
+
+/* 标签样式 */
+.patch-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* 不同类型标签的颜色 */
+.patch-tag-new {
+  background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+  color: #fff;
+  border: 1px solid #2e7d32;
+}
+
+.patch-tag-fix {
+  background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
+  color: #fff;
+  border: 1px solid #c62828;
+}
+
+.patch-tag-balance {
+  background: linear-gradient(135deg, #2196f3 0%, #42a5f5 100%);
+  color: #fff;
+  border: 1px solid #1565c0;
+}
+
+.patch-tag-info {
+  background: linear-gradient(135deg, #757575 0%, #9e9e9e 100%);
+  color: #fff;
+  border: 1px solid #424242;
+}
+
+/* 内容文本 */
+.patch-content {
+  flex: 1;
+  color: #3e2723;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  font-weight: bold;
+}
+
+/* 关闭按钮 - 参考天赋星图的关闭按钮 */
+.patch-notes-close-btn {
+  width: 50px;
+  height: 50px;
+  background: url('https://i.postimg.cc/Hkg88mzY/chacha.png') no-repeat center/contain;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 30;
+  position: absolute;
+  top: 20px;
+  right: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0;
+  text-indent: -9999px;
+  overflow: hidden;
+  padding: 0;
+}
+
+.patch-notes-close-btn:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+.patch-notes-close-btn:active {
+  transform: scale(0.95);
+}
+
+/* Footer 关闭按钮 */
+.patch-notes-close-action {
+  padding: 10px 30px;
+  background: rgba(62, 39, 35, 0.8);
+  border: 2px solid #3e2723;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: var(--font-body, 'Arial', sans-serif);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.patch-notes-close-action:hover {
+  background: rgba(62, 39, 35, 1);
+  border-color: #5d4037;
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(62, 39, 35, 0.4);
+}
+
+.patch-notes-close-action:active {
+  transform: translateY(0);
+}
+
+/* Modal Body 滚动区域 */
+#patch-notes-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  width: 345px;
+  margin: 26px 69px;
+}
+
+/* 隐藏滚动条但保持滚动功能 */
+#patch-notes-body {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+#patch-notes-body::-webkit-scrollbar,
+.patch-notes-body::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+  width: 0;
+}
+
+/* Modal Header 样式调整 */
+.patch-notes-header {
+  margin-bottom: 15px !important;
+  padding-bottom: 10px !important;
+  border-bottom: 1px solid rgba(62, 39, 35, 0.2) !important;
+  margin-top: -50px !important; /* 往上移动 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.patch-notes-header h3 {
+  color: #d4a574; /* 木头的亮原木色 */
+  font-weight: 900;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  margin: 0 !important;
+  text-align: center;
+  width: 100%;
+}
+
+/* Modal Footer 样式调整 */
+.patch-notes-footer {
+  margin-top: 20px !important;
+  padding-top: 15px !important;
+  border-top: 1px solid rgba(62, 39, 35, 0.2) !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .patch-notes-btn {
+    width: 45px;
+    height: 45px;
+    top: 15px;
+    right: 15px;
+  }
+
+  .patch-notes-content {
+    width: 95%;
+    height: auto;
+    max-height: 90vh;
+    padding: 80px 40px 60px 40px;
+  }
+
+  .patch-version-number {
+    font-size: 1.3rem;
+  }
+
+  .patch-version-block.latest .patch-version-number {
+    font-size: 1.5rem;
+  }
+
+  .patch-version-title {
+    font-size: 1.1rem;
+  }
+
+  .patch-version-block.latest .patch-version-title {
+    font-size: 1.2rem;
+  }
+}
+

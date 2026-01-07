@@ -506,6 +506,14 @@ class Game {
           loadingOverlay.style.pointerEvents = 'none';
           console.log('[Init] 安全阀：强制移除加载层阻挡');
         }
+        
+        // 显示主菜单（确保按钮已创建）
+        this.showMainMenu(false);
+        
+        // 检查并自动弹出更新公告（如果有新版本）
+        if (this.ui && this.ui.patchNotesUI) {
+          this.ui.patchNotesUI.checkAndShow();
+        }
       } else {
         console.log('[Init] 游戏页面检测到，跳过主菜单显示');
         
@@ -3398,6 +3406,11 @@ class Game {
         mainMenu.style.display = 'flex';
         mainMenu.style.zIndex = '10000';
         mainMenu.style.pointerEvents = 'auto';
+        
+        // 初始化更新公告按钮
+        if (this.ui && this.ui.patchNotesUI) {
+          this.ui.patchNotesUI.initButton();
+        }
       }
     }
     
