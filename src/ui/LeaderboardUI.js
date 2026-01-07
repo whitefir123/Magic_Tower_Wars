@@ -31,120 +31,124 @@ export class LeaderboardUI {
             <button class="leaderboard-close-btn" onclick="game.closeLeaderboard()" aria-label="关闭"></button>
           </div>
           
-          <div class="leaderboard-tabs">
-            <button class="tab-btn active" data-tab="global">全局排行榜</button>
-            <button class="tab-btn" data-tab="seasonal">当前赛季</button>
-            <button class="tab-btn" data-tab="daily">每日挑战</button>
-          </div>
-          
-          <div id="season-info" class="season-info hidden">
-            <div class="season-name" id="season-name">-</div>
-            <div class="season-countdown" id="season-countdown">-</div>
-          </div>
-          
-          <div id="leaderboard-global-content">
-            <div class="leaderboard-filters">
-              <button class="filter-btn active" data-difficulty="">全部</button>
-              <button class="filter-btn" data-difficulty="normal">普通</button>
-              <button class="filter-btn" data-difficulty="hard">困难</button>
-              <button class="filter-btn" data-difficulty="nightmare">噩梦</button>
+          <div class="leaderboard-body-container">
+            <div class="leaderboard-sidebar">
+              <div class="leaderboard-category active" data-tab="global">全局排行榜</div>
+              <div class="leaderboard-category" data-tab="seasonal">当前赛季</div>
+              <div class="leaderboard-category" data-tab="daily">每日挑战</div>
             </div>
             
-            <div class="leaderboard-table-wrapper">
-              <table class="leaderboard-table">
-                <thead>
-                  <tr>
-                    <th>排名</th>
-                    <th>昵称</th>
-                    <th>分数</th>
-                    <th>层数</th>
-                    <th>击杀</th>
-                    <th>伤害</th>
-                    <th>时间</th>
-                    <th>难度</th>
-                    <th>角色</th>
-                  </tr>
-                </thead>
-                <tbody id="leaderboard-tbody">
-                  <tr>
-                    <td colspan="9" class="loading-row">加载中...</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          
-          <div id="leaderboard-seasonal-content" class="hidden">
-            <div class="leaderboard-filters">
-              <button class="filter-btn active" data-difficulty="">全部</button>
-              <button class="filter-btn" data-difficulty="normal">普通</button>
-              <button class="filter-btn" data-difficulty="hard">困难</button>
-              <button class="filter-btn" data-difficulty="nightmare">噩梦</button>
-            </div>
-            
-            <div class="leaderboard-table-wrapper">
-              <table class="leaderboard-table">
-                <thead>
-                  <tr>
-                    <th>排名</th>
-                    <th>昵称</th>
-                    <th>分数</th>
-                    <th>层数</th>
-                    <th>击杀</th>
-                    <th>伤害</th>
-                    <th>时间</th>
-                    <th>难度</th>
-                    <th>角色</th>
-                  </tr>
-                </thead>
-                <tbody id="seasonal-leaderboard-tbody">
-                  <tr>
-                    <td colspan="9" class="loading-row">加载中...</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          
-          <div id="leaderboard-daily-content" class="hidden">
-            <div class="daily-leaderboard-header">
-              <h3 id="daily-leaderboard-title">每日挑战排行榜</h3>
-            </div>
-            
-            <div class="leaderboard-table-wrapper">
-              <table class="leaderboard-table">
-                <thead>
-                  <tr>
-                    <th>排名</th>
-                    <th>昵称</th>
-                    <th>分数</th>
-                    <th>层数</th>
-                    <th>击杀</th>
-                    <th>伤害</th>
-                    <th>时间</th>
-                  </tr>
-                </thead>
-                <tbody id="daily-leaderboard-tbody">
-                  <tr>
-                    <td colspan="7" class="loading-row">加载中...</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div class="leaderboard-main-panel">
+              <div id="season-info" class="season-info hidden">
+                <div class="season-name" id="season-name">-</div>
+                <div class="season-countdown" id="season-countdown">-</div>
+              </div>
+              
+              <div id="leaderboard-global-content">
+                <div class="leaderboard-filters">
+                  <button class="filter-btn active" data-difficulty="">全部</button>
+                  <button class="filter-btn" data-difficulty="normal">普通</button>
+                  <button class="filter-btn" data-difficulty="hard">困难</button>
+                  <button class="filter-btn" data-difficulty="nightmare">噩梦</button>
+                </div>
+                
+                <div class="leaderboard-table-wrapper">
+                  <table class="leaderboard-table">
+                    <thead>
+                      <tr>
+                        <th>排名</th>
+                        <th>昵称</th>
+                        <th>分数</th>
+                        <th>层数</th>
+                        <th>击杀</th>
+                        <th>伤害</th>
+                        <th>时间</th>
+                        <th>难度</th>
+                        <th>角色</th>
+                      </tr>
+                    </thead>
+                    <tbody id="leaderboard-tbody">
+                      <tr>
+                        <td colspan="9" class="loading-row">加载中...</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              
+              <div id="leaderboard-seasonal-content" class="hidden">
+                <div class="leaderboard-filters">
+                  <button class="filter-btn active" data-difficulty="">全部</button>
+                  <button class="filter-btn" data-difficulty="normal">普通</button>
+                  <button class="filter-btn" data-difficulty="hard">困难</button>
+                  <button class="filter-btn" data-difficulty="nightmare">噩梦</button>
+                </div>
+                
+                <div class="leaderboard-table-wrapper">
+                  <table class="leaderboard-table">
+                    <thead>
+                      <tr>
+                        <th>排名</th>
+                        <th>昵称</th>
+                        <th>分数</th>
+                        <th>层数</th>
+                        <th>击杀</th>
+                        <th>伤害</th>
+                        <th>时间</th>
+                        <th>难度</th>
+                        <th>角色</th>
+                      </tr>
+                    </thead>
+                    <tbody id="seasonal-leaderboard-tbody">
+                      <tr>
+                        <td colspan="9" class="loading-row">加载中...</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              
+              <div id="leaderboard-daily-content" class="hidden">
+                <div class="daily-leaderboard-header">
+                  <h3 id="daily-leaderboard-title">每日挑战排行榜</h3>
+                </div>
+                
+                <div class="leaderboard-table-wrapper">
+                  <table class="leaderboard-table">
+                    <thead>
+                      <tr>
+                        <th>排名</th>
+                        <th>昵称</th>
+                        <th>分数</th>
+                        <th>层数</th>
+                        <th>击杀</th>
+                        <th>伤害</th>
+                        <th>时间</th>
+                      </tr>
+                    </thead>
+                    <tbody id="daily-leaderboard-tbody">
+                      <tr>
+                        <td colspan="7" class="loading-row">加载中...</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       `;
       document.body.appendChild(container);
 
-      // 绑定标签页切换按钮事件
-      const tabBtns = container.querySelectorAll('.tab-btn');
-      tabBtns.forEach(btn => {
+      // 绑定类别切换按钮事件（使用新的 .leaderboard-category 选择器）
+      const categoryBtns = container.querySelectorAll('.leaderboard-category');
+      categoryBtns.forEach(btn => {
         btn.addEventListener('click', () => {
           const tab = btn.getAttribute('data-tab');
           this.switchTab(tab);
           
           // 更新按钮状态
-          tabBtns.forEach(b => b.classList.remove('active'));
+          categoryBtns.forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
         });
       });

@@ -135,6 +135,158 @@
   z-index: 100; /* 可选，防止被遮挡 */
 }
 
+/* ======================================================================== */
+/* 排行榜分栏布局 */
+/* ======================================================================== */
+.leaderboard-body-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* Left Sidebar - Categories */
+.leaderboard-sidebar {
+  width: 200px;
+  min-width: 200px;
+  background: transparent;
+  border-right: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  overflow-y: auto;
+  padding: 10px 0;
+  position: relative;
+  z-index: 100;
+}
+
+.leaderboard-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.leaderboard-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.leaderboard-sidebar::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+
+.leaderboard-category {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0;
+  width: 134px;
+  max-width: 134px;
+  height: 72px;
+  margin: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  border-left: none;
+  color: #8c8273;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  background: url('https://i.postimg.cc/HWKMcMBL/anniu3.png') no-repeat center center;
+  background-size: contain;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.leaderboard-category:hover {
+  background: url('https://i.postimg.cc/HWKMcMBL/anniu3.png') no-repeat center center;
+  background-size: contain;
+  filter: brightness(1.15);
+  color: var(--accent-gold);
+}
+
+.leaderboard-category.active {
+  background: url('https://i.postimg.cc/HWKMcMBL/anniu3.png') no-repeat center center;
+  background-size: contain;
+  filter: brightness(1.15);
+  border-left: none;
+  color: var(--accent-gold);
+  font-weight: 600;
+  position: relative;
+  z-index: 100;
+}
+
+/* Right Panel - Main Content */
+.leaderboard-main-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 30px;
+  background: transparent;
+  position: relative;
+  z-index: 1;
+}
+
+.leaderboard-main-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.leaderboard-main-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.leaderboard-main-panel::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.leaderboard-main-panel::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+/* Season Info Styles */
+.season-info {
+  padding: 15px 0;
+  margin-bottom: 15px;
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+  position: relative;
+  z-index: 1;
+}
+
+.season-name {
+  color: var(--accent-gold);
+  font-family: var(--font-header);
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
+.season-countdown {
+  color: var(--text-dim);
+  font-family: var(--font-body);
+  font-size: 16px;
+}
+
+/* Daily Leaderboard Header */
+.daily-leaderboard-header {
+  padding: 15px 0;
+  margin-bottom: 15px;
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+  position: relative;
+  z-index: 1;
+}
+
+.daily-leaderboard-header h3 {
+  margin: 0;
+  color: var(--accent-gold);
+  font-family: var(--font-header);
+  font-size: 24px;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
 div.leaderboard-content {
   height: 608px;
 }
@@ -194,11 +346,11 @@ button.leaderboard-close-btn {
 div.leaderboard-filters {
   display: flex;
   gap: 10px;
-  padding: 12px 30px;
+  padding: 12px 0;
   background: transparent;
   position: relative;
   z-index: 100; /* 可选，防止被遮挡 */
-  transform: translate(312px, 461px) !important;
+  margin-bottom: 10px;
 }
 
 .filter-btn {
@@ -234,7 +386,7 @@ button.filter-btn.active {
 .leaderboard-table-wrapper {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 30px;
+  padding: 0;
   position: relative;
   z-index: 1;
 }
@@ -244,9 +396,8 @@ table.leaderboard-table {
   border-collapse: collapse;
   font-family: var(--font-body);
   background: transparent;
-  transform: translate(11px, -29px) scale(0.755319, 0.85567) !important;
-  position: relative; /* 确保 z-index 生效 */
-  z-index: 100; /* 可选，防止被遮挡 */
+  position: relative;
+  z-index: 100;
 }
 
 .leaderboard-table thead {
