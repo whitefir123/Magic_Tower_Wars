@@ -981,6 +981,19 @@ export class UIManager {
           lightingCheckbox.checked = true; // 默认开启
         }
       }
+      
+      // ✅ 恢复无限层数挑战设置
+      const infiniteCheckbox = document.getElementById('chk-infinite');
+      if (infiniteCheckbox) {
+        infiniteCheckbox.disabled = false;
+        // 从 sessionStorage 读取用户偏好，如果没有则默认为 false
+        const infiniteModePref = sessionStorage.getItem('infiniteMode');
+        if (infiniteModePref !== null) {
+          infiniteCheckbox.checked = infiniteModePref === 'true';
+        } else {
+          infiniteCheckbox.checked = false; // 默认关闭
+        }
+      }
 
       // ✅ FIX: 恢复普通模式的难度显示（如果之前被修改过）
       if (window.game && window.game.setAscensionLevel) {

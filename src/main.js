@@ -1,5 +1,5 @@
 // main.js
-import { TILE_SIZE, MAP_WIDTH, MAP_HEIGHT, TILE, EQUIPMENT_DB, BUFF_POOL, DRAFT_TIER_CONFIG, OBJ_TRAP, OBJ_SHRINE_HEAL, OBJ_SHRINE_POWER, LOOT_TABLE_DESTRUCTIBLE, CHARACTERS, DIFFICULTY_LEVELS, ASSETS, CRITICAL_ASSETS, GAMEPLAY_ASSETS, RARITY, LOOT_TABLE, CONSUMABLE_IDS, getRandomConsumable, getAscensionLevel, getAscensionLevelTooltip, getAscensionLevelNewEffect, getDifficultyString, getItemDefinition, RUNE_RARITY_MULTIPLIERS } from './constants.js';
+import { TILE_SIZE, MAP_WIDTH, MAP_HEIGHT, TILE, EQUIPMENT_DB, BUFF_POOL, DRAFT_TIER_CONFIG, OBJ_TRAP, OBJ_SHRINE_HEAL, OBJ_SHRINE_POWER, LOOT_TABLE_DESTRUCTIBLE, CHARACTERS, DIFFICULTY_LEVELS, ASSETS, CRITICAL_ASSETS, GAMEPLAY_ASSETS, RARITY, LOOT_TABLE, CONSUMABLE_IDS, getRandomConsumable, getAscensionLevel, getAscensionLevelTooltip, getAscensionLevelNewEffect, getDifficultyString, getItemDefinition, RUNE_RARITY_MULTIPLIERS, getEquipmentDropForFloor } from './constants.js';
 import { Camera, FloatingText } from './utils.js';
 import { ResourceManager } from './utils/ResourceManager.js';
 import { FloatingTextPool, FogParticlePool } from './utils/ObjectPool.js';
@@ -112,7 +112,8 @@ class Game {
     // Game Configuration (stores settings like fog of war and dynamic lighting)
     this.config = {
       enableFog: true,
-      enableLighting: true
+      enableLighting: true,
+      infiniteMode: false // 无限层数挑战模式
     };
     this.gameStarted = false;
     
@@ -1295,24 +1296,117 @@ class Game {
       if (res === 'WIN' && pendingCombat) {
         // FIX: Boss击杀胜利结算
         if (pendingCombat.type === 'BOSS') {
-          // Boss被击杀，触发胜利
-          if (this.audio) {
-            // 播放胜利音效（可选）
-            this.audio.playCoins({ volume: 0.8 }); // 使用金币音效作为临时胜利音效
-          }
+          const isInfinite = this.config.infiniteMode;
+          const currentFloor = this.player.stats.floor;
           
-          // 显示胜利消息
-          if (this.ui) {
-            this.ui.logMessage('恭喜！你击败了黑暗领主！', 'gain');
+          // 场景 A: 无限模式每10层 Boss 击杀 (保持现有逻辑)
+          if (isInfinite) {
+            // === 无限模式逻辑 ===
+            // 1. 播放胜利音效
+            if (this.audio) {
+              this.audio.playCoins({ volume: 1.0 });
+            }
+            
+            // 2. 给予丰厚奖励
+            const crystalReward = 50 + (this.player.stats.floor * 2); // 层数越高奖励越多
+            if (this.metaSaveSystem) {
+              this.metaSaveSystem.addSoulCrystals(crystalReward);
+            }
+            if (this.ui) {
+              this.ui.logMessage(`击败领主！获得 ${crystalReward} 灵魂水晶`, 'ultimate');
+            }
+            
+            // 3. 掉落传说/神话装备 (必定掉落)
+            const bossX = pendingCombat.x;
+            const bossY = pendingCombat.y;
+            const baseMagicFind = this.player.stats.magicFind || 0;
+            const dailyMagicFind = this.player.dailyMagicFind || 0;
+            const totalMagicFind = baseMagicFind + dailyMagicFind;
+            
+            // 生成高品质装备（强制高品质）
+            const bossDrop = getEquipmentDropForFloor(this.player.stats.floor || 1, {
+              monsterTier: 3, // Boss 固定为最高 Tier
+              playerClass: this.player.classId?.toLowerCase() || null,
+              magicFind: totalMagicFind + 1000, // 大幅提升魔法发现，确保高品质
+              ascensionLevel: this.selectedAscensionLevel || 0,
+              game: this // 传递 game 对象以支持每日挑战模式的 RNG
+            });
+            
+            if (bossDrop) {
+              this.map.addEquipAt(bossDrop.id || bossDrop, bossX, bossY);
+              if (this.ui) {
+                const itemName = bossDrop.nameZh || bossDrop.name || '装备';
+                this.ui.logMessage(`领主掉落：${itemName}`, 'gain');
+              }
+            }
+            
+            // 4. 显示继续提示，不结束游戏
+            if (this.ui) {
+              setTimeout(() => {
+                this.ui.logMessage('通往深渊的道路已开启... 下一层更危险！', 'warning');
+              }, 1000);
+            }
+          } 
+          // 场景 B: 普通模式 第 1-8 层 (新增逻辑)
+          else if (currentFloor < 9) {
+            // 1. 播放胜利音效
+            if (this.audio) {
+              this.audio.playCoins({ volume: 1.0 });
+            }
+            
+            // 2. 必定掉落一件装备
+            const bossX = pendingCombat.x;
+            const bossY = pendingCombat.y;
+            const baseMagicFind = this.player.stats.magicFind || 0;
+            const dailyMagicFind = this.player.dailyMagicFind || 0;
+            const totalMagicFind = baseMagicFind + dailyMagicFind;
+            
+            // 生成装备（稍微提升魔法发现，确保奖励感）
+            const bossDrop = getEquipmentDropForFloor(this.player.stats.floor || 1, {
+              monsterTier: Math.min(Math.floor(currentFloor / 3) + 1, 3), // 根据层数调整 Tier
+              playerClass: this.player.classId?.toLowerCase() || null,
+              magicFind: totalMagicFind + 200, // 稍微提升魔法发现
+              ascensionLevel: this.selectedAscensionLevel || 0,
+              game: this // 传递 game 对象以支持每日挑战模式的 RNG
+            });
+            
+            if (bossDrop) {
+              this.map.addEquipAt(bossDrop.id || bossDrop, bossX, bossY);
+              if (this.ui) {
+                const itemName = bossDrop.nameZh || bossDrop.name || '装备';
+                this.ui.logMessage(`层域守卫掉落：${itemName}`, 'gain');
+              }
+            }
+            
+            // 3. 显示提示信息
+            if (this.ui) {
+              this.ui.logMessage(`层域守卫已击败！前往下一层的道路已开启。`, 'gain');
+            }
+            
+            // 4. 注意：不要调用 endGame()，让游戏继续
+          }
+          // 场景 C: 普通模式 第 9 层 (最终 Boss)
+          else {
+            // === 普通模式逻辑 (原有逻辑) ===
+            // Boss被击杀，触发胜利
+            if (this.audio) {
+              // 播放胜利音效（可选）
+              this.audio.playCoins({ volume: 0.8 }); // 使用金币音效作为临时胜利音效
+            }
+            
+            // 显示胜利消息
+            if (this.ui) {
+              this.ui.logMessage('恭喜！你击败了黑暗领主！', 'gain');
+              setTimeout(() => {
+                this.ui.logMessage('游戏通关！', 'gain');
+              }, 1000);
+            }
+            
+            // 延迟触发胜利结算（让玩家看到击杀效果）
             setTimeout(() => {
-              this.ui.logMessage('游戏通关！', 'gain');
-            }, 1000);
+              this.endGame(false); // false表示胜利/退休
+            }, 2000);
           }
-          
-          // 延迟触发胜利结算（让玩家看到击杀效果）
-          setTimeout(() => {
-            this.endGame(false); // false表示胜利/退休
-          }, 2000);
         }
         
         const targetX = pendingCombat.x; 
@@ -3732,6 +3826,12 @@ class Game {
       const lightingCheckbox = document.getElementById('chk-lighting');
       const enableLighting = lightingCheckbox ? lightingCheckbox.checked : true;
       sessionStorage.setItem('enableLighting', enableLighting.toString());
+      
+      // ✅ 保存用户选择的无限层数挑战设置
+      const infiniteCheckbox = document.getElementById('chk-infinite');
+      const infiniteMode = infiniteCheckbox ? infiniteCheckbox.checked : false;
+      sessionStorage.setItem('infiniteMode', infiniteMode.toString());
+      console.log(`[StartGameWithRedirect] Infinite Mode: ${infiniteMode}`);
     }
     
     // 保存选择的角色和噩梦层级到 sessionStorage
@@ -3848,6 +3948,20 @@ class Game {
         if (lightingCheckbox) {
           this.config.enableLighting = lightingCheckbox.checked;
           console.log(`[StartGame] Dynamic Lighting setting from checkbox: ${this.config.enableLighting}`);
+        }
+      }
+      
+      // ✅ 读取无限层数挑战设置
+      const infiniteModeFromSession = sessionStorage.getItem('infiniteMode');
+      if (infiniteModeFromSession !== null) {
+        this.config.infiniteMode = infiniteModeFromSession === 'true';
+        console.log(`[StartGame] Infinite Mode setting from sessionStorage: ${this.config.infiniteMode}`);
+      } else {
+        // Fallback: try to get from checkbox (for direct game start)
+        const infiniteCheckbox = document.getElementById('chk-infinite');
+        if (infiniteCheckbox) {
+          this.config.infiniteMode = infiniteCheckbox.checked;
+          console.log(`[StartGame] Infinite Mode setting from checkbox: ${this.config.infiniteMode}`);
         }
       }
       
@@ -4925,6 +5039,7 @@ window.addEventListener('load', async () => {
           game.selectedDiff = selectedDiff;
           game.config.enableFog = enableFog;
           game.config.enableLighting = enableLighting;
+          game.config.infiniteMode = parseBooleanSetting(sessionStorage.getItem('infiniteMode'), false);
           
           // 输出日志
           console.log(`[Init] Restored settings:`, {
@@ -4932,7 +5047,8 @@ window.addEventListener('load', async () => {
             ascensionLevel: selectedAscensionLevel,
             difficulty: selectedDiff,
             fog: enableFog,
-            lighting: enableLighting
+            lighting: enableLighting,
+            infiniteMode: game.config.infiniteMode
           });
         };
         

@@ -294,25 +294,45 @@ export class Monster extends Entity {
     
     // 计算基础属性（使用新的噩梦层级系统，仅基于 ascensionLevel）
     const baseHp = this.stats.hp;
-    const baseAtk = this.stats.p_atk || this.stats.m_atk || 1;
+    const basePAtk = this.stats.p_atk || 0;
+    const baseMAtk = this.stats.m_atk || 0;
+    const basePDef = this.stats.p_def || 0;
+    const baseMDef = this.stats.m_def || 0;
     const baseGold = this.stats.gold || 0;
     const baseXp = this.stats.xp || 0;
     
-    // 应用基础成长倍率（仅基于 ascensionLevel，不涉及 diff）
-    this.stats.hp = Math.floor(baseHp * ascConfig.hpMult);
-    this.stats.p_atk = Math.floor((this.stats.p_atk || 0) * ascConfig.atkMult);
-    this.stats.m_atk = Math.floor((this.stats.m_atk || 0) * ascConfig.atkMult);
-    
-    // 楼层成长逻辑（难度动态调整）
+    // ✅ 重构：噩梦曲线 - 分项计算楼层成长
     const settings = window.game?.settings || {};
-    const scalingEnabled = settings.difficultyScaling !== false; // 默认为 true
-    const floorGrowth = scalingEnabled ? 0.08 : 0.04; // 开启时每层+8%，关闭时+4%
-    const floorMultiplier = 1 + (floor - 1) * floorGrowth;
+    const difficultyScaling = settings.difficultyScaling !== false; // 默认为 true
     
-    // 应用楼层倍率到怪物属性（在噩梦层级之后应用）
-    this.stats.hp = Math.floor(this.stats.hp * floorMultiplier);
-    this.stats.p_atk = Math.floor(this.stats.p_atk * floorMultiplier);
-    this.stats.m_atk = Math.floor(this.stats.m_atk * floorMultiplier);
+    let hpGrowth, atkGrowth, defBonus;
+    
+    if (difficultyScaling) {
+      // 噩梦曲线公式（开启时）
+      // 1. 生命值 (HP) - 指数级增长：每层复利增长 8%
+      hpGrowth = Math.pow(1.08, floor - 1);
+      
+      // 2. 攻击力 (ATK) - 混合增长：线性(6%) + 微量指数(2%)
+      atkGrowth = (1 + (floor - 1) * 0.06) * Math.pow(1.02, floor - 1);
+      
+      // 3. 防御力 (DEF) - 阶梯成长：每层增加 1.5 固定防御值
+      defBonus = Math.floor((floor - 1) * 1.5);
+    } else {
+      // 弱化版线性成长（简单模式）
+      // 每层 +4% HP/ATK，不加防御
+      hpGrowth = 1 + (floor - 1) * 0.04;
+      atkGrowth = 1 + (floor - 1) * 0.04;
+      defBonus = 0;
+    }
+    
+    // 计算最终属性：同时应用 ascConfig (噩梦层级系数) 和 floor (楼层成长系数)
+    this.stats.hp = Math.floor(baseHp * ascConfig.hpMult * hpGrowth);
+    this.stats.p_atk = Math.floor(basePAtk * ascConfig.atkMult * atkGrowth);
+    this.stats.m_atk = Math.floor(baseMAtk * ascConfig.atkMult * atkGrowth);
+    
+    // 防御力：直接加上固定防御值（通常不受 ascension 倍率影响）
+    this.stats.p_def = Math.floor(basePDef + defBonus);
+    this.stats.m_def = Math.floor(baseMDef + defBonus);
     
     // 奖励倍率（金币和经验）
     this.stats.goldYield = Math.floor(baseGold * ascConfig.goldMult);
@@ -378,9 +398,46 @@ export class Monster extends Entity {
       }
     }
     
-    // Boss特殊处理：应用bossHpMult
-    if (type === 'BOSS' && ascConfig.bossHpMult > 0) {
-      this.stats.hp = Math.floor(this.stats.hp * (1 + ascConfig.bossHpMult));
+    // ✅ 层域守卫：普通模式下第1-8层的Boss特殊处理
+    const game = window.game;
+    const isInfiniteMode = game?.config?.infiniteMode || false;
+    
+    if (type === 'BOSS' && !isInfiniteMode && floor < 9) {
+      // 获取 BOSS 的原始基础属性（从 MONSTER_STATS）
+      const bossBaseStats = MONSTER_STATS.BOSS;
+      const bossBaseHp = bossBaseStats.hp || 3000;
+      const bossBasePAtk = bossBaseStats.p_atk || 22;
+      const bossBaseMAtk = bossBaseStats.m_atk || 22;
+      const bossBasePDef = bossBaseStats.p_def || 10;
+      const bossBaseMDef = bossBaseStats.m_def || 10;
+      
+      // 名称修改：层域守卫
+      this.name = 'Floor Guardian';
+      // 注意：displayName 通过 getDisplayName() 方法获取，需要修改 MONSTER_STATS 或添加特殊标记
+      // 这里我们添加一个标记，在 getDisplayName() 中处理
+      this.isFloorGuardian = true;
+      
+      // HP 削弱：baseHp * (0.05 + floor * 0.1)
+      const hpMultiplier = 0.05 + floor * 0.1;
+      this.stats.hp = Math.floor(bossBaseHp * hpMultiplier);
+      
+      // ATK 削弱：baseAtk * (0.5 + floor * 0.06)
+      const atkMultiplier = 0.5 + floor * 0.06;
+      this.stats.p_atk = Math.floor(bossBasePAtk * atkMultiplier);
+      this.stats.m_atk = Math.floor(bossBaseMAtk * atkMultiplier);
+      
+      // DEF 调整：baseDef * (0.5 + floor * 0.06)
+      const defMultiplier = 0.5 + floor * 0.06;
+      this.stats.p_def = Math.floor(bossBasePDef * defMultiplier);
+      this.stats.m_def = Math.floor(bossBaseMDef * defMultiplier);
+      
+      // 更新 maxHp
+      this.stats.maxHp = this.stats.hp;
+    } else {
+      // Boss特殊处理：应用bossHpMult（第9层及以上的Boss或无限模式）
+      if (type === 'BOSS' && ascConfig.bossHpMult > 0) {
+        this.stats.hp = Math.floor(this.stats.hp * (1 + ascConfig.bossHpMult));
+      }
     }
     
     this.stats.maxHp = this.stats.hp; // Store max HP for status effects
@@ -586,6 +643,11 @@ export class Monster extends Entity {
   
   // Get elite display name with affix
   getDisplayName() {
+    // ✅ 层域守卫特殊处理
+    if (this.isFloorGuardian) {
+      return '层域守卫';
+    }
+    
     const baseName = MONSTER_STATS[this.type]?.cnName || this.type;
     
     if (!this.isElite || this.affixes.length === 0) {

@@ -120,7 +120,16 @@ export class MapSystem {
     // 保存房间数据，用于智能迷雾驱散
     this.rooms = rooms;
     const start = rooms[0]; start.isStart = true;
-    const bossRoom = rooms[rooms.length - 1]; if (floor >= 9) { bossRoom.isSecure = true; bossRoom.isBoss = true; }
+    // ✅ 无限层数挑战 + 层域守卫：Boss 生成逻辑
+    const game = window.game;
+    const infiniteMode = game?.config?.infiniteMode || false;
+    // 无限模式：每10层生成 Boss；普通模式：每一层都生成 Boss
+    const shouldSpawnBoss = infiniteMode ? (floor % 10 === 0) : (floor >= 1);
+    const bossRoom = rooms[rooms.length - 1]; 
+    if (shouldSpawnBoss) { 
+      bossRoom.isSecure = true; 
+      bossRoom.isBoss = true; 
+    }
     const candidates = rooms.filter(r => r !== start && r !== bossRoom);
     for (let i = candidates.length - 1; i > 0; i--) { const j = this._randomInt(0, i); [candidates[i], candidates[j]] = [candidates[j], candidates[i]]; }
     const tCount = Math.max(2, Math.min(3, candidates.length));
@@ -327,8 +336,13 @@ export class MapSystem {
     // @deprecated 保留旧的difficultyScalar用于向后兼容
     const difficultyScalar = 1 + (this.difficultyMultiplier - 1) * 0.5;
     
-    // Boss生成（使用新的噩梦层级系统）
-    if (floor >= 9) { 
+    // ✅ Boss生成（使用新的噩梦层级系统 + 无限层数挑战支持 + 层域守卫）
+    const game = window.game;
+    const infiniteMode = game?.config?.infiniteMode || false;
+    // 无限模式：每10层生成 Boss；普通模式：每一层都生成 Boss
+    const shouldSpawnBoss = infiniteMode ? (floor % 10 === 0) : (floor >= 1);
+    
+    if (shouldSpawnBoss) { 
       // Boss使用ascensionLevel而不是旧的diff系统
       this.monsters.push(new Monster('BOSS', endRoom.cx, endRoom.cy - 1, this.loader, 1, TILE, floor, ascensionLevel)); 
     }
