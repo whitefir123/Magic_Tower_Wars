@@ -922,18 +922,18 @@ export class UIManager {
         window.game.selectCharacter(config.character);
       }
 
-      // ✅ 强制设置战争迷雾和动态光照为开启并禁用
+      // ✅ 根据每日配置设置战争迷雾和动态光照（禁用但显示随机规则）
       const fogCheckbox = document.getElementById('chk-fog');
       const lightingCheckbox = document.getElementById('chk-lighting');
       
       if (fogCheckbox) {
-        fogCheckbox.checked = true;
-        fogCheckbox.disabled = true;
+        fogCheckbox.checked = config.enableFog || false;
+        fogCheckbox.disabled = true; // 保持禁用，确保玩家无法手动更改
       }
       
       if (lightingCheckbox) {
-        lightingCheckbox.checked = true;
-        lightingCheckbox.disabled = true;
+        lightingCheckbox.checked = config.enableLighting || false;
+        lightingCheckbox.disabled = true; // 保持禁用，确保玩家无法手动更改
       }
 
       console.log('[UIManager] 每日挑战模式：已锁定英雄选择和设置');

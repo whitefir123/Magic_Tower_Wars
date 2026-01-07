@@ -83,12 +83,18 @@ export class DailyChallengeSystem {
       }
     };
     
+    // === 4. 随机决定战争迷雾和动态光照（各 50% 概率） ===
+    const enableFog = rng.nextFloat() < 0.5;
+    const enableLighting = rng.nextFloat() < 0.5;
+    
     return {
       seed,
       character,
       modifiers,
       startingRune,
-      rng
+      rng,
+      enableFog,      // ✅ 新增：战争迷雾（随机）
+      enableLighting // ✅ 新增：动态光照（随机）
     };
   }
 
@@ -119,7 +125,9 @@ export class DailyChallengeSystem {
         name: config.startingRune.name,
         nameZh: config.startingRune.nameZh,
         description: config.startingRune.description
-      }
+      },
+      enableFog: config.enableFog,           // ✅ 新增：战争迷雾设置
+      enableLighting: config.enableLighting   // ✅ 新增：动态光照设置
     };
   }
 }

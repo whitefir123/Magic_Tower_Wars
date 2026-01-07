@@ -3837,12 +3837,18 @@ class Game {
         sessionStorage.setItem('dailySeed', dailyConfig.seed.toString());
       }
       
-      // 强制保存设置：每日模式下必须开启战争迷雾和动态光照
-      sessionStorage.setItem('enableFog', 'true');
-      sessionStorage.setItem('enableLighting', 'true');
-      
-      console.log('[StartGameWithRedirect] Daily challenge mode detected, saving seed:', dailyConfig?.seed);
-      console.log('[StartGameWithRedirect] Daily mode: forced enableFog=true, enableLighting=true');
+      // ✅ 从每日配置获取并保存战争迷雾和动态光照设置（随机决定）
+      if (dailyConfig) {
+        sessionStorage.setItem('enableFog', (dailyConfig.enableFog || false).toString());
+        sessionStorage.setItem('enableLighting', (dailyConfig.enableLighting || false).toString());
+        console.log('[StartGameWithRedirect] Daily challenge mode detected, saving seed:', dailyConfig.seed);
+        console.log(`[StartGameWithRedirect] Daily mode: enableFog=${dailyConfig.enableFog}, enableLighting=${dailyConfig.enableLighting}`);
+      } else {
+        // 防御性回退：如果无法获取配置，默认关闭
+        sessionStorage.setItem('enableFog', 'false');
+        sessionStorage.setItem('enableLighting', 'false');
+        console.warn('[StartGameWithRedirect] Daily mode: 无法获取配置，使用默认值');
+      }
     } else {
       // 普通模式
       sessionStorage.setItem('gameMode', 'normal');
