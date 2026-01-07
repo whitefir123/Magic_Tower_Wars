@@ -337,11 +337,7 @@ export class MapSystem {
     const difficultyScalar = 1 + (this.difficultyMultiplier - 1) * 0.5;
     
     // ✅ Boss生成（使用新的噩梦层级系统 + 无限层数挑战支持 + 层域守卫）
-    const game = window.game;
-    const infiniteMode = game?.config?.infiniteMode || false;
-    // 无限模式：每10层生成 Boss；普通模式：每一层都生成 Boss
-    const shouldSpawnBoss = infiniteMode ? (floor % 10 === 0) : (floor >= 1);
-    
+    // 注意：game、infiniteMode 和 shouldSpawnBoss 变量已在前面声明，这里直接使用
     if (shouldSpawnBoss) { 
       // Boss使用ascensionLevel而不是旧的diff系统
       this.monsters.push(new Monster('BOSS', endRoom.cx, endRoom.cy - 1, this.loader, 1, TILE, floor, ascensionLevel)); 
@@ -719,7 +715,7 @@ export class MapSystem {
     // Generate fog particles for every tile (after all level generation is complete)
     // BUT: Only generate if enableFog is true in game config
     // Also: Don't generate fog around player starting position (5 tile radius)
-    const game = window.game;
+    // 注意：game 变量已在前面声明，这里直接使用
     if (game && game.config && game.config.enableFog) {
       const fogDensity = 2; // 1 = every tile, 2 = every 2nd tile
       const playerStartX = start.cx;

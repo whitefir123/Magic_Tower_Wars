@@ -2175,6 +2175,36 @@ class Game {
           this.player.stats.maxMp += talentStats.max_mp;
           this.player.stats.mp += talentStats.max_mp;
         }
+        // ✅ 新增：累加 gold_rate 和 armor_pen（这些是百分比属性，不直接加到基础属性上）
+        if (talentStats.gold_rate) {
+          this.player.stats.gold_rate = (this.player.stats.gold_rate || 0) + talentStats.gold_rate;
+        }
+        if (talentStats.armor_pen) {
+          this.player.stats.armor_pen = (this.player.stats.armor_pen || 0) + talentStats.armor_pen;
+        }
+        // ✅ 新增：累加攻击速度、百分比物攻和暴击伤害
+        if (talentStats.atk_speed) {
+          this.player.stats.atk_speed = (this.player.stats.atk_speed || 0) + talentStats.atk_speed;
+        }
+        if (talentStats.p_atk_percent) {
+          this.player.stats.p_atk_percent = (this.player.stats.p_atk_percent || 0) + talentStats.p_atk_percent;
+        }
+        if (talentStats.crit_dmg) {
+          this.player.stats.crit_dmg = (this.player.stats.crit_dmg || 0) + talentStats.crit_dmg;
+        }
+        // ✅ 新增：累加冷却缩减、最终减伤、最大魔力百分比、魔法攻击百分比
+        if (talentStats.cooldown_reduction) {
+          this.player.stats.cooldown_reduction = (this.player.stats.cooldown_reduction || 0) + talentStats.cooldown_reduction;
+        }
+        if (talentStats.final_dmg_reduce) {
+          this.player.stats.final_dmg_reduce = (this.player.stats.final_dmg_reduce || 0) + talentStats.final_dmg_reduce;
+        }
+        if (talentStats.max_mp_percent) {
+          this.player.stats.max_mp_percent = (this.player.stats.max_mp_percent || 0) + talentStats.max_mp_percent;
+        }
+        if (talentStats.m_atk_percent) {
+          this.player.stats.m_atk_percent = (this.player.stats.m_atk_percent || 0) + talentStats.m_atk_percent;
+        }
       }
       
       // 存储关键石效果到玩家对象（用于战斗逻辑）

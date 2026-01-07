@@ -1562,6 +1562,57 @@ export class Player extends Entity {
       }
     }
     
+    // ✅ 累加天赋树提供的 gold_rate 和 armor_pen
+    if (this.stats.gold_rate !== undefined) {
+      total.gold_rate = (total.gold_rate || 0) + this.stats.gold_rate;
+    }
+    if (this.stats.armor_pen !== undefined) {
+      total.armor_pen = (total.armor_pen || 0) + this.stats.armor_pen;
+    }
+    
+    // ✅ 累加天赋树提供的攻击速度
+    if (this.stats.atk_speed !== undefined) {
+      total.atk_speed = (total.atk_speed || 0) + this.stats.atk_speed;
+    }
+    
+    // ✅ 累加天赋树提供的百分比物攻
+    if (this.stats.p_atk_percent !== undefined) {
+      total.p_atk_percent = (total.p_atk_percent || 0) + this.stats.p_atk_percent;
+    }
+    
+    // ✅ 累加天赋树提供的百分比魔攻
+    if (this.stats.m_atk_percent !== undefined) {
+      total.m_atk_percent = (total.m_atk_percent || 0) + this.stats.m_atk_percent;
+    }
+    
+    // ✅ 累加天赋树提供的冷却缩减
+    if (this.stats.cooldown_reduction !== undefined) {
+      total.cooldown_reduction = (total.cooldown_reduction || 0) + this.stats.cooldown_reduction;
+    }
+    
+    // ✅ 累加天赋树提供的最终减伤
+    if (this.stats.final_dmg_reduce !== undefined) {
+      total.final_dmg_reduce = (total.final_dmg_reduce || 0) + this.stats.final_dmg_reduce;
+    }
+    
+    // ✅ 累加天赋树提供的最大魔力百分比
+    if (this.stats.max_mp_percent !== undefined) {
+      total.max_mp_percent = (total.max_mp_percent || 0) + this.stats.max_mp_percent;
+    }
+    
+    // ✅ 累加天赋树提供的暴击伤害
+    // 注意：TalentData 中可能存储为整数（如 50 表示 50%）或小数（如 0.15 表示 15%）
+    // 如果值 >= 1，则除以 100；否则直接使用（已经是小数格式）
+    if (this.stats.crit_dmg !== undefined) {
+      const critDmgValue = Math.abs(this.stats.crit_dmg) >= 1 ? this.stats.crit_dmg / 100 : this.stats.crit_dmg;
+      total.crit_dmg += critDmgValue;
+    }
+    
+    // ✅ 不屈堡垒：最终物防+20%（在所有计算完成后应用）
+    if (this.activeKeystones && Array.isArray(this.activeKeystones) && this.activeKeystones.includes('UNYIELDING_FORTRESS')) {
+      total.p_def = Math.floor(total.p_def * 1.20);
+    }
+    
     // ✅ FIX: Calculate Crit Rate - 累加所有来源，而不是覆盖
     // 公式：总暴击率 = 基础值 + 装备属性 + Buff + 符文 + 宝石
     let crit_rate = COMBAT_CONFIG.BASE_CRIT_RATE || 0.2; // Default 20% base crit rate
@@ -1616,6 +1667,17 @@ export class Player extends Entity {
       }
       if (bonus.m_atk_percent !== undefined) {
         total.m_atk_percent = (total.m_atk_percent || 0) + bonus.m_atk_percent;
+      }
+      
+      // ✅ 累加新属性：冷却缩减、最终减伤、最大魔力百分比
+      if (bonus.cooldown_reduction !== undefined) {
+        total.cooldown_reduction = (total.cooldown_reduction || 0) + bonus.cooldown_reduction;
+      }
+      if (bonus.final_dmg_reduce !== undefined) {
+        total.final_dmg_reduce = (total.final_dmg_reduce || 0) + bonus.final_dmg_reduce;
+      }
+      if (bonus.max_mp_percent !== undefined) {
+        total.max_mp_percent = (total.max_mp_percent || 0) + bonus.max_mp_percent;
       }
       
       // 限制百分比属性上限
@@ -1694,6 +1756,11 @@ export class Player extends Entity {
     if (total.m_atk_percent) {
       const percentBonus = Math.floor(baseMAtk * total.m_atk_percent);
       total.m_atk += percentBonus;
+    }
+    
+    // ✅ 应用百分比魔力加成
+    if (total.max_mp_percent) {
+      total.max_mp = Math.floor(total.max_mp * (1 + total.max_mp_percent));
     }
     
     // ========== 第八阶段：计算最终攻击速度 ==========
@@ -1869,6 +1936,11 @@ export class Player extends Entity {
       effectiveMoveSpeed *= 0.7; // 30% slow = 70% speed
     }
     
+    // ✅ 不屈堡垒：移速-10%
+    if (this.activeKeystones && Array.isArray(this.activeKeystones) && this.activeKeystones.includes('UNYIELDING_FORTRESS')) {
+      effectiveMoveSpeed *= 0.9;
+    }
+    
     const step = effectiveMoveSpeed * dt;
     if (dist <= step) { 
       this.visualX = this.destX; 
@@ -2042,10 +2114,18 @@ export class Player extends Entity {
    */
   startSkillCooldown(skillType, cooldown) {
     if (!this.cooldowns) this.cooldowns = { active: 0, ult: 0 };
+    
+    // ✅ 获取冷却缩减 (CDR)
+    const totals = this.getTotalStats ? this.getTotalStats() : this.stats;
+    const cdr = totals.cooldown_reduction || 0;
+    // 限制 CDR 最大为 50%
+    const effectiveCdr = Math.min(cdr, 0.5);
+    const reducedCooldown = Math.floor(cooldown * (1 - effectiveCdr));
+    
     if (skillType === 'active') {
-      this.cooldowns.active = cooldown;
+      this.cooldowns.active = reducedCooldown;
     } else if (skillType === 'ult') {
-      this.cooldowns.ult = cooldown;
+      this.cooldowns.ult = reducedCooldown;
     }
   }
   
@@ -2166,7 +2246,18 @@ export class Player extends Entity {
     // 移除怒气飘字逻辑，保持画面整洁
   }
   takeDamage(amt) { 
-    this.stats.hp -= amt; 
+    // ✅ 获取最终减伤属性
+    const totals = this.getTotalStats ? this.getTotalStats() : this.stats;
+    const dmgReduce = totals.final_dmg_reduce || 0;
+    
+    // 应用减伤 (上限 80%)
+    const effectiveReduce = Math.min(dmgReduce, 0.8);
+    const reducedAmt = Math.floor(amt * (1 - effectiveReduce));
+    
+    // 保证至少造成 1 点伤害（除非 amt 也是 0）
+    const finalAmt = amt > 0 ? Math.max(1, reducedAmt) : 0;
+    
+    this.stats.hp -= finalAmt; 
     this.gainRage(5); 
     
     // Freeze breaks on damage

@@ -307,12 +307,19 @@ export class CombatSystem {
           const g = enemy.stats.goldYield || enemy.stats.gold || 0;
           const xp = enemy.stats.xpYield || enemy.stats.xp || 0;
           
-          // 给予金币奖励
+          // 给予金币奖励（应用 gold_rate 和点石成金）
           if (g > 0) {
-            attacker.stats.gold = (attacker.stats.gold || 0) + g;
+            // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate + 点石成金关键石
+            const attackerTotals = attacker.getTotalStats ? attacker.getTotalStats() : attacker.stats;
+            const goldRate = attackerTotals.gold_rate || 0;
+            const hasGoldenTouch = attacker.activeKeystones && attacker.activeKeystones.includes('GOLDEN_TOUCH');
+            const goldMult = 1 + goldRate + (hasGoldenTouch ? 0.3 : 0);
+            const finalGold = Math.floor(g * goldMult);
+            
+            attacker.stats.gold = (attacker.stats.gold || 0) + finalGold;
             if (game.settings && game.settings.showDamageNumbers !== false) {
               const offsetX = (Math.random() - 0.5) * 15;
-              const goldText = game.floatingTextPool.create(enemy.visualX + offsetX, enemy.visualY - 26, `+${g} 金币`, '#ffd700');
+              const goldText = game.floatingTextPool.create(enemy.visualX + offsetX, enemy.visualY - 26, `+${finalGold} 金币`, '#ffd700');
               game.floatingTexts.push(goldText);
             }
             if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -1138,7 +1145,12 @@ export class CombatSystem {
         const monsterUsesMagic = ((monster.stats.m_atk || 0) > (monster.stats.p_atk || 0));
         const monAtk = monsterUsesMagic ? (monster.stats.m_atk || 0) : (monster.stats.p_atk || 0);
         const playerResonance = this.calculateResonance(monster.stats, pTotals, monsterUsesMagic);
-        const dmgToPlay = Math.max(1, monAtk - playerResonance.effectiveDef);
+        let dmgToPlay = Math.max(1, monAtk - playerResonance.effectiveDef);
+        
+        // ✅ 点石成金副作用：受到伤害+10%（在格挡反击时也应用）
+        if (player.activeKeystones && Array.isArray(player.activeKeystones) && player.activeKeystones.includes('GOLDEN_TOUCH')) {
+          dmgToPlay = Math.ceil(dmgToPlay * 1.1);
+        }
         
         if (dmgToPlay > 0) {
           player.takeDamage(dmgToPlay);
@@ -1568,6 +1580,13 @@ export class CombatSystem {
         dmgToMon = Math.floor(dmgToMon * player.dailyDamageMultiplier);
       }
       
+      // ✅ 屠龙者：对Boss/精英怪伤害独立+20%（独立乘区，在最终伤害计算后应用）
+      if (player.activeKeystones && Array.isArray(player.activeKeystones) && player.activeKeystones.includes('DRAGON_SLAYER')) {
+        if (monster.type === 'BOSS' || monster.isElite) {
+          dmgToMon = Math.floor(dmgToMon * 1.2);
+        }
+      }
+      
       // ========== STEP C: 暴击逻辑 (含共鸣暴伤加成) ==========
       let isCrit = false;
       let critChance = pTotals.crit_rate || COMBAT_CONFIG.BASE_CRIT_RATE || 0.2;
@@ -1685,7 +1704,12 @@ export class CombatSystem {
       const playerResonance = this.calculateResonance(monster.stats, pTotals, monsterUsesMagic);
       
       // 玩家受到的伤害
-      const dmgToPlay = Math.max(1, monAtk - playerResonance.effectiveDef);
+      let dmgToPlay = Math.max(1, monAtk - playerResonance.effectiveDef);
+      
+      // ✅ 点石成金副作用：受到伤害+10%
+      if (player.activeKeystones && Array.isArray(player.activeKeystones) && player.activeKeystones.includes('GOLDEN_TOUCH')) {
+        dmgToPlay = Math.ceil(dmgToPlay * 1.1);
+      }
       
       // Note: Combo state (lastTargetId, lastAttackTime) is already updated early (before early returns)
       

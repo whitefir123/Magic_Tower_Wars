@@ -511,7 +511,26 @@ export class TalentTreeUI {
             Object.entries(node.stats).forEach(([key, value]) => {
                 const statName = this.getStatName(key);
                 const color = value > 0 ? '#0f0' : '#f00';
-                html += `<div style="color: ${color}; font-size: 14px;">${statName}: ${value > 0 ? '+' : ''}${value}</div>`;
+                
+                // ✅ 格式化数值：百分比属性显示为百分比，其他显示为数值
+                let displayValue = value;
+                // 检查是否为百分比属性（rate, percent, pen, dodge, dmg, speed）
+                if (key.includes('rate') || key.includes('percent') || key.includes('pen') || key.includes('dodge') || key.includes('dmg') || key.includes('speed')) {
+                    // 百分比属性：转换为百分比显示
+                    // 注意：如果值已经大于1（如 crit_dmg: 50），则直接显示为百分比；否则乘以100
+                    if (Math.abs(value) >= 1 && (key.includes('dmg') || key.includes('speed'))) {
+                        // crit_dmg 和 atk_speed 可能存储为整数（如 50 表示 50%）
+                        displayValue = (value > 0 ? '+' : '') + value + '%';
+                    } else {
+                        // 其他百分比属性（如 0.05 表示 5%）
+                        displayValue = (value > 0 ? '+' : '') + Math.round(value * 100) + '%';
+                    }
+                } else {
+                    // 普通数值属性：直接显示
+                    displayValue = (value > 0 ? '+' : '') + value;
+                }
+                
+                html += `<div style="color: ${color}; font-size: 14px;">${statName}: ${displayValue}</div>`;
             });
             html += '</div>';
         }
@@ -588,7 +607,15 @@ export class TalentTreeUI {
             max_mp: '最大魔力',
             crit_rate: '暴击率%',
             crit_dmg: '暴击伤害%',
-            dodge: '闪避%'
+            dodge: '闪避%',
+            gold_rate: '金币获取',
+            armor_pen: '护甲穿透',
+            atk_speed: '攻击速度',
+            p_atk_percent: '物理攻击%',
+            cooldown_reduction: '冷却缩减%',
+            final_dmg_reduce: '伤害减免%',
+            max_mp_percent: '最大魔力%',
+            m_atk_percent: '魔法攻击%'
         };
         return names[key] || key;
     }

@@ -19,7 +19,14 @@ export const KEYSTONE_EFFECTS = {
     IRON_WILL: 'IRON_WILL',               // 钢铁意志：力量加成魔法攻击
     SOUL_REAPER: 'SOUL_REAPER',           // 灵魂收割：击杀回复生命
     CRITICAL_MASTER: 'CRITICAL_MASTER',   // 暴击大师：暴击伤害大幅提升
-    BERSERKER: 'BERSERKER'                // 狂战士：低生命时攻击提升
+    BERSERKER: 'BERSERKER',               // 狂战士：低生命时攻击提升
+    UNYIELDING_FORTRESS: 'UNYIELDING_FORTRESS', // 不屈堡垒：防御+20% (最终乘算), 移速-10%
+    GOLDEN_TOUCH: 'GOLDEN_TOUCH',               // 点石成金：金币+30%, 受伤+10%
+    DRAGON_SLAYER: 'DRAGON_SLAYER',              // 屠龙者：对Boss/精英伤害+20% (独立乘区)
+    SONIC_BREAKER: 'SONIC_BREAKER',       // 音障突破：攻击速度+40%，但物理攻击-10%
+    DEAD_EYE: 'DEAD_EYE',                  // 死神之眼：暴击率+10%，暴击伤害+50%
+    LION_HEART: 'LION_HEART',              // 狮子心：最终受到的伤害减少 10%，物理攻击 +10%
+    ARCANE_RHYTHM: 'ARCANE_RHYTHM'         // 奥术韵律：技能冷却时间减少 15%，最大魔力 +20%
 };
 
 // 天赋树节点数据
@@ -61,6 +68,52 @@ export const TALENT_TREE_DATA = {
         cost: 150,
         stats: { p_atk: 5, max_hp: 25 },
         requirements: ['str_1']
+    },
+    // ========== 勇气分支：狮子座 (Leo) - 勇气与统御 [从 str_2 向左上延伸] ==========
+    'leo_1': {
+        id: 'leo_1',
+        x: -110,
+        y: -190, // 狮子座起始位置
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '狮子·勇气',
+        description: '基础勇气训练',
+        cost: 200,
+        stats: { max_hp: 40, p_def: 3 },
+        requirements: ['str_2']
+    },
+    'leo_2': {
+        id: 'leo_2',
+        x: -160,
+        y: -230, // 狮子座延伸
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '狮子·统御',
+        description: '进阶勇气训练',
+        cost: 300,
+        stats: { p_atk: 8 },
+        requirements: ['leo_1']
+    },
+    'leo_medium': {
+        id: 'leo_medium',
+        x: -210,
+        y: -270, // 狮子座核心
+        type: TALENT_NODE_TYPES.MEDIUM,
+        name: '狮子·王者',
+        description: '大幅提升勇气能力',
+        cost: 700,
+        stats: { max_hp: 80, p_atk_percent: 0.05 },
+        requirements: ['leo_2']
+    },
+    'keystone_lion': {
+        id: 'keystone_lion',
+        x: -260,
+        y: -310, // 狮子座终点
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '狮子心',
+        description: '最终受到的伤害减少 10%，物理攻击 +10%',
+        cost: 2500,
+        stats: { final_dmg_reduce: 0.10, p_atk_percent: 0.10 },
+        keystoneEffect: KEYSTONE_EFFECTS.LION_HEART,
+        requirements: ['leo_medium']
     },
     'str_3': {
         id: 'str_3',
@@ -122,6 +175,52 @@ export const TALENT_TREE_DATA = {
         cost: 150,
         stats: { m_atk: 5, max_mp: 15 },
         requirements: ['int_1']
+    },
+    // ========== 韵律分支：天琴座 (Lyra) - 韵律与回响 [从 int_2 向右下延伸] ==========
+    'lyra_1': {
+        id: 'lyra_1',
+        x: 200,
+        y: 240, // 天琴座起始位置
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '天琴·韵律',
+        description: '基础韵律训练',
+        cost: 200,
+        stats: { max_mp: 30, m_def: 3 },
+        requirements: ['int_2']
+    },
+    'lyra_2': {
+        id: 'lyra_2',
+        x: 230,
+        y: 300, // 天琴座延伸
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '天琴·回响',
+        description: '进阶韵律训练',
+        cost: 300,
+        stats: { m_atk: 8, max_mp: 40 },
+        requirements: ['lyra_1']
+    },
+    'lyra_medium': {
+        id: 'lyra_medium',
+        x: 260,
+        y: 360, // 天琴座核心
+        type: TALENT_NODE_TYPES.MEDIUM,
+        name: '天琴·共鸣',
+        description: '大幅提升韵律能力',
+        cost: 700,
+        stats: { cooldown_reduction: 0.05, m_atk_percent: 0.05 },
+        requirements: ['lyra_2']
+    },
+    'keystone_rhythm': {
+        id: 'keystone_rhythm',
+        x: 290,
+        y: 420, // 天琴座终点
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '奥术韵律',
+        description: '技能冷却时间减少 15%，最大魔力 +20%',
+        cost: 2500,
+        stats: { cooldown_reduction: 0.15, max_mp_percent: 0.20 },
+        keystoneEffect: KEYSTONE_EFFECTS.ARCANE_RHYTHM,
+        requirements: ['lyra_medium']
     },
     'int_3': {
         id: 'int_3',
@@ -240,6 +339,241 @@ export const TALENT_TREE_DATA = {
         stats: { max_hp: 100 },
         keystoneEffect: KEYSTONE_EFFECTS.SOUL_REAPER,
         requirements: ['hybrid_1']
+    },
+
+    // ========== 防御分支：大熊座 (Ursa Major) - 正左方延伸 ==========
+    'def_1': {
+        id: 'def_1',
+        x: -140,
+        y: -20, // 大熊座起始位置
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '大熊·坚盾',
+        description: '基础防御训练',
+        cost: 100,
+        stats: { max_hp: 20, p_def: 2 },
+        requirements: ['root']
+    },
+    'def_2': {
+        id: 'def_2',
+        x: -200,
+        y: -40, // 大熊座延伸
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '大熊·壁垒',
+        description: '进阶防御训练',
+        cost: 150,
+        stats: { max_hp: 40, p_def: 4 },
+        requirements: ['def_1']
+    },
+    'def_medium': {
+        id: 'def_medium',
+        x: -260,
+        y: 0, // 大熊座核心
+        type: TALENT_NODE_TYPES.MEDIUM,
+        name: '大熊·守护',
+        description: '大幅提升防御能力',
+        cost: 400,
+        stats: { max_hp: 80, p_def: 8, m_def: 5 },
+        requirements: ['def_2']
+    },
+    'keystone_fortress': {
+        id: 'keystone_fortress',
+        x: -340,
+        y: -20, // 大熊座终点
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '不屈堡垒',
+        description: '最终物防+20%，移速-10%',
+        cost: 1500,
+        stats: { p_def: 10, m_def: 5 },
+        keystoneEffect: KEYSTONE_EFFECTS.UNYIELDING_FORTRESS,
+        requirements: ['def_medium']
+    },
+
+    // ========== 经济分支：天秤座 (Libra) - 正下区域 ==========
+    'eco_1': {
+        id: 'eco_1',
+        x: 0,
+        y: 130, // 天秤座起始位置（稍微下移一点避开根部拥挤）
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '天秤·财富',
+        description: '基础经济训练',
+        cost: 120,
+        stats: { gold_rate: 0.05, max_mp: 10 },
+        requirements: ['root']
+    },
+    'eco_2': {
+        id: 'eco_2',
+        x: 0,
+        y: 200, // 天秤座延伸
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '天秤·繁荣',
+        description: '进阶经济训练',
+        cost: 200,
+        stats: { gold_rate: 0.10, max_mp: 20 },
+        requirements: ['eco_1']
+    },
+    'eco_medium': {
+        id: 'eco_medium',
+        x: 0,
+        y: 270, // 天秤座核心
+        type: TALENT_NODE_TYPES.MEDIUM,
+        name: '天秤·平衡',
+        description: '大幅提升经济能力',
+        cost: 500,
+        stats: { gold_rate: 0.15, p_atk: 5, m_atk: 5 },
+        requirements: ['eco_2']
+    },
+    'keystone_golden': {
+        id: 'keystone_golden',
+        x: 0,
+        y: 350, // 天秤座终点
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '点石成金',
+        description: '金币获取+30%，受到伤害+10%',
+        cost: 1800,
+        stats: { gold_rate: 0.10 },
+        keystoneEffect: KEYSTONE_EFFECTS.GOLDEN_TOUCH,
+        requirements: ['eco_medium']
+    },
+
+    // ========== 穿透分支：天龙座 (Draco) - 正右方延伸，避开双子座 ==========
+    'pen_1': {
+        id: 'pen_1',
+        x: 160,
+        y: -20, // 天龙座起始位置
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '天龙·利爪',
+        description: '基础穿透训练',
+        cost: 150,
+        stats: { armor_pen: 0.03, p_atk: 4 },
+        requirements: ['root']
+    },
+    'pen_2': {
+        id: 'pen_2',
+        x: 230,
+        y: 20, // 天龙座延伸（稍微向下弯曲）
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '天龙·尖牙',
+        description: '进阶穿透训练',
+        cost: 250,
+        stats: { armor_pen: 0.05, m_atk: 4 },
+        requirements: ['pen_1']
+    },
+    'pen_medium': {
+        id: 'pen_medium',
+        x: 300,
+        y: -10, // 天龙座核心
+        type: TALENT_NODE_TYPES.MEDIUM,
+        name: '天龙·龙息',
+        description: '大幅提升穿透能力',
+        cost: 600,
+        stats: { armor_pen: 0.10, crit_dmg: 0.15 },
+        requirements: ['pen_2']
+    },
+    'keystone_dragon': {
+        id: 'keystone_dragon',
+        x: 380,
+        y: 30, // 天龙座终点
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '屠龙者',
+        description: '对Boss/精英怪伤害独立+20%',
+        cost: 2000,
+        stats: { p_atk: 8, m_atk: 8 },
+        keystoneEffect: KEYSTONE_EFFECTS.DRAGON_SLAYER,
+        requirements: ['pen_medium']
+    },
+
+    // ========== 攻速分支：天鹅座 (Cygnus) - 极速与残影 [从 dex_2 向左下延伸] ==========
+    'cyg_1': {
+        id: 'cyg_1',
+        x: -220,
+        y: 160, // 天鹅座起始位置
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '天鹅·振翅',
+        description: '基础攻速训练',
+        cost: 180,
+        stats: { atk_speed: 0.05, dodge: 0.02 },
+        requirements: ['dex_2']
+    },
+    'cyg_2': {
+        id: 'cyg_2',
+        x: -280,
+        y: 180, // 天鹅座延伸
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '天鹅·疾风',
+        description: '进阶攻速训练',
+        cost: 280,
+        stats: { atk_speed: 0.08 },
+        requirements: ['cyg_1']
+    },
+    'cyg_medium': {
+        id: 'cyg_medium',
+        x: -340,
+        y: 200, // 天鹅座核心
+        type: TALENT_NODE_TYPES.MEDIUM,
+        name: '天鹅·残影',
+        description: '大幅提升攻速能力',
+        cost: 650,
+        stats: { atk_speed: 0.12, crit_rate: 0.03 },
+        requirements: ['cyg_2']
+    },
+    'keystone_sonic': {
+        id: 'keystone_sonic',
+        x: -400,
+        y: 220, // 天鹅座终点
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '音障突破',
+        description: '攻击速度+40%，但物理攻击-10%',
+        cost: 2200,
+        stats: { atk_speed: 0.40, p_atk_percent: -0.10 },
+        keystoneEffect: KEYSTONE_EFFECTS.SONIC_BREAKER,
+        requirements: ['cyg_medium']
+    },
+
+    // ========== 暴击分支：人马座 (Sagittarius) - 弱点狙击 [从 pen_1 向右上延伸] ==========
+    'sag_1': {
+        id: 'sag_1',
+        x: 220,
+        y: -60, // 人马座起始位置
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '人马·瞄准',
+        description: '基础暴击训练',
+        cost: 180,
+        stats: { crit_dmg: 10, p_atk: 3 },
+        requirements: ['pen_1']
+    },
+    'sag_2': {
+        id: 'sag_2',
+        x: 280,
+        y: -100, // 人马座延伸
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '人马·精准',
+        description: '进阶暴击训练',
+        cost: 280,
+        stats: { crit_dmg: 15, armor_pen: 0.02 },
+        requirements: ['sag_1']
+    },
+    'sag_medium': {
+        id: 'sag_medium',
+        x: 340,
+        y: -140, // 人马座核心
+        type: TALENT_NODE_TYPES.MEDIUM,
+        name: '人马·狙击',
+        description: '大幅提升暴击能力',
+        cost: 650,
+        stats: { crit_rate: 0.05, crit_dmg: 20 },
+        requirements: ['sag_2']
+    },
+    'keystone_deadeye': {
+        id: 'keystone_deadeye',
+        x: 400,
+        y: -180, // 人马座终点
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '死神之眼',
+        description: '暴击率+10%，暴击伤害+50%',
+        cost: 2500,
+        stats: { crit_rate: 0.10, crit_dmg: 50 },
+        keystoneEffect: KEYSTONE_EFFECTS.DEAD_EYE,
+        requirements: ['sag_medium']
     }
 };
 
@@ -298,7 +632,15 @@ export function calculateTotalStats(unlockedIds) {
         max_mp: 0,
         crit_rate: 0,
         crit_dmg: 0,
-        dodge: 0
+        dodge: 0,
+        gold_rate: 0,  // ✅ 新增：金币获取倍率
+        armor_pen: 0,   // ✅ 新增：护甲穿透
+        atk_speed: 0,   // ✅ 新增：攻击速度
+        p_atk_percent: 0, // ✅ 新增：物理攻击百分比
+        cooldown_reduction: 0, // ✅ 新增：冷却缩减
+        final_dmg_reduce: 0,   // ✅ 新增：最终减伤
+        max_mp_percent: 0,     // ✅ 新增：最大魔力百分比
+        m_atk_percent: 0       // ✅ 新增：魔法攻击百分比
     };
     
     unlockedIds.forEach(id => {
