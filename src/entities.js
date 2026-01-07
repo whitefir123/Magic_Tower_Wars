@@ -415,6 +415,9 @@ export class Monster extends Entity {
       animationType = 'bat';
     } else if (type === 'SKELETON') {
       animationType = 'icemonster';
+    } else if (type === 'GHOST') {
+      // ✅ 新增：普通幽灵(静态图)使用 ghost 逻辑
+      animationType = 'ghost';
     }
     this.sprite = new Sprite({ assetKey: 'MONSTER_' + type, loader, destHeight, animationType });
     this.moveTimer = 0; this.moveInterval = this.generateWanderInterval(); this.leashRange = 3;
@@ -2264,13 +2267,14 @@ export class FallenAdventurer extends Monster {
     // 设置名字
     this.displayName = `堕落的 ${this.nickname}`;
     
-    // 使用玩家的职业贴图（PLAYER assetKey）
-    // 所有职业都使用 PLAYER 贴图，通过 animationType 区分
+    // ✅ 修复：死去的玩家使用玩家素材(序列帧)，而非静态幽灵图
+    // FallenAdventurer 已经有 isFallenAdventurer = true 标记，
+    // MapSystem 会自动对其应用黑白+半透明滤镜，所以不需要在这里做特殊处理
     this.sprite = new Sprite({ 
-      assetKey: 'PLAYER', 
+      assetKey: 'PLAYER',  // 使用玩家素材
       loader, 
       destHeight: 56, 
-      animationType: 'player' 
+      animationType: 'player' // 使用玩家动画逻辑(支持序列帧)
     });
     
     // 数值平衡：基于原始属性

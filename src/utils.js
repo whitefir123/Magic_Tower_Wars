@@ -19,6 +19,11 @@ export class Sprite {
   update(dt, isMoving) {
     if (this.isStatic) return;
     
+    // Ghost 动画类型：单张静态图片，不需要动画更新（漂浮效果在 draw 中实时计算）
+    if (this.animationType === 'ghost') {
+      return;
+    }
+    
     // 根据动画类型使用不同的动画逻辑
     if (this.animationType === 'player') {
       this._updatePlayerAnimation(dt, isMoving);
@@ -171,6 +176,41 @@ export class Sprite {
       const drawX = x + (TILE_SIZE - dw) / 2;
       const drawY = y - (dh - TILE_SIZE);
       ctx.drawImage(img, sx, sy, srcW, srcH, drawX, drawY, dw, dh);
+      return;
+    }
+
+    // Ghost 动画特殊处理：单张图 + 漂浮 + 基于默认朝左的翻转
+    if (this.animationType === 'ghost') {
+      const srcW = natW;
+      const srcH = natH;
+      const sx = 0;
+      const sy = 0;
+
+      const dh = this.destHeight;
+      const aspect = srcW / srcH;
+      const dw = dh * aspect;
+      
+      // 漂浮效果：周期 ~2s (2000ms / 2PI ≈ 320), 幅度 5px
+      const floatY = Math.sin(Date.now() / 320) * 5;
+      
+      const drawX = x + (TILE_SIZE - dw) / 2; // 居中
+      const drawY = y - (dh - TILE_SIZE) + floatY; // 底部对齐并应用漂浮
+
+      // 素材默认朝左
+      // direction: 0=下, 1=上, 2=左, 3=右
+      // 如果向右 (3)，需要翻转
+      const shouldFlip = (this.direction === 3);
+
+      if (shouldFlip) {
+        ctx.save();
+        // 以图片右边缘为轴翻转
+        ctx.translate(drawX + dw, drawY);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img, sx, sy, srcW, srcH, 0, 0, dw, dh);
+        ctx.restore();
+      } else {
+        ctx.drawImage(img, sx, sy, srcW, srcH, drawX, drawY, dw, dh);
+      }
       return;
     }
 
