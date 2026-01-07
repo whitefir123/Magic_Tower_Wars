@@ -13,6 +13,61 @@ export class HUD {
     this.container = document.getElementById('system-log-container');
     this.logTimer = null;
     this.isLogLocked = false;
+    
+    // ✅ 性能优化：DOM 元素缓存
+    this.domCache = {};
+    
+    // ✅ 性能优化：状态缓存（用于脏检查）
+    this.stateCache = {};
+    
+    // ✅ 性能优化：日志滚动锁，防止高频日志导致重排卡顿
+    this.scrollPending = false;
+  }
+  
+  /**
+   * ✅ 性能优化：获取缓存的 DOM 元素
+   * @param {string} id - 元素 ID
+   * @returns {HTMLElement|null} DOM 元素
+   */
+  getCachedElement(id) {
+    if (!this.domCache[id]) {
+      this.domCache[id] = document.getElementById(id);
+    }
+    return this.domCache[id];
+  }
+  
+  /**
+   * ✅ 性能优化：仅在值变化时更新文本（脏检查）
+   * @param {string} id - 元素 ID
+   * @param {any} value - 新值
+   */
+  updateTextIfChanged(id, value) {
+    // 转换为字符串进行比较，确保 0 和 "0" 也能正确处理
+    const strValue = String(value);
+    if (this.stateCache[id] !== strValue) {
+      const el = this.getCachedElement(id);
+      if (el) {
+        el.innerText = strValue;
+        this.stateCache[id] = strValue;
+      }
+    }
+  }
+  
+  /**
+   * ✅ 性能优化：仅在值变化时更新样式属性（脏检查）
+   * @param {string} id - 元素 ID
+   * @param {string} property - CSS 属性名（如 'width'）
+   * @param {string} value - 新值
+   */
+  updateStyleIfChanged(id, property, value) {
+    const cacheKey = `${id}_${property}`;
+    if (this.stateCache[cacheKey] !== value) {
+      const el = this.getCachedElement(id);
+      if (el) {
+        el.style[property] = value;
+        this.stateCache[cacheKey] = value;
+      }
+    }
   }
 
   /**
@@ -20,81 +75,93 @@ export class HUD {
    * @param {Player} player - 玩家对象
    */
   updateStats(player) {
-    if (!document.getElementById('ui-hp')) return;
+    // ✅ 性能优化：使用缓存的 DOM 元素检查
+    if (!this.getCachedElement('ui-hp')) return;
     
     // HP
-    document.getElementById('ui-hp').innerText = player.stats.hp;
-    document.getElementById('ui-hp-max').innerText = player.stats.maxHp;
+    this.updateTextIfChanged('ui-hp', player.stats.hp);
+    this.updateTextIfChanged('ui-hp-max', player.stats.maxHp);
     const hpPercent = Math.max(0, (player.stats.hp / player.stats.maxHp) * 100);
-    const hpBar = document.getElementById('hp-visual-fill');
-    if (hpBar) hpBar.style.width = `${hpPercent}%`;
+    // ✅ 性能优化：仅在百分比变化时更新宽度
+    this.updateStyleIfChanged('hp-visual-fill', 'width', `${hpPercent}%`);
 
     // Rage
-    const rBar = document.getElementById('rage-fill');
-    if (rBar) rBar.style.width = `${player.stats.rage}%`;
-    const rageTextEl = document.getElementById('rage-text');
-    const rageSection = document.querySelector('.rage-section');
+    const ragePercent = player.stats.rage;
+    // ✅ 性能优化：仅在百分比变化时更新宽度
+    this.updateStyleIfChanged('rage-fill', 'width', `${ragePercent}%`);
+    
+    const rageTextEl = this.getCachedElement('rage-text');
+    const rageSection = document.querySelector('.rage-section'); // 这个元素不常变化，不需要缓存
+    
     if (rageTextEl) {
-      rageTextEl.innerText = `${player.stats.rage}%`;
-      // 怒气满值时变成红色加粗，否则保持白色普通
-      if (player.stats.rage >= 100) {
-        rageTextEl.style.color = '#ff0000';
-        rageTextEl.style.fontWeight = 'bold';
-        // 给整个怒气区域添加 full 类，触发CSS样式
-        if (rageSection) rageSection.classList.add('full');
-      } else {
-        rageTextEl.style.color = '#ffffff';
-        rageTextEl.style.fontWeight = 'normal';
-        // 移除 full 类
-        if (rageSection) rageSection.classList.remove('full');
+      this.updateTextIfChanged('rage-text', `${ragePercent}%`);
+      
+      // ✅ 性能优化：仅在怒气状态（是否满100）发生改变时，才修改样式
+      const isRageFull = ragePercent >= 100;
+      const rageStateKey = 'rage-full-state';
+      if (this.stateCache[rageStateKey] !== isRageFull) {
+        if (isRageFull) {
+          rageTextEl.style.color = '#ff0000';
+          rageTextEl.style.fontWeight = 'bold';
+          if (rageSection) rageSection.classList.add('full');
+        } else {
+          rageTextEl.style.color = '#ffffff';
+          rageTextEl.style.fontWeight = 'normal';
+          if (rageSection) rageSection.classList.remove('full');
+        }
+        this.stateCache[rageStateKey] = isRageFull;
       }
     }
 
     // ULT button
-    const btnUlt = document.getElementById('btn-ultimate');
-    if (player.stats.rage >= 100) { 
-      btnUlt?.classList.add('ready'); 
-      btnUlt?.removeAttribute('disabled'); 
-    } else { 
-      btnUlt?.classList.remove('ready'); 
-      btnUlt?.setAttribute('disabled', 'true'); 
+    const btnUlt = this.getCachedElement('btn-ultimate');
+    const isRageFull = player.stats.rage >= 100;
+    const ultReadyKey = 'ult-ready-state';
+    if (this.stateCache[ultReadyKey] !== isRageFull) {
+      if (isRageFull) { 
+        btnUlt?.classList.add('ready'); 
+        btnUlt?.removeAttribute('disabled'); 
+      } else { 
+        btnUlt?.classList.remove('ready'); 
+        btnUlt?.setAttribute('disabled', 'true'); 
+      }
+      this.stateCache[ultReadyKey] = isRageFull;
     }
 
     // Stats
-    const setText = (id, val) => { 
-      const el = document.getElementById(id); 
-      if (el) el.innerText = val; 
-    };
     const totals = (player.getTotalStats ? player.getTotalStats() : player.stats);
-    setText('ui-patk', totals.p_atk);
-    setText('ui-matk', totals.m_atk);
-    setText('ui-pdef', totals.p_def);
-    setText('ui-mdef', totals.m_def);
-    setText('ui-keys', player.stats.keys);
-    setText('ui-gold', player.stats.gold ?? 0);
-    setText('ui-lvl', player.stats.lvl);
-    setText('ui-floor', player.stats.floor);
+    this.updateTextIfChanged('ui-patk', totals.p_atk);
+    this.updateTextIfChanged('ui-matk', totals.m_atk);
+    this.updateTextIfChanged('ui-pdef', totals.p_def);
+    this.updateTextIfChanged('ui-mdef', totals.m_def);
+    this.updateTextIfChanged('ui-keys', player.stats.keys);
+    this.updateTextIfChanged('ui-gold', player.stats.gold ?? 0);
+    this.updateTextIfChanged('ui-lvl', player.stats.lvl);
+    this.updateTextIfChanged('ui-floor', player.stats.floor);
 
     // Soul Crystals
     const sc = window.game && window.game.metaSaveSystem ? window.game.metaSaveSystem.data.soulCrystals : 0;
-    const scEl = document.getElementById('ui-soul-crystals');
-    if (scEl) scEl.innerText = sc;
+    this.updateTextIfChanged('ui-soul-crystals', sc);
 
     // Crit Rate
-    const critEl = document.getElementById('ui-crit');
+    const critEl = this.getCachedElement('ui-crit');
     if (critEl) {
       const critRate = totals.crit_rate || 0.2;
       const critPercent = Math.floor(critRate * 100);
-      critEl.innerText = `${critPercent}%`;
+      this.updateTextIfChanged('ui-crit', `${critPercent}%`);
       
       // Check if there's any buff that affects crit rate
       const hasCritBuff = player.buffs && player.buffs.berserk && player.buffs.berserk.active;
       
-      // Change color to red if there's a buff affecting crit rate
-      if (hasCritBuff) {
-        critEl.style.color = '#ff0000'; // Red when buff is active
-      } else {
-        critEl.style.color = ''; // Reset to default color
+      // ✅ 性能优化：仅在 buff 状态变化时更新颜色
+      const critBuffKey = 'crit-buff-state';
+      if (this.stateCache[critBuffKey] !== hasCritBuff) {
+        if (hasCritBuff) {
+          critEl.style.color = '#ff0000'; // Red when buff is active
+        } else {
+          critEl.style.color = ''; // Reset to default color
+        }
+        this.stateCache[critBuffKey] = hasCritBuff;
       }
     }
 
@@ -102,10 +169,10 @@ export class HUD {
     const xpNow = player.stats.xp ?? 0;
     const xpNext = Math.max(1, player.stats.nextLevelXp ?? 1);
     const xpPercent = Math.max(0, Math.min(100, Math.floor((xpNow / xpNext) * 100)));
-    const xpFill = document.getElementById('xp-fill');
-    if (xpFill) xpFill.style.width = `${xpPercent}%`;
-    setText('ui-xp', xpNow);
-    setText('ui-xp-max', xpNext);
+    // ✅ 性能优化：仅在百分比变化时更新宽度
+    this.updateStyleIfChanged('xp-fill', 'width', `${xpPercent}%`);
+    this.updateTextIfChanged('ui-xp', xpNow);
+    this.updateTextIfChanged('ui-xp-max', xpNext);
     
     // FIX: 技能预备状态高亮显示
     // 技能槽位索引：0=Slash, 1=Scorch, 2=Freeze
@@ -116,17 +183,22 @@ export class HUD {
     ];
     
     skillSlots.forEach(({ id, state }) => {
-      const skillIcon = document.getElementById(id);
+      const skillIcon = this.getCachedElement(id);
       if (skillIcon) {
         const skillSlot = skillIcon.closest('.skill-slot');
         const isActive = player.states && player.states[state];
         
-        if (isActive) {
-          // 添加高亮类
-          skillSlot?.classList.add('skill-active');
-        } else {
-          // 移除高亮类
-          skillSlot?.classList.remove('skill-active');
+        // ✅ 性能优化：仅在状态变化时更新类
+        const skillStateKey = `skill-${id}-active`;
+        if (this.stateCache[skillStateKey] !== isActive) {
+          if (isActive) {
+            // 添加高亮类
+            skillSlot?.classList.add('skill-active');
+          } else {
+            // 移除高亮类
+            skillSlot?.classList.remove('skill-active');
+          }
+          this.stateCache[skillStateKey] = isActive;
         }
       }
     });
@@ -138,20 +210,34 @@ export class HUD {
    * @param {string} type - 消息类型 ('info', 'warning', 'error', 'combat')
    */
   logMessage(msg, type = 'info') {
+    if (!this.logPanel) return;
+
+    // ✅ 性能优化：1. 添加节点 (开销较小，保持同步以确保内容即时添加)
     const entry = document.createElement('div');
     entry.className = `log-entry log-${type}`;
-    entry.innerHTML = `> ${msg}`;
+    entry.innerText = `> ${msg}`; // 使用 innerText 防止 XSS，且比 innerHTML 快
     this.logPanel.appendChild(entry);
 
-    // 保持列表长度与自动滚动
-    requestAnimationFrame(() => {
-      try {
-        while (this.logPanel.children.length > 20) {
-          this.logPanel.firstChild.remove();
+    // ✅ 性能优化：2. 优化滚动和清理：每帧只执行一次 (开销大，因为涉及布局计算)
+    // 使用 scrollPending 锁，确保每一帧只执行一次滚动/清理操作
+    if (!this.scrollPending) {
+      this.scrollPending = true;
+      requestAnimationFrame(() => {
+        try {
+          // 清理旧日志
+          while (this.logPanel.children.length > 20) {
+            this.logPanel.firstChild.remove();
+          }
+          // 滚动到底部
+          if (this.container) {
+            this.container.scrollTop = this.container.scrollHeight;
+          }
+        } catch (err) {
+          // 忽略可能的错误（如元素已被移除）
         }
-      } catch {}
-      if (this.container) this.container.scrollTop = this.container.scrollHeight;
-    });
+        this.scrollPending = false;
+      });
+    }
 
     // 显示容器并重置隐藏计时器
     if (this.container) {

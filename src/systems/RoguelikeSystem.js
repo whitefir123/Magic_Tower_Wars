@@ -37,9 +37,10 @@ export class RoguelikeSystem {
   /**
    * 计算符文权重（基于稀有度、类型、标签偏好）
    * @param {Object} sourceMonster - 来源怪物（可选，用于标签权重计算）
+   * @param {string} draftContext - 符文选择上下文：'MONSTER_KILL'（击败怪物）或 'LEVEL_UP'（升级）
    * @returns {Map} 符文到权重的映射
    */
-  computeRuneWeights(sourceMonster = null) {
+  computeRuneWeights(sourceMonster = null, draftContext = null) {
     const weights = new Map();
     
     // 标签权重（如果玩家主要加物理，物理系符文权重微调）
@@ -68,6 +69,19 @@ export class RoguelikeSystem {
     
     // 遍历所有符文，计算权重
     for (const rune of RUNE_POOL) {
+      // ✅ 根据上下文过滤符文类型
+      if (draftContext === 'MONSTER_KILL') {
+        // 击败怪物时：只保留 STAT 类型
+        if (rune.type !== 'STAT') {
+          continue; // 跳过非 STAT 类型的符文
+        }
+      } else if (draftContext === 'LEVEL_UP') {
+        // 升级时：只保留 MECHANIC 或 CURSE 类型
+        if (rune.type !== 'MECHANIC' && rune.type !== 'CURSE') {
+          continue; // 跳过非 MECHANIC 和非 CURSE 类型的符文
+        }
+      }
+      // 如果 draftContext 为 null 或未指定，保持原有逻辑（允许所有类型）
       let weight = 1.0;
       
       // 1. 稀有度权重
@@ -142,10 +156,11 @@ export class RoguelikeSystem {
    * 生成符文选项（3张卡片）
    * @param {Object} sourceMonster - 来源怪物（可选）
    * @param {SeededRandom} rng - 可选的随机数生成器（如果提供则使用，否则使用 Math.random）
+   * @param {string} draftContext - 符文选择上下文：'MONSTER_KILL'（击败怪物）或 'LEVEL_UP'（升级）
    * @returns {Array} 符文选项数组
    */
-  generateRuneOptions(sourceMonster = null, rng = null) {
-    const weights = this.computeRuneWeights(sourceMonster);
+  generateRuneOptions(sourceMonster = null, rng = null, draftContext = null) {
+    const weights = this.computeRuneWeights(sourceMonster, draftContext);
     // ✅ FIX: 传递 RNG 给 weightedPickNRunes（每日挑战模式需要确定性）
     // 如果没有传入 rng，尝试从 game 对象获取（每日挑战模式）
     const actualRng = rng || ((this.game && this.game.isDailyMode && this.game.rng) ? this.game.rng : null);
@@ -322,9 +337,10 @@ export class RoguelikeSystem {
       
       // 重新生成符文选项
       const sourceMonster = this.currentSourceMonster || null;
-      // ✅ FIX: 传递 RNG 给 generateRuneOptions（每日挑战模式需要确定性）
+      const draftContext = this.currentDraftContext || null; // 使用保存的上下文
+      // ✅ FIX: 传递 RNG 和 draftContext 给 generateRuneOptions（每日挑战模式需要确定性）
       const rng = (this.game && this.game.isDailyMode && this.game.rng) ? this.game.rng : null;
-      this.currentOptions = this.generateRuneOptions(sourceMonster, rng);
+      this.currentOptions = this.generateRuneOptions(sourceMonster, rng, draftContext);
       
       // 更新UI显示
       this.renderCards();
@@ -531,6 +547,7 @@ export class RoguelikeSystem {
     this.currentRerollCost = 50;
     this.currentOptions = [];
     this.currentSourceMonster = null;
+    this.currentDraftContext = null; // 重置上下文
     // ✅ FIX: 重置处理锁
     this.isProcessing = false;
     
@@ -542,11 +559,14 @@ export class RoguelikeSystem {
   
   /**
    * 将符文选择任务加入队列
+   * @param {string} tier - 符文等级（'NORMAL' 或 'ELITE'）
+   * @param {Object} sourceMonster - 来源怪物（可选）
+   * @param {string} draftContext - 符文选择上下文：'MONSTER_KILL'（击败怪物）或 'LEVEL_UP'（升级）
    */
-  enqueueDraft(tier, sourceMonster) {
+  enqueueDraft(tier, sourceMonster, draftContext = null) {
     if (!this.queue) this.queue = [];
-    this.queue.push({ tier: tier || 'NORMAL', sourceMonster });
-    console.log(`[RoguelikeSystem] 符文选择任务已加入队列: tier=${tier}, isOpen=${this.isOpen}, queue长度=${this.queue.length}`);
+    this.queue.push({ tier: tier || 'NORMAL', sourceMonster, draftContext });
+    console.log(`[RoguelikeSystem] 符文选择任务已加入队列: tier=${tier}, draftContext=${draftContext}, isOpen=${this.isOpen}, queue长度=${this.queue.length}`);
     
     if (!this.isOpen) {
       console.log('[RoguelikeSystem] 符文选择界面未打开，立即处理');
@@ -580,13 +600,14 @@ export class RoguelikeSystem {
       }
       
       // 从队列中取出第一个任务
-      const { tier, sourceMonster } = this.queue.shift();
+      const { tier, sourceMonster, draftContext } = this.queue.shift();
       this.currentSourceMonster = sourceMonster;
+      this.currentDraftContext = draftContext; // 保存上下文，用于刷新功能
       
       // 重置刷新费用
       this.currentRerollCost = 50;
       
-      console.log(`[RoguelikeSystem] 处理符文选择: tier=${tier}, queue剩余=${this.queue.length}`);
+      console.log(`[RoguelikeSystem] 处理符文选择: tier=${tier}, draftContext=${draftContext}, queue剩余=${this.queue.length}`);
       
       // 设置标题
       const titleEl = document.getElementById('draft-title');
@@ -595,9 +616,9 @@ export class RoguelikeSystem {
       }
       
       // 生成符文选项
-      // ✅ FIX: 传递 RNG 给 generateRuneOptions（每日挑战模式需要确定性）
+      // ✅ FIX: 传递 RNG 和 draftContext 给 generateRuneOptions（每日挑战模式需要确定性）
       const rng = (this.game && this.game.isDailyMode && this.game.rng) ? this.game.rng : null;
-      this.currentOptions = this.generateRuneOptions(sourceMonster, rng);
+      this.currentOptions = this.generateRuneOptions(sourceMonster, rng, draftContext);
       
       // 渲染卡片
       this.renderCards();
@@ -639,9 +660,12 @@ export class RoguelikeSystem {
   
   /**
    * 触发符文选择（兼容旧接口）
+   * @param {string} tier - 符文等级（'NORMAL' 或 'ELITE'）
+   * @param {Object} sourceMonster - 来源怪物（可选）
+   * @param {string} draftContext - 符文选择上下文：'MONSTER_KILL'（击败怪物）或 'LEVEL_UP'（升级）
    */
-  triggerDraft(tier, sourceMonster) {
-    this.enqueueDraft(tier, sourceMonster);
+  triggerDraft(tier, sourceMonster, draftContext = null) {
+    this.enqueueDraft(tier, sourceMonster, draftContext);
   }
   
   /**

@@ -355,28 +355,31 @@ class Game {
         }
         return;
       }
-      const dir = normalizeKey(e.key);
-      if (dir) { 
-        // 输入缓冲系统：记录按键到 buffer
-        if (this.inputBuffer.length < 2) {
-          this.inputBuffer.push({ key: dir, timestamp: Date.now() });
+      
+      // ✅ 性能优化：统一处理所有按键（包括空格键）
+      let key = normalizeKey(e.key);
+      if (e.key === ' ') key = ' '; // 空格键统一处理
+      
+      if (key) {
+        // ✅ 关键修复：仅在按键"新按下"（不在栈中）时才推入 Buffer，防止长按产生大量垃圾对象
+        if (!this.inputStack.includes(key)) {
+          if (this.inputBuffer.length < 2) {
+            this.inputBuffer.push({ key: key, timestamp: Date.now() });
+          }
+          this.inputStack.push(key);
         }
-        if (!this.inputStack.includes(dir)) this.inputStack.push(dir); 
-        e.preventDefault(); 
-      }
-      if (e.key === ' ') { 
-        // 攻击键也记录到 buffer
-        if (this.inputBuffer.length < 2) {
-          this.inputBuffer.push({ key: ' ', timestamp: Date.now() });
-        }
-        e.preventDefault(); 
-        if (this.player && this.player.stats.rage >= 100) this.activateUltimate(); 
+        e.preventDefault();
       }
     });
     
     window.addEventListener('keyup', (e) => {
-      const dir = normalizeKey(e.key); 
-      if (dir) this.inputStack = this.inputStack.filter(k => k !== dir);
+      // ✅ 性能优化：统一处理所有按键（包括空格键）
+      let key = normalizeKey(e.key);
+      if (e.key === ' ') key = ' ';
+      
+      if (key) {
+        this.inputStack = this.inputStack.filter(k => k !== key);
+      }
     });
 
     // Setup mouse wheel zoom
@@ -1182,8 +1185,10 @@ class Game {
       this.player.postKillDelay = 0; // Clear delay once expired
     }
     
-    // 输入缓冲系统：优先检查 buffer
-    let bufferProcessed = false;
+    // ✅ 性能优化：标记是否已处理输入，用于互斥 Buffer 和 Stack
+    let inputHandled = false;
+
+    // 1. 优先检查 Buffer（输入缓冲系统）
     if (!this.player.isMoving && this.inputBuffer.length > 0 && !this.player.pendingCombat && !playerFrozen && !postKillDelayActive) {
       const now = Date.now();
       // 查找有效的 buffer 指令
@@ -1192,29 +1197,26 @@ class Game {
         if (now - input.timestamp <= this.INPUT_BUFFER_WINDOW) {
           // 找到有效指令，执行它
           const key = input.key;
-          bufferProcessed = this.processInput(key);
-          // 执行后立即清空 buffer
-          this.inputBuffer = [];
-          break; // 只执行第一个有效指令
+          const validInput = this.processInput(key);
+          if (validInput) {
+            // 执行后立即清空 buffer
+            this.inputBuffer = [];
+            inputHandled = true; // 标记已处理
+            break; // 只执行第一个有效指令
+          }
         }
       }
       // 清理过期的 buffer 条目
       this.inputBuffer = this.inputBuffer.filter(input => now - input.timestamp <= this.INPUT_BUFFER_WINDOW);
     }
-    
-    // 如果 buffer 已处理，跳过 inputStack 检查
-    if (bufferProcessed) {
-      return;
-    }
-    
-    // 原有的 inputStack 逻辑（长按移动）
-    if (!this.player.isMoving && this.inputStack.length > 0 && !this.player.pendingCombat && !playerFrozen && !postKillDelayActive) {
+
+    // 2. 如果 Buffer 未处理，再检查 Stack（长按移动）
+    if (!inputHandled && !this.player.isMoving && this.inputStack.length > 0 && !this.player.pendingCombat && !playerFrozen && !postKillDelayActive) {
       const key = this.inputStack[this.inputStack.length - 1];
       // 使用 processInput 方法处理输入
       this.processInput(key);
       // 注意：原有的移动逻辑已移至 processInput 方法中
-      // 为了保持向后兼容，这里保留原有的逻辑结构，但实际处理已由 processInput 完成
-      return; // processInput 已处理所有逻辑，直接返回
+      // ✅ 修复：删除 return，确保后续逻辑正常执行
     }
 
     this.player.updateVisuals(dt); 

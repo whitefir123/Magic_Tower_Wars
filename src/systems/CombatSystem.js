@@ -325,7 +325,7 @@ export class CombatSystem {
             // 移除 XP 飘字
             
             if (leveled && game.roguelike && game.roguelike.triggerDraft) {
-              game.roguelike.triggerDraft('ELITE', enemy);
+              game.roguelike.triggerDraft('ELITE', enemy, 'LEVEL_UP');
             }
           }
           
@@ -452,7 +452,7 @@ export class CombatSystem {
                   // 移除 XP 飘字
                   
                   if (leveled && game.roguelike && game.roguelike.triggerDraft) {
-                    game.roguelike.triggerDraft('ELITE', entity);
+                    game.roguelike.triggerDraft('ELITE', entity, 'LEVEL_UP');
                   }
                 }
                 
@@ -595,7 +595,7 @@ export class CombatSystem {
                 // 移除 XP 飘字
                 
                 if (leveled && game.roguelike && game.roguelike.triggerDraft) {
-                  game.roguelike.triggerDraft('ELITE', nearestEnemy);
+                  game.roguelike.triggerDraft('ELITE', nearestEnemy, 'LEVEL_UP');
                 }
               }
               
@@ -667,7 +667,7 @@ export class CombatSystem {
                 // 移除 XP 飘字
                 
                 if (leveled && game.roguelike && game.roguelike.triggerDraft) {
-                  game.roguelike.triggerDraft('ELITE', entity);
+                  game.roguelike.triggerDraft('ELITE', entity, 'LEVEL_UP');
                 }
               }
               
@@ -1933,7 +1933,7 @@ export class CombatSystem {
           // 移除 XP 飘字
           
           if (leveled && game.roguelike && game.roguelike.triggerDraft) {
-            game.roguelike.triggerDraft('ELITE', monster);
+            game.roguelike.triggerDraft('ELITE', monster, 'LEVEL_UP');
           }
         }
         if (ry > 0) player.gainRage(ry);
@@ -2036,7 +2036,7 @@ export class CombatSystem {
         game.killCount = (game.killCount || 0) + 1;
         if (game.achievementSystem) game.achievementSystem.check('onKill');
         if (game.roguelike && game.roguelike.triggerDraft) {
-          game.roguelike.triggerDraft('NORMAL', monster);
+          game.roguelike.triggerDraft('NORMAL', monster, 'MONSTER_KILL');
         }
         
         game.map.removeMonster(monster);
