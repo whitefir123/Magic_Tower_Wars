@@ -1707,6 +1707,7 @@ class Game {
           overlayEl.classList.remove('overlay-fade-in');
           overlayEl.classList.add('hidden');
           overlayEl.style.setProperty('display', 'none', 'important');
+          overlayEl.style.pointerEvents = 'none'; // ✅ 新增：禁用交互
           this.isPaused = false;
           this.currentShrine = null;
         }
@@ -1722,6 +1723,7 @@ class Game {
         overlayEl.classList.remove('overlay-fade-in');
         overlayEl.classList.add('hidden');
         overlayEl.style.setProperty('display', 'none', 'important');
+        overlayEl.style.pointerEvents = 'none'; // ✅ 新增：禁用交互
         this.isPaused = false;
         this.currentShrine = null;
       };
@@ -1747,6 +1749,7 @@ class Game {
           overlayEl.classList.remove('overlay-fade-in');
           overlayEl.classList.add('hidden');
           overlayEl.style.setProperty('display', 'none', 'important');
+          overlayEl.style.pointerEvents = 'none'; // ✅ 新增：禁用交互
           this.isPaused = false;
           this.currentShrine = null;
         }
@@ -1762,6 +1765,7 @@ class Game {
         overlayEl.classList.remove('overlay-fade-in');
         overlayEl.classList.add('hidden');
         overlayEl.style.setProperty('display', 'none', 'important');
+        overlayEl.style.pointerEvents = 'none'; // ✅ 新增：禁用交互
         this.isPaused = false;
         this.currentShrine = null;
       };
@@ -1771,6 +1775,7 @@ class Game {
     // 关键修复：正确处理显示类
     overlayEl.classList.remove('hidden');
     overlayEl.style.setProperty('display', 'flex', 'important');
+    overlayEl.style.pointerEvents = 'auto'; // ✅ 新增：恢复交互能力
     void overlayEl.offsetWidth; // 强制重排
     overlayEl.classList.add('overlay-fade-in');
   }
