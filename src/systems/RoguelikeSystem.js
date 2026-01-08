@@ -525,36 +525,59 @@ export class RoguelikeSystem {
    * 关闭符文选择界面
    */
   closeDraft() {
-    // 隐藏界面
     const overlay = document.getElementById('draft-overlay');
     if (overlay) {
-      // 🔴 关键修复：移除淡入类，添加 hidden
+      // 1. 开始淡出动画
       overlay.classList.remove('overlay-fade-in');
-      overlay.classList.add('hidden');
-      overlay.style.setProperty('display', 'none', 'important');
-      overlay.style.pointerEvents = 'none'; // 禁用交互，保持状态一致性
+      overlay.classList.add('overlay-fade-out');
+      
+      // 2. 等待动画结束（300ms 与 CSS 过渡时间匹配）
+      setTimeout(() => {
+        // 3. 隐藏 DOM
+        overlay.classList.add('hidden');
+        overlay.style.setProperty('display', 'none', 'important');
+        overlay.classList.remove('overlay-fade-out'); // 重置状态
+        overlay.style.pointerEvents = 'none'; // 禁用交互，保持状态一致性
+        
+        // 4. 执行原有清理逻辑
+        this.isOpen = false;
+        if (this.game) {
+          this.game.isPaused = false;
+          // ✅ FIX: 清空输入栈，防止残留输入在界面关闭后立即触发
+          this.game.inputStack = [];
+        }
+        
+        // 重置刷新费用（下次打开时重新开始）
+        this.currentRerollCost = 50;
+        this.currentOptions = [];
+        this.currentSourceMonster = null;
+        this.currentDraftContext = null; // 重置上下文
+        // ✅ FIX: 重置处理锁
+        this.isProcessing = false;
+        
+        // 5. 处理队列中的下一个任务
+        setTimeout(() => {
+          this.processNext();
+        }, 50);
+      }, 300); // 300ms 延迟，等待淡出动画完成
+    } else {
+      // 容错处理：如果 overlay 不存在，直接执行清理逻辑
+      this.isOpen = false;
+      if (this.game) {
+        this.game.isPaused = false;
+        this.game.inputStack = [];
+      }
+      this.currentRerollCost = 50;
+      this.currentOptions = [];
+      this.currentSourceMonster = null;
+      this.currentDraftContext = null;
+      this.isProcessing = false;
+      
+      // 处理队列中的下一个任务
+      setTimeout(() => {
+        this.processNext();
+      }, 50);
     }
-    
-    // 重置状态
-    this.isOpen = false;
-    if (this.game) {
-      this.game.isPaused = false;
-      // ✅ FIX: 清空输入栈，防止残留输入在界面关闭后立即触发
-      this.game.inputStack = [];
-    }
-    
-    // 重置刷新费用（下次打开时重新开始）
-    this.currentRerollCost = 50;
-    this.currentOptions = [];
-    this.currentSourceMonster = null;
-    this.currentDraftContext = null; // 重置上下文
-    // ✅ FIX: 重置处理锁
-    this.isProcessing = false;
-    
-    // 处理队列中的下一个任务
-    setTimeout(() => {
-      this.processNext();
-    }, 50);
   }
   
   /**
@@ -631,17 +654,23 @@ export class RoguelikeSystem {
       // 显示界面
       const overlay = document.getElementById('draft-overlay');
       if (overlay) {
-        overlay.classList.remove('hidden'); // 确保移除 hidden
+        overlay.classList.remove('hidden', 'overlay-fade-out'); // 确保移除 hidden 和淡出类
         overlay.style.setProperty('display', 'flex', 'important');
         overlay.style.pointerEvents = 'auto'; // 恢复交互能力
         
-        // 强制重排以触发过渡动画
-        void overlay.offsetWidth;
-        
-        // 🔴 关键修复：添加淡入类，使 opacity 变为 1
-        overlay.classList.add('overlay-fade-in');
-        
-        console.log('[RoguelikeSystem] 符文选择界面已显示');
+        // 🔴 关键修复：使用双重 requestAnimationFrame 确保强制重排后再添加淡入类
+        // 这样可以确保淡入动画正确触发
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            // 强制重排以触发过渡动画
+            void overlay.offsetWidth;
+            
+            // 添加淡入类，使 opacity 变为 1
+            overlay.classList.add('overlay-fade-in');
+            
+            console.log('[RoguelikeSystem] 符文选择界面已显示（带淡入动画）');
+          });
+        });
       } else {
         console.error('[RoguelikeSystem] draft-overlay 元素未找到');
         this.isOpen = false;

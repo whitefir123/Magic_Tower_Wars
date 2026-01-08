@@ -503,10 +503,46 @@ class Game {
         await this.loadingUI.performTransition({
           targetId: 'main-menu',
           action: async () => {
-            // 预先初始化主菜单 DOM (但不显示)
-            this.showMainMenu(true); // 仅预备不显示
-            // 显示主菜单（确保按钮已创建）
-            this.showMainMenu(false);
+            // 获取主菜单元素
+            const mainMenu = document.getElementById('main-menu');
+            
+            if (mainMenu) {
+              // 1. 强制设置初始状态：透明且略微放大
+              mainMenu.style.opacity = '0';
+              mainMenu.style.transform = 'scale(1.05)';
+              mainMenu.classList.remove('scene-active'); // 确保移除激活状态
+              
+              // 2. 预先初始化主菜单 DOM (但不显示)
+              this.showMainMenu(true); // 仅预备不显示
+              
+              // 3. 显示主菜单（确保按钮已创建）
+              this.showMainMenu(false);
+              
+              // 4. 等待双重 requestAnimationFrame 确保重排，然后触发淡入动画
+              await new Promise(resolve => {
+                requestAnimationFrame(() => {
+                  requestAnimationFrame(() => {
+                    // 添加 scene-active 类并设置最终状态
+                    mainMenu.classList.add('scene-active');
+                    mainMenu.style.opacity = '1';
+                    mainMenu.style.transform = 'scale(1)';
+                    console.log('[Init] 主菜单淡入动画已激活');
+                    
+                    // 等待淡入动画完成（0.8s）后再 resolve，确保幕布在主菜单完全变不透明后才拉开
+                    setTimeout(() => {
+                      resolve();
+                    }, 800); // 与 CSS transition 时间一致
+                  });
+                });
+              });
+            } else {
+              // 如果找不到元素，仍然执行 showMainMenu
+              this.showMainMenu(true);
+              this.showMainMenu(false);
+            }
+            
+            // 统一调用 scrollTo 确保视角重置
+            window.scrollTo(0, 0);
           }
         });
         
@@ -831,67 +867,90 @@ class Game {
     this.handleResize = handleResize;
   }
 
-  nextLevel() {
-    // v2.1: 重置符文刷新费用
-    if (this.roguelike && this.roguelike.resetRerollCost) {
-      this.roguelike.resetRerollCost();
-    }
-    // v2.1: 重置符文刷新费用
-    if (this.roguelike && this.roguelike.resetRerollCost) {
-      this.roguelike.resetRerollCost();
-    }
-    // 成就系统：检测层结束（在进入新层之前）
-    if (this.achievementSystem) {
-      this.achievementSystem.check('onLevelEnd');
-    }
+  async nextLevel() {
+    // 1. 锁定游戏（防止转场期间玩家输入）
+    this.isPaused = true;
     
-    // FIX: 层级切换时清除技能预备状态 - 防止玩家带着预搓好的技能进入下一层
-    if (this.player && this.player.clearPrimedStates) {
-      this.player.clearPrimedStates();
-    }
+    const nextFloorNum = this.player.stats.floor + 1;
     
-    // FIX: 先增加楼层，再生成地图
-    // 使用新的噩梦层级系统
-    // 将ascensionLevel传递给MapSystem用于生成层级（确保有默认值1）
-    const ascensionLevel = this.selectedAscensionLevel ?? 1;
-    this.player.stats.floor++;
-    // 每日挑战模式：传入 RNG 以确保确定性生成
-    this.map.generateLevel(this.player.stats.floor, ascensionLevel, this.isDailyMode ? this.rng : null);
+    // 设置提示文本（动态更新为楼层信息）
+    this.loadingUI.setTip(`正在深入第 ${nextFloorNum} 层...`);
     
-    // FIX: 清除浮动文字池，防止残留文字在错误的坐标显示
-    // OPTIMIZATION: 直接清空数组即可，对象会在 loop 中被 releaseDeadObjects 自动回收
-    // 不需要先 release 再 clear，这样更高效且避免竞争条件
-    this.floatingTexts = [];
-    if (this.floatingTextPool && this.floatingTextPool.clear) {
-      // 清空对象池（释放所有未使用的对象）
-      this.floatingTextPool.clear();
-    }
-    
-    for (let y = 0; y < this.map.height; y++) for (let x = 0; x < this.map.width; x++) if (this.map.grid[y][x] === TILE.STAIRS_UP) {
-      this.player.x = x; this.player.y = y; this.player.visualX = x * TILE_SIZE; this.player.visualY = y * TILE_SIZE; this.player.destX = this.player.visualX; this.player.destY = this.player.visualY;
-    }
-    this.ui.updateStats(this.player);
-    this.ui.updateEquipmentSockets(this.player);
-    
-    // 自动保存功能
-    // CRITICAL FIX: 每日挑战模式绝对禁止自动保存，防止覆盖主线进度存档
-    if (this.settings && this.settings.autoSave === true && !this.isDailyMode) {
-      const success = SaveSystem.save(this);
-      if (success) {
-        this.ui.logMessage('游戏已自动保存', 'info');
+    // 2. 执行转场
+    await this.loadingUI.performTransition({
+      targetId: 'main-ui', // 目标其实还是 main-ui，只是内容变了
+      action: async () => {
+        // 在这里执行原有的 nextLevel 逻辑
+        // v2.1: 重置符文刷新费用
+        if (this.roguelike && this.roguelike.resetRerollCost) {
+          this.roguelike.resetRerollCost();
+        }
+        
+        // 成就系统：检测层结束（在进入新层之前）
+        if (this.achievementSystem) {
+          this.achievementSystem.check('onLevelEnd');
+        }
+        
+        // FIX: 层级切换时清除技能预备状态 - 防止玩家带着预搓好的技能进入下一层
+        if (this.player && this.player.clearPrimedStates) {
+          this.player.clearPrimedStates();
+        }
+        
+        // FIX: 先增加楼层，再生成地图
+        // 使用新的噩梦层级系统
+        // 将ascensionLevel传递给MapSystem用于生成层级（确保有默认值1）
+        const ascensionLevel = this.selectedAscensionLevel ?? 1;
+        this.player.stats.floor++;
+        // 每日挑战模式：传入 RNG 以确保确定性生成
+        this.map.generateLevel(this.player.stats.floor, ascensionLevel, this.isDailyMode ? this.rng : null);
+        
+        // FIX: 清除浮动文字池，防止残留文字在错误的坐标显示
+        // OPTIMIZATION: 直接清空数组即可，对象会在 loop 中被 releaseDeadObjects 自动回收
+        // 不需要先 release 再 clear，这样更高效且避免竞争条件
+        this.floatingTexts = [];
+        if (this.floatingTextPool && this.floatingTextPool.clear) {
+          // 清空对象池（释放所有未使用的对象）
+          this.floatingTextPool.clear();
+        }
+        
+        for (let y = 0; y < this.map.height; y++) for (let x = 0; x < this.map.width; x++) if (this.map.grid[y][x] === TILE.STAIRS_UP) {
+          this.player.x = x; this.player.y = y; this.player.visualX = x * TILE_SIZE; this.player.visualY = y * TILE_SIZE; this.player.destX = this.player.visualX; this.player.destY = this.player.visualY;
+        }
+        
+        // 确保更新 UI
+        this.ui.updateStats(this.player);
+        this.ui.updateEquipmentSockets(this.player);
+        
+        // 自动保存功能
+        // CRITICAL FIX: 每日挑战模式绝对禁止自动保存，防止覆盖主线进度存档
+        if (this.settings && this.settings.autoSave === true && !this.isDailyMode) {
+          const success = SaveSystem.save(this);
+          if (success) {
+            this.ui.logMessage('游戏已自动保存', 'info');
+          }
+        }
+        
+        // 成就系统：检测层开始
+        if (this.achievementSystem) {
+          this.achievementSystem.check('onLevelStart');
+        }
+        
+        // 异步生成 Ghost（堕落冒险者）
+        // 有概率遇到其他玩家的死亡记录
+        if (!this.isDailyMode && Math.random() < 0.3) { // 30% 概率
+          this.spawnFallenAdventurer(this.player.stats.floor);
+        }
+        
+        console.log(`[NextLevel] 已切换到第 ${this.player.stats.floor} 层（幕布后）`);
+        
+        // 统一调用 scrollTo 确保视角重置
+        window.scrollTo(0, 0);
       }
-    }
+    });
     
-    // 成就系统：检测层开始
-    if (this.achievementSystem) {
-      this.achievementSystem.check('onLevelStart');
-    }
-    
-    // 异步生成 Ghost（堕落冒险者）
-    // 有概率遇到其他玩家的死亡记录
-    if (!this.isDailyMode && Math.random() < 0.3) { // 30% 概率
-      this.spawnFallenAdventurer(this.player.stats.floor);
-    }
+    // 3. 解锁游戏
+    this.isPaused = false;
+    console.log(`[NextLevel] 楼层切换完成：第 ${this.player.stats.floor} 层`);
   }
   
   /**
@@ -3056,13 +3115,12 @@ class Game {
           if (charSelectScreen) {
             // 移除隐藏类（index.html 中默认有此类，优先级很高）
             charSelectScreen.classList.remove('hidden');
-            // 添加激活状态（确保 pointer-events: auto）
-            charSelectScreen.classList.add('loaded', 'scene-active');
+            // 注意：不在这里设置 opacity，让 performTransition 的视觉预备阶段处理
             // 显示界面
             charSelectScreen.style.display = 'block';
             // 强制开启交互
             charSelectScreen.style.pointerEvents = 'auto';
-            console.log('[CharSelect] 角色选择界面已显示并启用交互');
+            console.log('[CharSelect] 角色选择界面已准备（opacity 将由 performTransition 控制）');
           }
           
           // 🔒 关键安全网：强制清理遮挡层，防止 LoadingUI 类状态不同步导致的残留
@@ -3078,6 +3136,9 @@ class Game {
               console.log(`[CharSelect] 强制清理遮挡层: ${id}`);
             }
           });
+          
+          // 统一调用 scrollTo 确保视角重置
+          window.scrollTo(0, 0);
         }
       });
       
@@ -3195,6 +3256,9 @@ class Game {
             charSelect.classList.remove('scene-transition');
             charSelect.style.setProperty('display', 'none', 'important');
           }
+          
+          // 统一调用 scrollTo 确保视角重置
+          window.scrollTo(0, 0);
         }
       });
       
@@ -4039,10 +4103,10 @@ class Game {
       console.log('[StartGame] Main menu and character select hidden');
       
       // Prepare main UI (but don't show yet)
+      // 注意：不在这里设置 display，让 performTransition 统一处理
       const mainUI = document.getElementById('main-ui');
       if (mainUI) {
-        mainUI.classList.remove('loaded');
-        mainUI.style.display = 'none';
+        mainUI.classList.remove('loaded', 'scene-active');
       }
       
       // Only reset if this is a new game (and NOT explicitly loaded)
@@ -4086,7 +4150,7 @@ class Game {
         }
         
             // FIX: 调用nextLevel生成第1层（nextLevel会将floor从0变为1）
-        this.nextLevel();
+        await this.nextLevel();
       } else {
         // Loaded game - just regenerate current level without incrementing floor
         // 使用新的噩梦层级系统（确保有默认值1）
@@ -4169,25 +4233,21 @@ class Game {
       await this.loadingUI.performTransition({
         targetId: 'main-ui',
         action: async () => {
-          // 准备主UI
+          // 准备主UI - 使用 scene-fade-in 类来预备动画
           const mainUI = document.getElementById('main-ui');
           if (mainUI) {
-            mainUI.classList.remove('loaded');
-            mainUI.style.display = 'flex';
-            mainUI.style.opacity = '0';
+            // 移除隐藏类和旧的控制类
+            mainUI.classList.remove('hidden', 'loaded');
+            // 添加 scene-fade-in 类来预备动画（CSS 会处理 transition）
             mainUI.classList.add('scene-fade-in');
+            // 注意：不在这里设置 opacity 和 display，让 performTransition 的视觉预备阶段处理
+            console.log('[StartGame] 主UI已添加 scene-fade-in 类（转场将由 performTransition 控制）');
           }
+          
+          // 统一调用 scrollTo 确保视角重置
+          window.scrollTo(0, 0);
         }
       });
-      
-      // CRITICAL FIX: 确保主UI可见（双重保险）
-      const mainUIFinal = document.getElementById('main-ui');
-      if (mainUIFinal) {
-        mainUIFinal.style.opacity = '';
-        mainUIFinal.style.display = 'flex';
-        mainUIFinal.classList.add('scene-fade-in', 'scene-active', 'loaded');
-        console.log('[StartGame] 主UI已确保可见');
-      }
       
       console.log('[StartGame] Game started successfully!');
     } catch (e) {
@@ -4197,7 +4257,7 @@ class Game {
       // FIX: 错误恢复：尝试强制显示主界面，避免黑屏
       const mainUI = document.getElementById('main-ui');
       if (mainUI) {
-        mainUI.style.display = 'flex';
+        mainUI.classList.add('scene-fade-in', 'scene-active', 'loaded');
         mainUI.style.opacity = '1';
         mainUI.classList.remove('scene-fade-in');
         console.log('[StartGame] 错误恢复：强制显示主UI');
@@ -4347,7 +4407,7 @@ class Game {
           }
           
           // 生成第一层（使用 RNG）
-          this.nextLevel();
+          await this.nextLevel();
           
           // 更新UI
           this.ui.updateStats(this.player);
@@ -4384,6 +4444,9 @@ class Game {
           if (mainUI) {
             mainUI.classList.add('scene-fade-in');
           }
+          
+          // 统一调用 scrollTo 确保视角重置
+          window.scrollTo(0, 0);
         }
       });
       
@@ -4734,11 +4797,6 @@ class Game {
       this.roguelike.resetRerollCost();
     }
     
-    // v2.1: 重置符文刷新费用
-    if (this.roguelike && this.roguelike.resetRerollCost) {
-      this.roguelike.resetRerollCost();
-    }
-    
     // ⚠️ 注意：不要在这里调用 check('onLevelEnd')，重启游戏不应触发通关层级的成就
     
     // FIX: 重载元进度数据，防止内存中的数据与存储不一致
@@ -4747,207 +4805,257 @@ class Game {
       console.log('[RestartGame] 元进度已重载:', this.metaSaveSystem.data);
     }
     
-    // 淡出游戏结束界面（如果可见）
-    await this.loadingUI.fadeSceneOut('leaderboard-overlay');
-    
-    // Reset all game state
-    this.killCount = 0;
-    this.totalXpGained = 0;
-    // FIX: 重置伤害统计
-    this.totalDamageDealt = 0;
-    this.startTime = Date.now();
-    this.isPaused = false;
-    this.inputStack = [];
-    
-    // Clear object pools to prevent memory leaks
-    if (this.floatingTextPool) {
-      this.floatingTexts.forEach(ft => this.floatingTextPool.release(ft));
-      this.floatingTexts = [];
-    }
-    if (this.fogParticlePool && this.map) {
-      this.map.fogParticles.forEach(particle => this.fogParticlePool.release(particle));
-      this.map.fogParticles = [];
-    }
-    
-    // CRITICAL FIX: 每日挑战模式重试时，重新初始化 RNG 和配置
-    if (wasDailyMode) {
-      console.log('[RestartGame] 每日挑战模式重试，重新初始化配置...');
-      
-      // CRITICAL FIX: 强制设置每日挑战难度为层级 1，确保重试时难度一致
-      this.selectedAscensionLevel = 1;
-      console.log('[RestartGame] 每日挑战重试：强制设置难度层级: 1');
-      
-      // 重新获取每日挑战配置（使用今日种子）
-      const dailyConfig = DailyChallengeSystem.getDailyConfig();
-      
-      // CRITICAL FIX: 更新挑战日期（重试时使用新的日期）
-      const now = new Date();
-      const year = now.getUTCFullYear();
-      const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(now.getUTCDate()).padStart(2, '0');
-      this.dailyChallengeDate = `${year}-${month}-${day}`;
-      console.log('[RestartGame] 每日挑战重试：更新挑战日期:', this.dailyChallengeDate);
-      
-      // 重新初始化 RNG（使用今日种子）
-      this.rng = dailyConfig.rng;
-      
-      // 保持 isDailyMode 标志
-      this.isDailyMode = true;
-      
-      // 重新设置角色为今日限定角色
-      this.selectedCharId = dailyConfig.character;
-      const charData = CHARACTERS[dailyConfig.character];
-      if (!charData) {
-        console.error(`[RestartGame] 角色 ${dailyConfig.character} 不存在`);
-        return;
-      }
-      
-      // 重置每日词缀倍数
-      this.dailyShopPriceMultiplier = 1.0;
-      this.dailyEliteSpawnMultiplier = 1.0;
-      
-      // 创建玩家实例（使用限定角色）
-      this.player = new Player(this.map, this.loader, charData);
-      
-      // 重置玩家状态
-      this.player.stats.floor = 0; // nextLevel 会将其变为 1
-      this.player.stats.xp = 0;
-      this.player.stats.gold = 0;
-      this.player.stats.keys = 1;
-      this.player.stats.rage = 0;
-      this.player.equipment = { WEAPON: null, ARMOR: null, HELM: null, BOOTS: null, RING: null, AMULET: null, ACCESSORY: null };
-      this.player.inventory = new Array(20).fill(null);
-      
-      // 清理遗物状态
-      if (this.player.relics) {
-        this.player.relics.clear();
-      }
-      if (this.ui && this.ui.updateRelicBar) {
-        this.ui.updateRelicBar(new Map()); // 清空遗物栏
-      }
-      
-      // 应用天赋树加成（如果有）
-      this.applyTalentBonuses();
-      
-      // 重新应用每日词缀效果
-      dailyConfig.modifiers.forEach(modifier => {
-        if (modifier.apply) {
-          modifier.apply(this.player, this);
-          console.log(`[RestartGame] 重新应用词缀: ${modifier.name} (${modifier.description})`);
+    // 🔴 关键修复：使用幕布转场，遮挡重置过程，解决画面闪烁问题
+    await this.loadingUI.performTransition({
+      targetId: 'main-ui',
+      action: async () => {
+        // 1. 幕布后：立即隐藏死亡界面/排行榜（立即 display = 'none'，释放内存，避免渲染干扰）
+        const lbOverlay = document.getElementById('leaderboard-overlay');
+        if (lbOverlay) {
+          // 🔴 关键修复：立即使用 important 强制隐藏，不要淡出，释放内存
+          lbOverlay.style.setProperty('display', 'none', 'important');
+          lbOverlay.style.setProperty('opacity', '0', 'important');
+          lbOverlay.style.pointerEvents = 'none';
+          lbOverlay.classList.add('hidden');
+          lbOverlay.classList.remove('scene-visible', 'scene-active', 'overlay-fade-in'); // 清理旧状态
+          console.log('[RestartGame] 死亡界面已立即隐藏（释放内存）');
         }
-      });
-      
-      // 重新应用初始遗物（符文）
-      // FIX: 复用 RoguelikeSystem.applyRune 逻辑，避免代码重复和数值不一致
-      if (dailyConfig.startingRune && this.roguelike) {
-        // 使用 RoguelikeSystem 的 generateRuneOptions 逻辑来计算符文数值
-        const floor = 1;
-        const multiplier = RUNE_RARITY_MULTIPLIERS[dailyConfig.startingRune.rarity] || 1.0;
-        let value = 1;
         
-        // 根据符文类型和稀有度计算数值（与 generateRuneOptions 保持一致）
-        if (dailyConfig.startingRune.type === 'STAT') {
-          if (dailyConfig.startingRune.id.includes('might') || dailyConfig.startingRune.id.includes('brutal')) {
-            value = Math.floor(1 * multiplier * (1 + floor * 0.1));
-          } else if (dailyConfig.startingRune.id.includes('iron') || dailyConfig.startingRune.id.includes('fortress')) {
-            value = Math.floor(1 * multiplier * (1 + floor * 0.1));
-          } else if (dailyConfig.startingRune.id.includes('arcana') || dailyConfig.startingRune.id.includes('arcane')) {
-            value = Math.floor(1 * multiplier * (1 + floor * 0.1));
-          } else if (dailyConfig.startingRune.id.includes('ward') || dailyConfig.startingRune.id.includes('barrier')) {
-            value = Math.floor(1 * multiplier * (1 + floor * 0.1));
-          } else if (dailyConfig.startingRune.id.includes('vitality') || dailyConfig.startingRune.id.includes('life')) {
-            value = Math.floor(10 * multiplier * (1 + floor * 0.1));
-          } else if (dailyConfig.startingRune.id.includes('precision') || dailyConfig.startingRune.id.includes('deadly') || dailyConfig.startingRune.id.includes('assassin')) {
-            value = Math.floor(5 * multiplier);
-          } else if (dailyConfig.startingRune.id.includes('agility') || dailyConfig.startingRune.id.includes('phantom')) {
-            value = Math.floor(5 * multiplier);
+        // 2. 执行原有的重置逻辑
+        // Reset all game state
+        this.killCount = 0;
+        this.totalXpGained = 0;
+        // FIX: 重置伤害统计
+        this.totalDamageDealt = 0;
+        this.startTime = Date.now();
+        this.isPaused = false;
+        this.inputStack = [];
+        
+        // Clear object pools to prevent memory leaks
+        if (this.floatingTextPool) {
+          this.floatingTexts.forEach(ft => this.floatingTextPool.release(ft));
+          this.floatingTexts = [];
+        }
+        if (this.fogParticlePool && this.map) {
+          this.map.fogParticles.forEach(particle => this.fogParticlePool.release(particle));
+          this.map.fogParticles = [];
+        }
+        
+        // 🔴 关键修复：清空主画布，防止看到上一局残影
+        if (this.canvas && this.ctx) {
+          this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+          console.log('[RestartGame] 画布已清空');
+        }
+        
+        // CRITICAL FIX: 每日挑战模式重试时，重新初始化 RNG 和配置
+        if (wasDailyMode) {
+          console.log('[RestartGame] 每日挑战模式重试，重新初始化配置...');
+          
+          // CRITICAL FIX: 强制设置每日挑战难度为层级 1，确保重试时难度一致
+          this.selectedAscensionLevel = 1;
+          console.log('[RestartGame] 每日挑战重试：强制设置难度层级: 1');
+          
+          // 重新获取每日挑战配置（使用今日种子）
+          const dailyConfig = DailyChallengeSystem.getDailyConfig();
+          
+          // CRITICAL FIX: 更新挑战日期（重试时使用新的日期）
+          const now = new Date();
+          const year = now.getUTCFullYear();
+          const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+          const day = String(now.getUTCDate()).padStart(2, '0');
+          this.dailyChallengeDate = `${year}-${month}-${day}`;
+          console.log('[RestartGame] 每日挑战重试：更新挑战日期:', this.dailyChallengeDate);
+          
+          // 重新初始化 RNG（使用今日种子）
+          this.rng = dailyConfig.rng;
+          
+          // 保持 isDailyMode 标志
+          this.isDailyMode = true;
+          
+          // 重新设置角色为今日限定角色
+          this.selectedCharId = dailyConfig.character;
+          const charData = CHARACTERS[dailyConfig.character];
+          if (!charData) {
+            console.error(`[RestartGame] 角色 ${dailyConfig.character} 不存在`);
+            return;
           }
+          
+          // 重置每日词缀倍数
+          this.dailyShopPriceMultiplier = 1.0;
+          this.dailyEliteSpawnMultiplier = 1.0;
+          
+          // 创建玩家实例（使用限定角色）
+          this.player = new Player(this.map, this.loader, charData);
+          
+          // 重置玩家状态
+          this.player.stats.floor = 0; // nextLevel 会将其变为 1
+          this.player.stats.xp = 0;
+          this.player.stats.gold = 0;
+          this.player.stats.keys = 1;
+          this.player.stats.rage = 0;
+          this.player.equipment = { WEAPON: null, ARMOR: null, HELM: null, BOOTS: null, RING: null, AMULET: null, ACCESSORY: null };
+          this.player.inventory = new Array(20).fill(null);
+          
+          // 清理遗物状态
+          if (this.player.relics) {
+            this.player.relics.clear();
+          }
+          if (this.ui && this.ui.updateRelicBar) {
+            this.ui.updateRelicBar(new Map()); // 清空遗物栏
+          }
+          
+          // 应用天赋树加成（如果有）
+          this.applyTalentBonuses();
+          
+          // 重新应用每日词缀效果
+          dailyConfig.modifiers.forEach(modifier => {
+            if (modifier.apply) {
+              modifier.apply(this.player, this);
+              console.log(`[RestartGame] 重新应用词缀: ${modifier.name} (${modifier.description})`);
+            }
+          });
+          
+          // 重新应用初始遗物（符文）
+          // FIX: 复用 RoguelikeSystem.applyRune 逻辑，避免代码重复和数值不一致
+          if (dailyConfig.startingRune && this.roguelike) {
+            // 使用 RoguelikeSystem 的 generateRuneOptions 逻辑来计算符文数值
+            const floor = 1;
+            const multiplier = RUNE_RARITY_MULTIPLIERS[dailyConfig.startingRune.rarity] || 1.0;
+            let value = 1;
+            
+            // 根据符文类型和稀有度计算数值（与 generateRuneOptions 保持一致）
+            if (dailyConfig.startingRune.type === 'STAT') {
+              if (dailyConfig.startingRune.id.includes('might') || dailyConfig.startingRune.id.includes('brutal')) {
+                value = Math.floor(1 * multiplier * (1 + floor * 0.1));
+              } else if (dailyConfig.startingRune.id.includes('iron') || dailyConfig.startingRune.id.includes('fortress')) {
+                value = Math.floor(1 * multiplier * (1 + floor * 0.1));
+              } else if (dailyConfig.startingRune.id.includes('arcana') || dailyConfig.startingRune.id.includes('arcane')) {
+                value = Math.floor(1 * multiplier * (1 + floor * 0.1));
+              } else if (dailyConfig.startingRune.id.includes('ward') || dailyConfig.startingRune.id.includes('barrier')) {
+                value = Math.floor(1 * multiplier * (1 + floor * 0.1));
+              } else if (dailyConfig.startingRune.id.includes('vitality') || dailyConfig.startingRune.id.includes('life')) {
+                value = Math.floor(10 * multiplier * (1 + floor * 0.1));
+              } else if (dailyConfig.startingRune.id.includes('precision') || dailyConfig.startingRune.id.includes('deadly') || dailyConfig.startingRune.id.includes('assassin')) {
+                value = Math.floor(5 * multiplier);
+              } else if (dailyConfig.startingRune.id.includes('agility') || dailyConfig.startingRune.id.includes('phantom')) {
+                value = Math.floor(5 * multiplier);
+              }
+            }
+            
+            // FIX: 复用 RoguelikeSystem.applyRune 方法，确保逻辑一致
+            const runeOption = {
+              rune: dailyConfig.startingRune,
+              value: value,
+              name: dailyConfig.startingRune.name,
+              description: dailyConfig.startingRune.description || '',
+              rarity: dailyConfig.startingRune.rarity,
+              type: dailyConfig.startingRune.type
+            };
+            
+            this.roguelike.applyRune(runeOption);
+            
+            console.log(`[RestartGame] 重新应用初始遗物: ${dailyConfig.startingRune.nameZh || dailyConfig.startingRune.name}`);
+          }
+          
+          // 重置商店价格
+          if (this.ui && this.ui.resetShopPrices) {
+            this.ui.resetShopPrices();
+          }
+          
+          // 🔴 关键修复：在生成新地图前清空画布，防止看到上一局残影
+          if (this.canvas && this.ctx) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            console.log('[RestartGame] 画布已清空（每日挑战模式）');
+          }
+          
+          // 生成第一层（使用 RNG）
+          await this.nextLevel();
+          
+          // 显示每日挑战信息
+          if (this.ui && this.ui.logMessage) {
+            const modifiersText = dailyConfig.modifiers.map(m => m.name).join('、');
+            this.ui.logMessage(`每日挑战重试：${charData.name} | 词缀：${modifiersText}`, 'info');
+          }
+        } else {
+          // 普通模式的重试逻辑（原有逻辑）
+          // FIX: 显式重置每日挑战状态（防御性编程，防止状态污染）
+          this.isDailyMode = false;
+          this.rng = null;
+          this.dailyChallengeDate = null; // FIX: 清理挑战日期
+          this.dailyShopPriceMultiplier = 1.0;
+          this.dailyEliteSpawnMultiplier = 1.0;
+          
+          // Reset player completely
+          const charData = CHARACTERS[this.selectedCharId];
+          this.player = new Player(this.map, this.loader, charData);
+          this.player.stats.floor = 1;
+          this.player.stats.xp = 0;
+          this.player.stats.gold = 0;
+          this.player.stats.keys = 1;
+          this.player.stats.rage = 0;
+          this.player.equipment = { WEAPON: null, ARMOR: null, HELM: null, BOOTS: null, RING: null, AMULET: null, ACCESSORY: null };
+          this.player.inventory = new Array(20).fill(null);
+          
+          // 清理遗物状态和UI
+          if (this.player.relics) {
+            this.player.relics.clear();
+          }
+          if (this.ui && this.ui.updateRelicBar) {
+            this.ui.updateRelicBar(new Map()); // 清空遗物栏
+          }
+          
+          // Apply difficulty multiplier
+          const diffKey = this.selectedDiff.toUpperCase();
+          const diffData = DIFFICULTY_LEVELS[diffKey];
+          if (diffData) {
+            this.difficultyMultiplier = diffData.multiplier;
+            this.map.difficultyMultiplier = this.difficultyMultiplier;
+          }
+          
+          // 🔴 关键修复：在生成新地图前清空画布，防止看到上一局残影
+          if (this.canvas && this.ctx) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            console.log('[RestartGame] 画布已清空（普通模式）');
+          }
+          
+          // Reset map and generate floor 1
+          this.map.difficultyMultiplier = this.difficultyMultiplier;
+          await this.nextLevel();
         }
         
-        // FIX: 复用 RoguelikeSystem.applyRune 方法，确保逻辑一致
-        const runeOption = {
-          rune: dailyConfig.startingRune,
-          value: value,
-          name: dailyConfig.startingRune.name,
-          description: dailyConfig.startingRune.description || '',
-          rarity: dailyConfig.startingRune.rarity,
-          type: dailyConfig.startingRune.type
-        };
+        // Clear log panel
+        if (this.ui && this.ui.clearLog) {
+          this.ui.clearLog();
+        }
         
-        this.roguelike.applyRune(runeOption);
+        // Update UI
+        this.ui.updateStats(this.player);
+        this.ui.updateEquipmentSockets(this.player);
+        this.ui.initSkillBar(this.player);
         
-        console.log(`[RestartGame] 重新应用初始遗物: ${dailyConfig.startingRune.nameZh || dailyConfig.startingRune.name}`);
+        // 每日挑战模式：更新保存/读取按钮可见性
+        this.updateSaveLoadButtonsVisibility();
+        
+        // Resume game
+        this.gameStarted = true;
+        
+        // 3. 确保主界面准备好展示（使用 scene-fade-in 类来预备动画）
+        const mainUI = document.getElementById('main-ui');
+        if (mainUI) {
+          // 移除隐藏类和旧的控制类
+          mainUI.classList.remove('hidden', 'loaded', 'scene-active');
+          // 添加 scene-fade-in 类来预备动画（CSS 会处理 transition）
+          mainUI.classList.add('scene-fade-in');
+          // 注意：不在这里设置 opacity 和 display，让 performTransition 的视觉预备阶段处理
+          console.log('[RestartGame] 主UI已添加 scene-fade-in 类（转场将由 performTransition 控制）');
+        }
+        
+        console.log('[RestartGame] 重置逻辑已完成（幕布后）');
+        
+        // 统一调用 scrollTo 确保视角重置
+        window.scrollTo(0, 0);
       }
-      
-      // 重置商店价格
-      if (this.ui && this.ui.resetShopPrices) {
-        this.ui.resetShopPrices();
-      }
-      
-      // 生成第一层（使用 RNG）
-      this.nextLevel();
-      
-      // 显示每日挑战信息
-      if (this.ui && this.ui.logMessage) {
-        const modifiersText = dailyConfig.modifiers.map(m => m.name).join('、');
-        this.ui.logMessage(`每日挑战重试：${charData.name} | 词缀：${modifiersText}`, 'info');
-      }
-    } else {
-      // 普通模式的重试逻辑（原有逻辑）
-      // FIX: 显式重置每日挑战状态（防御性编程，防止状态污染）
-      this.isDailyMode = false;
-      this.rng = null;
-      this.dailyChallengeDate = null; // FIX: 清理挑战日期
-      this.dailyShopPriceMultiplier = 1.0;
-      this.dailyEliteSpawnMultiplier = 1.0;
-      
-      // Reset player completely
-      const charData = CHARACTERS[this.selectedCharId];
-      this.player = new Player(this.map, this.loader, charData);
-      this.player.stats.floor = 1;
-      this.player.stats.xp = 0;
-      this.player.stats.gold = 0;
-      this.player.stats.keys = 1;
-      this.player.stats.rage = 0;
-      this.player.equipment = { WEAPON: null, ARMOR: null, HELM: null, BOOTS: null, RING: null, AMULET: null, ACCESSORY: null };
-      this.player.inventory = new Array(20).fill(null);
-      
-      // 清理遗物状态和UI
-      if (this.player.relics) {
-        this.player.relics.clear();
-      }
-      if (this.ui && this.ui.updateRelicBar) {
-        this.ui.updateRelicBar(new Map()); // 清空遗物栏
-      }
-      
-      // Apply difficulty multiplier
-      const diffKey = this.selectedDiff.toUpperCase();
-      const diffData = DIFFICULTY_LEVELS[diffKey];
-      if (diffData) {
-        this.difficultyMultiplier = diffData.multiplier;
-        this.map.difficultyMultiplier = this.difficultyMultiplier;
-      }
-      
-      // Reset map and generate floor 1
-      this.map.difficultyMultiplier = this.difficultyMultiplier;
-      this.nextLevel();
-    }
-    
-    // Clear log panel
-    if (this.ui && this.ui.clearLog) {
-      this.ui.clearLog();
-    }
-    
-    // Update UI
-    this.ui.updateStats(this.player);
-    this.ui.updateEquipmentSockets(this.player);
-    this.ui.initSkillBar(this.player);
-    
-    // 每日挑战模式：更新保存/读取按钮可见性
-    this.updateSaveLoadButtonsVisibility();
-    
-    // Resume game
-    this.gameStarted = true;
+    });
     
     console.log('[RestartGame] Game restarted successfully!');
   }

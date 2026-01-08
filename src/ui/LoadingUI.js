@@ -433,8 +433,8 @@ export class LoadingUI {
   }
 
   /**
-   * 统一转场调度方法 - 单例幕布模式（增强版）
-   * 流程：[拉上幕布 -> 等待覆盖 -> 执行切换逻辑 -> 等待渲染 -> 拉开幕布]
+   * 统一转场调度方法 - 单例幕布模式（增强版 - 高级场景同步）
+   * 流程：[拉上幕布 -> 等待完全遮挡 -> 执行切换逻辑 -> 视觉预备 -> 同步拉开幕布与场景淡入]
    * @param {Object} config - 转场配置对象
    * @param {string} config.targetId - 目标场景 DOM 元素 ID
    * @param {Function} config.action - 切换逻辑函数（在幕布显示后执行）
@@ -455,8 +455,8 @@ export class LoadingUI {
       // 1. 拉上幕布
       this.show('加载中...');
 
-      // 2. 等待幕布完全覆盖（400ms）
-      await this.wait(400);
+      // 2. 等待幕布完全遮挡（增加到 500ms 确保安全）
+      await this.wait(500);
 
       // 3. 执行切换逻辑
       if (action && typeof action === 'function') {
@@ -471,10 +471,36 @@ export class LoadingUI {
       // ⚡ 关键：强制等待两帧，确保 DOM 渲染完成，防止闪烁
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-      // 4. 拉开幕布（正常流程）
+      // 4. 视觉预备阶段：准备目标元素的初始状态
+      const targetElement = document.getElementById(targetId);
+      if (targetElement) {
+        // 强制设置初始状态：透明且略微缩小
+        targetElement.style.opacity = '0';
+        targetElement.style.transform = 'scale(0.98)';
+        targetElement.classList.remove('scene-active'); // 确保移除激活状态
+        
+        // 触发强制重排，确保初始状态被浏览器应用
+        void targetElement.offsetWidth;
+        
+        console.log(`[LoadingUI] 目标元素 ${targetId} 已设置初始状态`);
+      } else {
+        console.warn(`[LoadingUI] 未找到目标元素: ${targetId}`);
+      }
+
+      // 5. 同步拉开幕布与场景淡入（动画曲线补偿）
+      // 先添加 scene-active 类触发 CSS transition
+      if (targetElement) {
+        targetElement.classList.add('scene-active');
+        // 设置最终状态（CSS transition 会自动处理动画）
+        targetElement.style.opacity = '1';
+        targetElement.style.transform = 'scale(1)';
+        console.log(`[LoadingUI] 目标元素 ${targetId} 淡入动画已激活`);
+      }
+
+      // 立即开始拉开幕布，与场景淡入同步进行
       this.hide();
 
-      // 等待隐藏动画完成
+      // 等待隐藏动画完成（幕布淡出 0.8s，与场景淡入同步）
       await this.wait(800);
 
     } catch (error) {

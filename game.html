@@ -62,18 +62,48 @@
         var savedBg = sessionStorage.getItem('currentLoadingBg');
         var overlay = document.getElementById('loading-overlay');
         if (savedBg && overlay) {
+          // 🔴 关键修复：先设置纯黑背景，防止背景加载时的闪烁
+          overlay.style.backgroundColor = '#000000';
+          
           var bgLayer = document.createElement('div');
-          bgLayer.className = 'loading-bg-layer active';
+          bgLayer.className = 'loading-bg-layer';
           bgLayer.style.backgroundImage = "url('" + savedBg + "')";
-          bgLayer.style.opacity = '1';
+          bgLayer.style.opacity = '0'; // 初始透明，等待图片加载完成后再显示
+          
           // 插入到最底层
           if (overlay.firstChild) {
             overlay.insertBefore(bgLayer, overlay.firstChild);
           } else {
             overlay.appendChild(bgLayer);
           }
+          
+          // 等待图片加载完成后再显示背景，防止闪烁
+          var img = new Image();
+          img.onload = function() {
+            bgLayer.style.opacity = '1';
+            bgLayer.classList.add('active');
+            overlay.style.backgroundColor = 'transparent'; // 恢复透明，让背景图显示
+          };
+          img.onerror = function() {
+            // 如果图片加载失败，保持纯黑背景
+            console.warn('[Game.html] 背景图加载失败，保持纯黑背景');
+            overlay.style.backgroundColor = '#000000';
+          };
+          img.src = savedBg;
+        } else {
+          // 如果没有保存的背景，也设置纯黑背景
+          if (overlay) {
+            overlay.style.backgroundColor = '#000000';
+          }
         }
-      } catch(e) { console.error('BG restore failed', e); }
+      } catch(e) { 
+        console.error('BG restore failed', e);
+        // 出错时也设置纯黑背景
+        var overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+          overlay.style.backgroundColor = '#000000';
+        }
+      }
     })();
   </script>
 

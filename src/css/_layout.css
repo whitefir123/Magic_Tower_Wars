@@ -18,6 +18,7 @@
   transition: transform 0.1s ease-out;
   flex-direction: row;
   flex-shrink: 0;
+  will-change: opacity, transform;
 }
 
 /* ========================================================================
@@ -26,26 +27,26 @@
 
 /* 基础过渡类：定义过渡属性（0.5s - 0.8s） */
 .scene-transition {
-  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.6s ease-out;
-  will-change: transform, opacity;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  will-change: opacity, transform;
 }
 
 /* 🔴 关键修正：对于 #main-ui，仅使用透明度过渡（避免与 setupScreenScaling 的 transform 冲突） */
 .scene-fade-in {
-  transition: opacity 0.6s ease-out;
-  will-change: opacity;
-  opacity: 0;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  will-change: opacity, transform;
 }
 
 .scene-fade-in.scene-active {
-  opacity: 1;
+  opacity: 1 !important;
+  transform: scale(1) !important;
 }
 
 /* 场景激活/可见状态 */
 .scene-active,
 .scene-visible {
-  opacity: 1;
-  transform: scale(1);
+  opacity: 1 !important;
+  transform: scale(1) !important;
   pointer-events: auto !important; /* 🔴 关键修复：强制开启交互，覆盖 scene-exit 的 none */
 }
 

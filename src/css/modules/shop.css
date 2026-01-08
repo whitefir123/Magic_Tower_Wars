@@ -42,6 +42,10 @@
   border: none;
   box-sizing: border-box;
   filter: brightness(1.05) contrast(1.08);
+  /* 🔴 关键修复：添加过渡动画，确保淡入淡出效果 */
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  will-change: opacity;
 }
 
 #draft-overlay::before,
@@ -84,6 +88,17 @@
 #draft-overlay[style*="display: flex"],
 #shrine-overlay[style*="display: flex"] {
   display: flex;
+}
+
+/* 🔴 关键修复：淡入淡出动画类（确保与 modal.css 中的通用类兼容） */
+#draft-overlay.overlay-fade-in,
+#shrine-overlay.overlay-fade-in {
+  opacity: 1;
+}
+
+#draft-overlay.overlay-fade-out,
+#shrine-overlay.overlay-fade-out {
+  opacity: 0;
 }
 
 /* Card Container */
