@@ -32,10 +32,8 @@
 
 /* 成就模态框 */
 .achievement-modal {
-  width: 90%;
-  max-width: 1200px;
-  height: 85%;
-  max-height: 750px;
+  width: 1012px;
+  height: 591px;
   background: url('https://i.postimg.cc/QCfz1GY0/paihangbangbackground1.png') no-repeat center;
   background-size: 100% 100%;
   display: flex;
@@ -100,35 +98,37 @@
   gap: 20px;
   padding: 30px;
   overflow-y: auto;
+  -ms-overflow-style: none; /* IE 和 Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
+/* 隐藏滚动条但保持滚动功能 */
 .achievement-grid::-webkit-scrollbar {
-  width: 8px;
-}
-
-.achievement-grid::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.achievement-grid::-webkit-scrollbar-thumb {
-  background: #555;
-  border-radius: 4px;
-}
-
-.achievement-grid::-webkit-scrollbar-thumb:hover {
-  background: #666;
+  display: none;
+  width: 0;
 }
 
 /* 成就网格 - ID选择器样式（响应式布局） */
 #achievement-grid {
-  width: 100%;
-  padding: 30px 50px; /* 适当的内边距 */
+  width: 788px;
+  height: 617px;
+  padding: 15px 54px;
+  margin-top: 128px;
+  margin-bottom: 128px;
+  margin-left: 116px;
+  margin-right: 116px;
   box-sizing: border-box;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* 自适应列 */
   gap: 20px;
   overflow-y: auto;
-  /* 移除 margins 和 固定 width */
+  -ms-overflow-style: none; /* IE 和 Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+#achievement-grid::-webkit-scrollbar {
+  display: none;
+  width: 0;
 }
 
 /* 成就卡片 */
@@ -150,14 +150,14 @@
 }
 
 .achievement-card.locked .achievement-card-title {
-  color: #555;
+  color: #bbb;
   font-size: 1.5rem;
   font-weight: bold;
   margin-bottom: 10px;
 }
 
 .achievement-card.locked .achievement-card-hint {
-  color: #666;
+  color: #aaa;
   font-style: italic;
   font-size: 0.9rem;
   line-height: 1.4;
@@ -165,10 +165,10 @@
 
 /* 已解锁状态 */
 .achievement-card.unlocked {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.05));
-  border: 2px solid var(--accent-gold);
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-  color: var(--text-main);
+  background: linear-gradient(135deg, rgba(92, 64, 51, 0.1), rgba(92, 64, 51, 0.05));
+  border: 2px solid #5c4033;
+  box-shadow: 0 0 20px rgba(92, 64, 51, 0.3);
+  color: #5c4033;
   animation: achievementUnlock 0.5s ease-out;
 }
 
@@ -187,20 +187,20 @@
 }
 
 .achievement-card.unlocked:hover {
-  box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 30px rgba(92, 64, 51, 0.5);
   transform: translateY(-2px);
 }
 
 .achievement-card.unlocked .achievement-card-title {
-  color: var(--accent-gold);
+  color: #5c4033;
   font-size: 1.3rem;
   font-weight: bold;
   margin-bottom: 8px;
-  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  text-shadow: 0 0 10px rgba(92, 64, 51, 0.5);
 }
 
 .achievement-card.unlocked .achievement-card-description {
-  color: var(--text-main);
+  color: #5c4033;
   font-size: 0.95rem;
   line-height: 1.5;
 }

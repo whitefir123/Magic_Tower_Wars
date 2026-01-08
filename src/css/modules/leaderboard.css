@@ -199,17 +199,15 @@
   z-index: 100; /* 可选，防止被遮挡 */
 }
 
+/* 隐藏滚动条但保持滚动功能 */
+.leaderboard-sidebar {
+  -ms-overflow-style: none; /* IE 和 Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
 .leaderboard-sidebar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.leaderboard-sidebar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.leaderboard-sidebar::-webkit-scrollbar-thumb {
-  background: #555;
-  border-radius: 3px;
+  display: none;
+  width: 0;
 }
 
 .leaderboard-category {
@@ -281,30 +279,35 @@
   overflow-y: auto;
   padding: 1px 53px;
   background: transparent;
-  height: 384px;
+  height: 321px;
+  margin-top: 31px;
+  margin-bottom: 31px;
+}
+
+/* 隐藏滚动条但保持滚动功能 */
+.leaderboard-main-panel {
+  -ms-overflow-style: none; /* IE 和 Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
 .leaderboard-main-panel::-webkit-scrollbar {
-  width: 8px;
+  display: none;
+  width: 0;
 }
 
-.leaderboard-main-panel::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.leaderboard-main-panel::-webkit-scrollbar-thumb {
-  background: #555;
-  border-radius: 4px;
-}
-
-.leaderboard-main-panel::-webkit-scrollbar-thumb:hover {
-  background: #777;
+/* 单独调整当前赛季排行榜内容向上移动 */
+#leaderboard-seasonal-content {
+  transform: translateY(-20px) !important;
+  position: relative;
+  z-index: 100;
 }
 
 /* Season Info Styles - 与设置页面section-title一致 */
 .season-info {
-  padding: 15px 0;
+  height: 82px;
+  padding: 0;
   margin-bottom: 15px;
+  margin-top: -36px; /* 单独调整当前赛季内容向上移动 */
   background: transparent;
   border-bottom: 2px solid rgba(255, 215, 0, 0.2);
   position: relative;
@@ -312,11 +315,13 @@
 }
 
 .season-name {
+  height: 47px;
   font-family: var(--font-header);
   font-size: 1.8rem;
   color: var(--accent-gold);
-  margin: 0 0 5px 0;
-  padding-bottom: 12px;
+  margin: 0 0 -33px 0;
+  padding-top: 0px;
+  padding-bottom: 0px;
   border-bottom: 2px solid rgba(255, 215, 0, 0.2);
   letter-spacing: 1px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
@@ -326,6 +331,7 @@
 }
 
 .season-countdown {
+  height: 0px;
   color: var(--text-dim);
   font-family: var(--font-body);
   font-size: 16px;
@@ -336,20 +342,23 @@
 
 /* Daily Leaderboard Header - 与设置页面section-title一致 */
 .daily-leaderboard-header {
-  padding: 15px 0;
-  margin-bottom: 15px;
+  padding: 0;
+  margin-bottom: 10px;
   background: transparent;
   border-bottom: 2px solid rgba(255, 215, 0, 0.2);
   position: relative;
   z-index: 1;
+  height: 54px;
 }
 
-.daily-leaderboard-header h3 {
+.daily-leaderboard-header h3,
+#daily-leaderboard-title {
   font-family: var(--font-header);
   font-size: 1.8rem;
   color: var(--accent-gold);
-  margin: 0 0 25px 0;
-  padding-bottom: 12px;
+  margin-top: -36px;
+  margin-bottom: -36px;
+  padding-bottom: 0px;
   border-bottom: 2px solid rgba(255, 215, 0, 0.2);
   letter-spacing: 1px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
@@ -387,7 +396,7 @@
 div.leaderboard-filters {
   display: flex;
   gap: 10px;
-  padding: 12px 0;
+  padding: 3px 0;
   background: transparent;
   position: relative;
   z-index: 100; /* 可选，防止被遮挡 */
@@ -430,6 +439,13 @@ button.filter-btn.active {
   padding: 0;
   position: relative;
   z-index: 1;
+  -ms-overflow-style: none; /* IE 和 Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.leaderboard-table-wrapper::-webkit-scrollbar {
+  display: none;
+  width: 0;
 }
 
 table.leaderboard-table {
@@ -594,6 +610,13 @@ td.character-cell {
   border: 3px solid var(--border-color);
   border-radius: 15px;
   box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
+  -ms-overflow-style: none; /* IE 和 Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.leaderboard-detail-content::-webkit-scrollbar {
+  display: none;
+  width: 0;
 }
 
 .detail-section {

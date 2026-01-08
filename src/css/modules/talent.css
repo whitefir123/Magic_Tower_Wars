@@ -108,8 +108,8 @@
   box-shadow: none;
   height: 146px;
   width: 219px;
-  margin-top: 0px;
-  margin-bottom: 0px;
+  margin-top: -10px;
+  margin-bottom: -10px;
 }
 
 /* 天赋树节点动画增强 */
