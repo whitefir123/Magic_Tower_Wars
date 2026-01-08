@@ -68,10 +68,125 @@ export class BestiaryUI {
   }
 
   /**
+   * 获取图鉴界面的完整 HTML 字符串
+   * @returns {string} HTML 字符串
+   */
+  getHTML() {
+    return `
+    <div class="bestiary-modal">
+      <!-- Header -->
+      <div class="bestiary-header">
+        <h2 class="bestiary-title">怪物图鉴</h2>
+        <button class="bestiary-close-btn" aria-label="关闭"></button>
+      </div>
+
+      <!-- Main Content -->
+      <div class="bestiary-content">
+        <!-- Left Panel - Monster List (独立样式结构) -->
+        <div class="bestiary-list-panel">
+          <div class="bestiary-list" id="bestiary-list">
+            <!-- Monster list items will be generated here -->
+          </div>
+        </div>
+
+        <!-- Right Panel - Monster Details (独立样式结构) -->
+        <div class="bestiary-detail-panel">
+          <!-- Monster Portrait -->
+          <div id="bestiary-portrait"></div>
+
+          <!-- Monster Stats Grid -->
+          <div class="bestiary-stats-grid">
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">生命值</span>
+              <span class="stat-grid-value" id="bestiary-hp">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">物攻</span>
+              <span class="stat-grid-value" id="bestiary-patk">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">魔攻</span>
+              <span class="stat-grid-value" id="bestiary-matk">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">物防</span>
+              <span class="stat-grid-value" id="bestiary-pdef">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">魔防</span>
+              <span class="stat-grid-value" id="bestiary-mdef">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">经验</span>
+              <span class="stat-grid-value" id="bestiary-xp">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">金币</span>
+              <span class="stat-grid-value" id="bestiary-gold">-</span>
+            </div>
+            <div class="stat-grid-item">
+              <span class="stat-grid-label">怒气</span>
+              <span class="stat-grid-value" id="bestiary-rage">-</span>
+            </div>
+          </div>
+
+          <!-- Monster Info -->
+          <div class="bestiary-info-section">
+            <div class="info-row">
+              <span class="info-label">身高:</span>
+              <span class="info-value" id="bestiary-height">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">体重:</span>
+              <span class="info-value" id="bestiary-weight">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">速度:</span>
+              <span class="info-value" id="bestiary-speed">-</span>
+            </div>
+          </div>
+
+          <!-- Monster Traits -->
+          <div class="bestiary-traits-section" id="bestiary-traits-section">
+            <!-- Traits will be rendered here -->
+          </div>
+
+          <!-- Monster Lore -->
+          <div class="bestiary-lore-section">
+            <h3 class="lore-title">背景故事</h3>
+            <div class="lore-text" id="bestiary-lore">
+              选择一个怪物来查看其背景故事...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    `;
+  }
+
+  /**
    * 初始化 DOM 元素引用
    */
   initDOMElements() {
+    // 检查是否存在 bestiary-overlay 元素
     this.elements.overlay = document.getElementById('bestiary-overlay');
+    
+    // 如果不存在，创建新的 overlay 元素
+    if (!this.elements.overlay) {
+      console.log('Creating bestiary-overlay element dynamically');
+      const overlay = document.createElement('div');
+      overlay.id = 'bestiary-overlay';
+      overlay.className = 'bestiary-overlay hidden';
+      
+      // 注入 HTML 内容
+      overlay.innerHTML = this.getHTML();
+      
+      // 将 overlay 添加到 body（确保全屏覆盖）
+      document.body.appendChild(overlay);
+      this.elements.overlay = overlay;
+    }
+    
+    // 获取列表容器
     this.elements.listContainer = document.getElementById('bestiary-list');
     
     // 应用样式配置到面板
@@ -84,6 +199,11 @@ export class BestiaryUI {
 
     // 缓存详情面板元素
     this.cacheDetailElements();
+    
+    console.log('✓ BestiaryUI DOM elements initialized:', {
+      overlay: !!this.elements.overlay,
+      listContainer: !!this.elements.listContainer
+    });
   }
 
   /**
@@ -117,6 +237,13 @@ export class BestiaryUI {
   setupEventListeners() {
     if (!this.elements.overlay) return;
 
+    // 防止重复初始化
+    if (this.elements.overlay._listenersInitialized) {
+      console.log('BestiaryUI event listeners already initialized, skipping');
+      return;
+    }
+    this.elements.overlay._listenersInitialized = true;
+
     // 关闭按钮
     const closeBtn = this.elements.overlay.querySelector('.bestiary-close-btn');
     if (closeBtn) {
@@ -129,6 +256,8 @@ export class BestiaryUI {
         this.close();
       }
     });
+    
+    console.log('✓ BestiaryUI event listeners setup complete');
   }
 
   /**

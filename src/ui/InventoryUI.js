@@ -74,10 +74,65 @@ export class InventoryUI {
   }
 
   /**
+   * 获取背包界面的完整 HTML 字符串
+   * @returns {string} HTML 字符串
+   */
+  getHTML() {
+    return `
+    <h2 class="modal-title-small">背包</h2>
+    <div class="inventory-wrap">
+      <div class="inventory-titles">
+        <div class="inv-equip-title">装备栏</div>
+        <div class="inv-list-title">背包物品（容量 20）</div>
+      </div>
+      <div class="inventory-layout">
+        <div class="inventory-left">
+          <div class="inv-equip-grid">
+            <div class="equip-socket inv-equip" data-slot="HELM"></div>
+            <div class="equip-socket inv-equip" data-slot="WEAPON"></div>
+            <div class="equip-socket inv-equip" data-slot="ARMOR"></div>
+            <div class="equip-socket inv-equip" data-slot="BOOTS"></div>
+            <div class="equip-socket inv-equip" data-slot="RING"></div>
+            <div class="equip-socket inv-equip" data-slot="AMULET"></div>
+          </div>
+        </div>
+        <div class="inventory-right">
+          <div class="inv-grid">
+            <div class="inv-slot" data-index="0"></div><div class="inv-slot" data-index="1"></div><div class="inv-slot" data-index="2"></div><div class="inv-slot" data-index="3"></div><div class="inv-slot" data-index="4"></div>
+            <div class="inv-slot" data-index="5"></div><div class="inv-slot" data-index="6"></div><div class="inv-slot" data-index="7"></div><div class="inv-slot" data-index="8"></div><div class="inv-slot" data-index="9"></div>
+            <div class="inv-slot" data-index="10"></div><div class="inv-slot" data-index="11"></div><div class="inv-slot" data-index="12"></div><div class="inv-slot" data-index="13"></div><div class="inv-slot" data-index="14"></div>
+            <div class="inv-slot" data-index="15"></div><div class="inv-slot" data-index="16"></div><div class="inv-slot" data-index="17"></div><div class="inv-slot" data-index="18"></div><div class="inv-slot" data-index="19"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-core btn-modal-close">关闭背包</button>
+    `;
+  }
+
+  /**
    * 初始化 DOM 元素引用
    */
   initDOMElements() {
+    // 检查是否存在 inventory-overlay 元素
     this.elements.overlay = document.getElementById('inventory-overlay');
+    
+    // 如果不存在，创建新的 overlay 元素
+    if (!this.elements.overlay) {
+      console.log('Creating inventory-overlay element dynamically');
+      const overlay = document.createElement('div');
+      overlay.id = 'inventory-overlay';
+      overlay.className = 'modal-overlay hidden';
+      
+      // 注入 HTML 内容
+      overlay.innerHTML = this.getHTML();
+      
+      // 将 overlay 添加到 body（确保全屏覆盖）
+      document.body.appendChild(overlay);
+      this.elements.overlay = overlay;
+    }
+    
+    // 初始化 action menu 元素
     this.elements.actionMenu = document.getElementById('item-action-menu');
     
     // 确保action menu元素存在

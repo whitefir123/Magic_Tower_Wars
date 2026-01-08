@@ -23,6 +23,7 @@ import { getDevModeManager } from './utils/DevModeManager.js';
 import { lootGenerator } from './systems/LootGenerationSystem.js';
 import { SeededRandom } from './utils/SeededRandom.js';
 import { DailyChallengeSystem } from './systems/DailyChallengeSystem.js';
+import { SettingsUI } from './ui/SettingsUI.js';
 
 
 class Game {
@@ -2016,59 +2017,23 @@ class Game {
 
   // SETTINGS
   openSettings() {
-    const settingsOverlay = document.getElementById('settings-overlay');
-    if (!settingsOverlay) return;
-    
-    this.loadSettingsUI();
-    
-    // 1. 显示 Overlay 并添加淡入类
-    settingsOverlay.classList.remove('hidden');
-    settingsOverlay.style.setProperty('display', 'flex', 'important');
-    
-    // 强制重排以确保过渡生效
-    void settingsOverlay.offsetWidth;
-    
-    settingsOverlay.classList.remove('overlay-fade-out');
-    settingsOverlay.classList.add('overlay-fade-in');
-    
-    // 2. 模态框进场动画
-    const modal = settingsOverlay.querySelector('.settings-modal');
-    if (modal) {
-      modal.classList.remove('modal-animate-exit');
-      modal.classList.add('modal-animate-enter');
+    // 如果 SettingsUI 不存在，创建它
+    if (!this.settingsUI) {
+      this.settingsUI = new SettingsUI();
+      this.settingsUI.setGame(this);
     }
     
-    this.setupSettingsEventListeners();
+    // 使用 SettingsUI 打开设置界面
+    if (this.settingsUI) {
+      this.settingsUI.open();
+    }
   }
 
   closeSettings() {
-    const settingsOverlay = document.getElementById('settings-overlay');
-    if (!settingsOverlay) return;
-    
-    // 1. 模态框离场动画
-    const modal = settingsOverlay.querySelector('.settings-modal');
-    if (modal) {
-      modal.classList.remove('modal-animate-enter');
-      modal.classList.add('modal-animate-exit');
+    // 使用 SettingsUI 关闭设置界面
+    if (this.settingsUI) {
+      this.settingsUI.close();
     }
-    
-    // 2. 背景淡出
-    settingsOverlay.classList.remove('overlay-fade-in');
-    settingsOverlay.classList.add('overlay-fade-out');
-    
-    // 3. 延时隐藏 (250ms 匹配动画时长)
-    setTimeout(() => {
-      settingsOverlay.classList.add('hidden');
-      settingsOverlay.style.setProperty('display', 'none', 'important');
-      
-      // 清理动画类，为下次打开做准备
-      settingsOverlay.classList.remove('overlay-fade-out');
-      if (modal) {
-        modal.classList.remove('modal-animate-exit');
-      }
-    }, 250);
-
-    this.saveSettings();
   }
 
   closeBestiary() {

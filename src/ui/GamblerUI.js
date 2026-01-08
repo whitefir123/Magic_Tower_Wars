@@ -61,16 +61,84 @@ export class GamblerUI {
   }
 
   /**
+   * 获取赌徒界面的完整 HTML 字符串
+   * @returns {string} HTML 字符串
+   */
+  getHTML() {
+    return `
+    <div class="gambler-panel">
+      <h2 class="modal-title-shop" style="margin-bottom: 20px;">🎰 命运的老虎机 🎰</h2>
+      
+      <!-- 赌徒消息 -->
+      <p id="gambler-message" style="font-size: 18px; color: #ffcc00; text-align: center; margin-bottom: 25px; font-style: italic;">
+        手气不错，陌生人？老虎机知道你的命运...
+      </p>
+      
+      <!-- 旋转动画区域 -->
+      <div id="gambler-spin-animation" class="hidden" style="font-size: 24px; color: #ff6600; text-align: center; margin: 20px 0; font-weight: bold; animation: pulse 0.5s infinite;">
+        旋转中...
+      </div>
+      
+      <!-- 结果显示区域 -->
+      <div id="gambler-result" class="hidden" style="font-size: 22px; text-align: center; margin: 20px 0; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
+        获得：[物品名称]
+      </div>
+      
+      <!-- 按钮组 -->
+      <div class="flex-center" style="flex-direction: column; gap: 15px;">
+        <button id="gambler-btn-standard" class="btn-core btn-transaction" data-shop-item="standard" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">
+          标准旋转 (50 G)
+        </button>
+        <button id="gambler-btn-high-roller" class="btn-core btn-transaction" data-shop-item="high-roller" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">
+          豪赌旋转 (200 G)
+        </button>
+        <button id="gambler-btn-leave" class="btn-core btn-modal-close" style="margin-top: 15px;">
+          离开
+        </button>
+      </div>
+    </div>
+    `;
+  }
+
+  /**
    * 初始化 DOM 元素引用
    */
   initDOMElements() {
+    // 检查是否存在 gambler-overlay 元素
     this.elements.overlay = document.getElementById('gambler-overlay');
+    
+    // 如果不存在，创建新的 overlay 元素
+    if (!this.elements.overlay) {
+      console.log('Creating gambler-overlay element dynamically');
+      const overlay = document.createElement('div');
+      overlay.id = 'gambler-overlay';
+      overlay.className = 'modal-overlay hidden';
+      
+      // 注入 HTML 内容
+      overlay.innerHTML = this.getHTML();
+      
+      // 将 overlay 添加到 body（确保全屏覆盖）
+      document.body.appendChild(overlay);
+      this.elements.overlay = overlay;
+    }
+    
+    // 在 overlay 创建后获取所有元素引用
     this.elements.messageText = document.getElementById('gambler-message');
     this.elements.spinAnimation = document.getElementById('gambler-spin-animation');
     this.elements.resultDisplay = document.getElementById('gambler-result');
     this.elements.standardBtn = document.getElementById('gambler-btn-standard');
     this.elements.highRollerBtn = document.getElementById('gambler-btn-high-roller');
     this.elements.leaveBtn = document.getElementById('gambler-btn-leave');
+    
+    console.log('✓ GamblerUI DOM elements initialized:', {
+      overlay: !!this.elements.overlay,
+      messageText: !!this.elements.messageText,
+      spinAnimation: !!this.elements.spinAnimation,
+      resultDisplay: !!this.elements.resultDisplay,
+      standardBtn: !!this.elements.standardBtn,
+      highRollerBtn: !!this.elements.highRollerBtn,
+      leaveBtn: !!this.elements.leaveBtn
+    });
   }
 
   /**
@@ -78,6 +146,13 @@ export class GamblerUI {
    */
   setupEventListeners() {
     if (!this.elements.overlay) return;
+
+    // 防止重复初始化
+    if (this.elements.overlay._listenersInitialized) {
+      console.log('GamblerUI event listeners already initialized, skipping');
+      return;
+    }
+    this.elements.overlay._listenersInitialized = true;
 
     // 关闭按钮
     const closeBtn = this.elements.overlay.querySelector('.gambler-close-btn, .btn-gambler-close');
@@ -106,6 +181,8 @@ export class GamblerUI {
     if (this.elements.leaveBtn) {
       this.elements.leaveBtn.addEventListener('click', () => this.close());
     }
+    
+    console.log('✓ GamblerUI event listeners setup complete');
   }
 
   /**

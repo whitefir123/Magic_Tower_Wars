@@ -68,12 +68,45 @@ export class ShopUI {
   }
 
   /**
+   * 获取商店界面的完整 HTML 字符串
+   * @returns {string} HTML 字符串
+   */
+  getHTML() {
+    return `
+    <h2 class="modal-title-shop">地精商店</h2>
+    <div class="flex-center">
+      <button class="btn-core btn-transaction" data-shop-item="atk">购买 攻击 +3<br/>价格: <span id="price-atk">200</span> 金币</button>
+      <button class="btn-core btn-transaction" data-shop-item="def">购买 防御 +3<br/>价格: <span id="price-def">200</span> 金币</button>
+      <button class="btn-core btn-transaction" data-shop-item="hp">购买 治疗 +200HP<br/>价格: <span id="price-hp">100</span> 金币</button>
+      <button class="btn-core btn-transaction" data-shop-item="key">购买 钥匙 +1<br/>价格: <span id="price-key">500</span> 金币</button>
+    </div>
+    <button class="btn-core btn-modal-close" style="margin-top:25px;">关闭商店</button>
+    `;
+  }
+
+  /**
    * 初始化 DOM 元素引用
    */
   initDOMElements() {
+    // 检查是否存在 shop-overlay 元素
     this.elements.overlay = document.getElementById('shop-overlay');
     
-    // 缓存价格显示元素
+    // 如果不存在，创建新的 overlay 元素
+    if (!this.elements.overlay) {
+      console.log('Creating shop-overlay element dynamically');
+      const overlay = document.createElement('div');
+      overlay.id = 'shop-overlay';
+      overlay.className = 'modal-overlay hidden';
+      
+      // 注入 HTML 内容
+      overlay.innerHTML = this.getHTML();
+      
+      // 将 overlay 添加到 body（确保全屏覆盖）
+      document.body.appendChild(overlay);
+      this.elements.overlay = overlay;
+    }
+    
+    // 缓存价格显示元素（在 overlay 创建后获取）
     this.elements.priceElements = {
       atk: document.getElementById('price-atk'),
       def: document.getElementById('price-def'),
@@ -87,6 +120,11 @@ export class ShopUI {
       const target = panel || this.elements.overlay;
       target.style.transform = `scale(${this.style.panelScale})`;
     }
+    
+    console.log('✓ ShopUI DOM elements initialized:', {
+      overlay: !!this.elements.overlay,
+      priceElements: Object.keys(this.elements.priceElements).filter(k => this.elements.priceElements[k]).length
+    });
   }
 
   /**
@@ -95,10 +133,16 @@ export class ShopUI {
   setupEventListeners() {
     if (!this.elements.overlay) return;
 
+    // 防止重复初始化
+    if (this.elements.overlay._listenersInitialized) {
+      console.log('ShopUI event listeners already initialized, skipping');
+      return;
+    }
+    this.elements.overlay._listenersInitialized = true;
+
     // 关闭按钮监听器（支持多种选择器）
     const closeBtn = this.elements.overlay.querySelector('.shop-close-btn, .btn-modal-close');
-    if (closeBtn && !closeBtn.hasAttribute('onclick')) {
-      // 只在按钮没有 onclick 属性时添加监听器（避免重复）
+    if (closeBtn) {
       closeBtn.addEventListener('click', () => this.close());
     }
 
@@ -115,6 +159,8 @@ export class ShopUI {
       const itemType = btn.dataset.shopItem;
       btn.addEventListener('click', () => this.buy(itemType));
     });
+    
+    console.log('✓ ShopUI event listeners setup complete');
   }
 
   /**
