@@ -21,33 +21,46 @@
   will-change: opacity, transform;
 }
 
+/* 主UI专用淡入类：仅控制透明度，避免干扰缩放 */
+.ui-fade-active {
+  opacity: 1 !important;
+}
+
 /* ========================================================================
    场景过渡通用类 - 电影级暗黑渐变 + 微缩放
    ======================================================================== */
 
-/* 基础过渡类：定义过渡属性（0.5s - 0.8s） */
+/* 基础过渡类：定义过渡属性（更平滑的贝塞尔曲线）
+   确保 transition 定义在基本类上，而不是只定义在 active 类上 */
 .scene-transition {
-  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
   will-change: opacity, transform;
+  /* 初始状态：透明 */
+  opacity: 0;
+  transform: scale(1.02);
 }
 
 /* 🔴 关键修正：对于 #main-ui，仅使用透明度过渡（避免与 setupScreenScaling 的 transform 冲突） */
 .scene-fade-in {
-  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-  will-change: opacity, transform;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1) !important; /* 仅使用 opacity transition，避免 transform 冲突 */
+  will-change: opacity;
+  /* 初始状态：透明 */
+  opacity: 0;
+  /* 不设置 transform，避免与 setupScreenScaling 冲突 */
 }
 
-.scene-fade-in.scene-active {
-  opacity: 1 !important;
-  transform: scale(1) !important;
-}
-
-/* 场景激活/可见状态 */
+/* 场景激活/可见状态 - 触发 transition 动画 */
 .scene-active,
 .scene-visible {
   opacity: 1 !important;
   transform: scale(1) !important;
   pointer-events: auto !important; /* 🔴 关键修复：强制开启交互，覆盖 scene-exit 的 none */
+}
+
+/* scene-fade-in 的激活状态（仅控制 opacity） */
+.scene-fade-in.scene-active {
+  opacity: 1 !important;
+  /* 不设置 transform，避免与 setupScreenScaling 冲突 */
 }
 
 /* 场景进入初始状态（用于入场动画） */
@@ -61,7 +74,12 @@
 .scene-exit {
   opacity: 0;
   transform: scale(0.98);
-  pointer-events: none; /* 🔴 关键：防止误触 */
+  pointer-events: none !important; /* 🔴 关键：防止误触 */
+}
+
+/* 通用隐藏状态：彻底屏蔽交互 */
+.hidden {
+  pointer-events: none !important;
 }
 
 /* 场景过渡通用类（用于主菜单等不受 JS 缩放控制的元素）- 保持向后兼容 */
@@ -200,5 +218,10 @@ body {
 /* 页面离场激活状态：淡出到透明 */
 body.page-exit-active {
   opacity: 0;
+}
+
+/* 提升幕布权重，确保绝对覆盖所有 UI 组件 */
+#loading-overlay {
+  z-index: 1000003 !important;
 }
 

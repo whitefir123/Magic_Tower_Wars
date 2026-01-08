@@ -111,13 +111,20 @@ export class LoadingUI {
     // 设置随机背景
     this.setRandomBackground();
 
-    // 显示遮罩
-    this.dom.overlay.classList.remove('hidden');
+    // ⚡ 幕布逻辑：立即设置为不透明且可见，覆盖全屏
+    // 1. 先移除所有可能阻止显示的类
+    this.dom.overlay.classList.remove('hidden', 'overlay-exit');
+    
+    // 2. 立即设置 display 和 opacity（同步操作，确保立即遮挡）
     this.dom.overlay.style.display = 'flex';
     this.dom.overlay.style.opacity = '1';
+    this.dom.overlay.style.pointerEvents = 'auto';
     
-    // ⚡ Z-Index 修正：确保高于 Tooltip (1000000)
+    // 3. Z-Index 修正：确保高于 Tooltip (1000000)
     this.dom.overlay.style.zIndex = '1000002';
+    
+    // 4. 强制重排，确保样式立即生效
+    void this.dom.overlay.offsetWidth;
     
     this.visible = true;
 
@@ -133,7 +140,7 @@ export class LoadingUI {
     // 开始提示词轮播
     this.startTipRotation();
 
-    console.log('✅ 显示加载遮罩');
+    console.log('✅ 显示加载遮罩（幕布已立即遮挡）');
   }
 
   /**
@@ -151,7 +158,10 @@ export class LoadingUI {
     // 这样即使视觉上还在淡出动画，也不会拦截底层按钮的点击
     this.dom.overlay.style.pointerEvents = 'none';
 
-    // 添加淡出类
+    // 强制重排，确保 pointer-events 变更立即生效
+    void this.dom.overlay.offsetWidth;
+
+    // 添加淡出类，触发 CSS transition
     this.dom.overlay.classList.add('overlay-exit');
 
     // 等待动画完成后完全隐藏
@@ -159,6 +169,7 @@ export class LoadingUI {
       this.dom.overlay.classList.add('hidden');
       this.dom.overlay.classList.remove('overlay-exit');
       this.dom.overlay.style.display = 'none';
+      this.dom.overlay.style.opacity = '0';
       this.visible = false;
       console.log('✅ 隐藏加载遮罩');
     }, 800); // 等待 CSS 过渡动画完成（0.8s）
@@ -433,8 +444,8 @@ export class LoadingUI {
   }
 
   /**
-   * 统一转场调度方法 - 单例幕布模式（增强版 - 高级场景同步）
-   * 流程：[拉上幕布 -> 等待完全遮挡 -> 执行切换逻辑 -> 视觉预备 -> 同步拉开幕布与场景淡入]
+   * 统一转场调度方法 - 单例幕布模式（增强版 - 标准 Display -> Reflow -> Opacity 流程）
+   * 流程：[拉上幕布 -> 等待幕布完全遮挡 -> 执行切换逻辑 -> 视觉预备 -> 触发重排 -> 同步拉开幕布与场景淡入]
    * @param {Object} config - 转场配置对象
    * @param {string} config.targetId - 目标场景 DOM 元素 ID
    * @param {Function} config.action - 切换逻辑函数（在幕布显示后执行）
@@ -452,13 +463,15 @@ export class LoadingUI {
     this.isTransitioning = true;
 
     try {
-      // 1. 拉上幕布
+      // 1. 拉上幕布 - show() 已确保幕布立即变为不透明且可见
       this.show('加载中...');
 
-      // 2. 等待幕布完全遮挡（增加到 500ms 确保安全）
-      await this.wait(500);
+      // 2. 等待幕布完全遮挡（使用双重 requestAnimationFrame 确保渲染完成）
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      // 额外等待一小段时间，确保幕布完全可见
+      await this.wait(100);
 
-      // 3. 执行切换逻辑
+      // 3. 执行切换逻辑（此时幕布已完全遮挡，用户看不见底层变化）
       if (action && typeof action === 'function') {
         const actionResult = action();
         
@@ -468,43 +481,61 @@ export class LoadingUI {
         }
       }
 
-      // ⚡ 关键：强制等待两帧，确保 DOM 渲染完成，防止闪烁
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
       // 4. 视觉预备阶段：准备目标元素的初始状态
+      // 获取目标 DOM 元素
       const targetElement = document.getElementById(targetId);
-      if (targetElement) {
-        // 强制设置初始状态：透明且略微缩小
-        targetElement.style.opacity = '0';
-        targetElement.style.transform = 'scale(0.98)';
-        targetElement.classList.remove('scene-active'); // 确保移除激活状态
-        
-        // 触发强制重排，确保初始状态被浏览器应用
-        void targetElement.offsetWidth;
-        
-        console.log(`[LoadingUI] 目标元素 ${targetId} 已设置初始状态`);
-      } else {
+      if (!targetElement) {
         console.warn(`[LoadingUI] 未找到目标元素: ${targetId}`);
+        // 即使找不到元素，也要拉开幕布
+        this.hide();
+        await this.wait(800);
+        return;
       }
 
-      // 5. 同步拉开幕布与场景淡入（动画曲线补偿）
-      // 先添加 scene-active 类触发 CSS transition
-      if (targetElement) {
-        targetElement.classList.add('scene-active');
-        // 设置最终状态（CSS transition 会自动处理动画）
-        targetElement.style.opacity = '1';
-        targetElement.style.transform = 'scale(1)';
-        console.log(`[LoadingUI] 目标元素 ${targetId} 淡入动画已激活`);
+      // 4.1 判断元素类型，设置合适的 display 值
+      const computedStyle = window.getComputedStyle(targetElement);
+      const isFlex = computedStyle.display === 'flex' || targetId === 'main-ui';
+      const displayType = isFlex ? 'flex' : 'block';
+      
+      // 4.2 Display 阶段：设置 display，但保持 opacity: 0
+      targetElement.style.display = displayType;
+      targetElement.style.opacity = '0';
+      targetElement.classList.remove('scene-active', 'scene-visible'); // 确保移除激活状态
+      targetElement.classList.remove('hidden'); // 确保移除隐藏类
+      
+      // 4.3 添加 scene-transition 类以启用过渡效果（如果还没有）
+      if (!targetElement.classList.contains('scene-transition') && targetId !== 'main-ui') {
+        targetElement.classList.add('scene-transition');
       }
+      // main-ui 使用 scene-fade-in 类（避免 transform 冲突）
+      if (targetId === 'main-ui' && !targetElement.classList.contains('scene-fade-in')) {
+        targetElement.classList.add('scene-fade-in');
+      }
+      
+      // 4.4 Reflow 阶段：强制浏览器重排，确保 display 和 opacity: 0 状态被应用
+      // 使用双重 requestAnimationFrame 确保在下一帧渲染前完成
+      await new Promise(resolve => requestAnimationFrame(() => {
+        void targetElement.offsetWidth; // 触发强制重排
+        requestAnimationFrame(resolve); // 再等待一帧，确保重排完成
+      }));
+      
+      console.log(`[LoadingUI] 目标元素 ${targetId} 已进入视觉预备阶段（display: ${displayType}, opacity: 0）`);
 
-      // 立即开始拉开幕布，与场景淡入同步进行
+      // 5. Opacity 阶段：同步拉开幕布与场景淡入
+      // 5.1 添加 scene-active 类，触发 CSS transition 动画（opacity: 0 -> 1）
+      targetElement.classList.add('scene-active');
+      
+      // 5.2 立即开始拉开幕布（淡出），与场景淡入同步进行
       this.hide();
 
-      // 等待隐藏动画完成（幕布淡出 0.8s，与场景淡入同步）
+      // 5.3 等待动画完成（幕布淡出 0.8s，与场景淡入同步）
       await this.wait(800);
 
+      // 5.4 清理临时类名（可选，如果后续不需要这些类可以清理）
+      // 注意：scene-active 和 scene-fade-in/scene-transition 应该保留，因为可能用于后续的淡出动画
+
     } catch (error) {
-      // ⚠️ 关键修复：发生错误时也要强制关闭遮罩，否则界面卡死
+      // ⚠️ 错误保护：确保在任何 catch 块中都会调用 this.hide()，防止界面永久卡死
       console.error('[LoadingUI] performTransition 执行异常:', error);
       console.error('[LoadingUI] 错误堆栈:', error.stack);
       
@@ -513,11 +544,13 @@ export class LoadingUI {
         this.hide();
       } catch (hideError) {
         console.error('[LoadingUI] 隐藏遮罩时发生错误:', hideError);
-        // 如果 hide() 也失败，直接强制隐藏 DOM 元素
+        // 如果 hide() 也失败，直接强制隐藏 DOM 元素（兜底方案）
         if (this.dom.overlay) {
           this.dom.overlay.classList.add('hidden');
           this.dom.overlay.style.display = 'none';
+          this.dom.overlay.style.opacity = '0';
           this.visible = false;
+          this.isTransitioning = false; // 清理标志位
           console.warn('[LoadingUI] 已强制隐藏遮罩层（兜底方案）');
         }
       }

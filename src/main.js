@@ -507,34 +507,16 @@ class Game {
             const mainMenu = document.getElementById('main-menu');
             
             if (mainMenu) {
-              // 1. 强制设置初始状态：透明且略微放大
-              mainMenu.style.opacity = '0';
-              mainMenu.style.transform = 'scale(1.05)';
-              mainMenu.classList.remove('scene-active'); // 确保移除激活状态
-              
-              // 2. 预先初始化主菜单 DOM (但不显示)
+              // 1. 预先初始化主菜单 DOM (但不显示)
               this.showMainMenu(true); // 仅预备不显示
               
-              // 3. 显示主菜单（确保按钮已创建）
+              // 2. 显示主菜单（确保按钮已创建）
               this.showMainMenu(false);
               
-              // 4. 等待双重 requestAnimationFrame 确保重排，然后触发淡入动画
-              await new Promise(resolve => {
-                requestAnimationFrame(() => {
-                  requestAnimationFrame(() => {
-                    // 添加 scene-active 类并设置最终状态
-                    mainMenu.classList.add('scene-active');
-                    mainMenu.style.opacity = '1';
-                    mainMenu.style.transform = 'scale(1)';
-                    console.log('[Init] 主菜单淡入动画已激活');
-                    
-                    // 等待淡入动画完成（0.8s）后再 resolve，确保幕布在主菜单完全变不透明后才拉开
-                    setTimeout(() => {
-                      resolve();
-                    }, 800); // 与 CSS transition 时间一致
-                  });
-                });
-              });
+              // 3. 移除激活状态，让 performTransition 控制淡入
+              mainMenu.classList.remove('scene-active');
+              // 注意：不在这里设置 opacity，让 performTransition 的视觉预备阶段处理
+              console.log('[Init] 主菜单已准备（转场将由 performTransition 控制）');
             } else {
               // 如果找不到元素，仍然执行 showMainMenu
               this.showMainMenu(true);
@@ -831,21 +813,21 @@ class Game {
 
   /**
    * 屏幕缩放系统 - 确保游戏 UI 在任何屏幕尺寸上保持完美比例
-   * Design Resolution: 1840x900 (基础设计分辨率)
-   * Scaling Method: Letterboxing (保持宽高比，两侧/上下留黑边)
+   * Design Resolution: 1940x900 (基础设计分辨率，需与 CSS 中 #main-ui 一致)
+   * Scaling Method: Letterboxing (保持宽高比，可能留黑边，但不裁剪内容)
    */
   setupScreenScaling() {
-    const designWidth = 1840;  // CSS 中 #main-ui 的宽度
+    const designWidth = 1940;  // CSS 中 #main-ui 的宽度（与 game.html 中保持一致）
     const designHeight = 900;  // CSS 中 #main-ui 的高度
     
     const handleResize = () => {
       const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
       
-      // 计算缩放因子（保持宽高比，取较大值 - 铺满屏幕）
+      // 计算缩放因子（保持宽高比，取较小值 - Letterbox，保证完整显示）
       const scaleX = windowWidth / designWidth;
       const scaleY = windowHeight / designHeight;
-      const scale = Math.max(scaleX, scaleY);
+      const scale = Math.min(scaleX, scaleY);
       
       // 应用缩放变换到 #main-ui 容器
       const mainUI = document.getElementById('main-ui');
@@ -3098,6 +3080,10 @@ class Game {
       await this.loadingUI.performTransition({
         targetId: 'char-select-screen',
         action: async () => {
+          // 在幕后隐藏主菜单（此时加载页已完全遮挡，用户看不见这个切换）
+          // 只隐藏，不设置 display: none !important，让 performTransition 统一处理
+          this.hideMainMenu();
+          
           // 初始化角色选择界面
           this.initCharSelect();
           await this.waitForCharSelectScreenResourcesLoaded();
@@ -3107,35 +3093,8 @@ class Game {
             this.ui.showCharacterSelect(mode);
           }
           
-          // 在幕后隐藏主菜单（此时加载页已完全遮挡，用户看不见这个切换）
-          this.hideMainMenu();
-          
-          // 确保角色选择界面可见并启用交互
-          const charSelectScreen = document.getElementById('char-select-screen');
-          if (charSelectScreen) {
-            // 移除隐藏类（index.html 中默认有此类，优先级很高）
-            charSelectScreen.classList.remove('hidden');
-            // 注意：不在这里设置 opacity，让 performTransition 的视觉预备阶段处理
-            // 显示界面
-            charSelectScreen.style.display = 'block';
-            // 强制开启交互
-            charSelectScreen.style.pointerEvents = 'auto';
-            console.log('[CharSelect] 角色选择界面已准备（opacity 将由 performTransition 控制）');
-          }
-          
-          // 🔒 关键安全网：强制清理遮挡层，防止 LoadingUI 类状态不同步导致的残留
-          const blockers = ['loading-overlay', 'main-menu'];
-          blockers.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-              el.style.pointerEvents = 'none';
-              // 如果元素仍然可见，也隐藏它
-              if (!el.classList.contains('hidden')) {
-                el.style.display = 'none';
-              }
-              console.log(`[CharSelect] 强制清理遮挡层: ${id}`);
-            }
-          });
+          // 不要在这里手动设置 display 和 opacity，让 performTransition 的视觉预备阶段统一处理
+          // performTransition 会设置 display: block, opacity: 0，然后添加 scene-active 类触发淡入
           
           // 统一调用 scrollTo 确保视角重置
           window.scrollTo(0, 0);
@@ -3225,10 +3184,10 @@ class Game {
   hideCharacterSelect() {
     const charSelectScreen = document.getElementById('char-select-screen');
     if (charSelectScreen) {
-      charSelectScreen.classList.remove('loaded');
-      charSelectScreen.classList.remove('scene-transition', 'scene-active', 'scene-enter');
-      charSelectScreen.style.display = 'none';
-      console.log('[CharSelect] Character selection screen hidden');
+      charSelectScreen.classList.remove('loaded', 'scene-transition', 'scene-active', 'scene-enter');
+      // 使用类来控制隐藏，而不是直接设置 display，避免破坏正在进行的淡出动画
+      charSelectScreen.classList.add('hidden');
+      console.log('[CharSelect] Character selection screen hidden（使用类控制）');
     }
   }
 
@@ -3243,19 +3202,21 @@ class Game {
       await this.loadingUI.performTransition({
         targetId: 'main-menu',
         action: async () => {
-          // 淡出角色选择界面
-          await this.loadingUI.fadeSceneOut('char-select-screen');
-          
-          // 显示主菜单（使用过渡效果）
-          this.showMainMenu(true); // 仅预备不显示
-          this.showMainMenu(false);
-          
-          // 关键修复：移除 char-select-screen 的 .scene-transition 类，防止它因为 CSS 规则 display: block !important 而无法隐藏
+          // 隐藏角色选择界面（此时幕布已完全遮挡，用户看不见这个切换）
+          // 不要使用 fadeSceneOut，因为已经在幕布后面了，直接隐藏即可
           const charSelect = document.getElementById('char-select-screen');
           if (charSelect) {
-            charSelect.classList.remove('scene-transition');
-            charSelect.style.setProperty('display', 'none', 'important');
+            charSelect.classList.remove('scene-transition', 'scene-active', 'loaded');
+            charSelect.classList.add('hidden');
+            // 不要设置 display: none !important，让 CSS 类控制即可
+            charSelect.style.display = 'none';
+            charSelect.style.opacity = '0';
           }
+          
+          // 显示主菜单（使用过渡效果）
+          // performTransition 会统一处理 display 和 opacity，不需要手动设置
+          this.showMainMenu(true); // 仅预备不显示
+          this.showMainMenu(false);
           
           // 统一调用 scrollTo 确保视角重置
           window.scrollTo(0, 0);
@@ -3602,27 +3563,28 @@ class Game {
     }
     
     // 关键修复：彻底隐藏其他所有界面，防止隐形遮挡
+    // 注意：在幕布遮挡后执行，使用类来控制，避免破坏淡出动画
     if (mainUI) {
       mainUI.classList.remove('loaded', 'scene-active');
-      mainUI.style.display = 'none';
+      mainUI.classList.add('hidden');
       mainUI.style.pointerEvents = 'none'; // 双重保险
     }
     
     if (charSelect) {
       charSelect.classList.remove('loaded', 'scene-active');
-      charSelect.style.display = 'none';
+      charSelect.classList.add('hidden');
       charSelect.style.pointerEvents = 'none'; // 双重保险
     }
     
     // 新增：强制隐藏所有可能阻挡点击的覆盖层 (Draft, Shrine, Gambler, etc.)
+    // 注意：使用类来控制隐藏，避免破坏动画
     const blockers = ['draft-overlay', 'shrine-overlay', 'gambler-overlay', 'shop-overlay', 'inventory-overlay', 'bestiary-overlay'];
     blockers.forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.classList.add('hidden');
-        el.style.display = 'none';
         el.style.pointerEvents = 'none';
-        console.log(`[Menu] 强制隐藏覆盖层: ${id}`);
+        console.log(`[Menu] 强制隐藏覆盖层: ${id}（使用类控制）`);
       }
     });
     
@@ -4233,16 +4195,16 @@ class Game {
       await this.loadingUI.performTransition({
         targetId: 'main-ui',
         action: async () => {
-          // 准备主UI - 使用 scene-fade-in 类来预备动画
-          const mainUI = document.getElementById('main-ui');
-          if (mainUI) {
-            // 移除隐藏类和旧的控制类
-            mainUI.classList.remove('hidden', 'loaded');
-            // 添加 scene-fade-in 类来预备动画（CSS 会处理 transition）
-            mainUI.classList.add('scene-fade-in');
-            // 注意：不在这里设置 opacity 和 display，让 performTransition 的视觉预备阶段处理
-            console.log('[StartGame] 主UI已添加 scene-fade-in 类（转场将由 performTransition 控制）');
-          }
+          // 隐藏主菜单和角色选择界面（此时幕布已完全遮挡，用户看不见这个切换）
+          this.hideMainMenu();
+          this.hideCharacterSelect();
+          
+          // 不要在这里手动设置 display 和 opacity，让 performTransition 的视觉预备阶段统一处理
+          // performTransition 会：
+          // 1. 设置 display: flex, opacity: 0
+          // 2. 添加 scene-fade-in 类（如果还没有）
+          // 3. 触发重排
+          // 4. 添加 scene-active 类触发淡入动画
           
           // 统一调用 scrollTo 确保视角重置
           window.scrollTo(0, 0);
@@ -4257,10 +4219,9 @@ class Game {
       // FIX: 错误恢复：尝试强制显示主界面，避免黑屏
       const mainUI = document.getElementById('main-ui');
       if (mainUI) {
-        mainUI.classList.add('scene-fade-in', 'scene-active', 'loaded');
-        mainUI.style.opacity = '1';
-        mainUI.classList.remove('scene-fade-in');
-        console.log('[StartGame] 错误恢复：强制显示主UI');
+        mainUI.classList.add('scene-fade-in', 'scene-active', 'loaded', 'ui-fade-active');
+        // 使用类来控制 opacity，而不是硬编码
+        console.log('[StartGame] 错误恢复：强制显示主UI（使用类控制）');
       }
     }
   }
@@ -4282,10 +4243,13 @@ class Game {
       await this.loadingUI.performTransition({
         targetId: 'main-ui',
         action: async () => {
-          // 隐藏旧界面
+          // 隐藏旧界面（使用类控制，避免破坏动画）
           this.hideMainMenu();
           const charSelect = document.getElementById('char-select-screen');
-          if(charSelect) charSelect.style.display = 'none';
+          if(charSelect) {
+            charSelect.classList.add('hidden');
+            charSelect.style.pointerEvents = 'none';
+          }
           
           // ✅ 触发游戏加载开始事件
           window.dispatchEvent(new CustomEvent('gameplayLoadingStart'));
@@ -4349,6 +4313,12 @@ class Game {
               console.log(`[DailyChallenge] 应用词缀: ${modifier.name} (${modifier.description})`);
             }
           });
+          
+          // 🔴 关键修复：在生成新地图前清空画布，防止看到上一局残影
+          if (this.canvas && this.ctx) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            console.log('[RestartGame] 画布已清空（每日挑战模式，生成地图前）');
+          }
           
           // 应用初始遗物（符文）
           if (dailyConfig.startingRune && this.roguelike) {
@@ -4467,9 +4437,9 @@ class Game {
       // FIX: 错误恢复：尝试强制显示主界面，避免黑屏
       const mainUI = document.getElementById('main-ui');
       if (mainUI) {
-        mainUI.style.display = 'flex';
-        mainUI.style.opacity = '1';
-        mainUI.classList.remove('scene-fade-in'); 
+        mainUI.classList.add('scene-fade-in', 'scene-active', 'loaded', 'ui-fade-active');
+        // 使用类来控制 opacity，而不是硬编码
+        console.log('[DailyChallenge] 错误恢复：强制显示主UI（使用类控制）');
       }
       alert('每日挑战启动失败: ' + error.message);
     }
@@ -4841,12 +4811,6 @@ class Game {
           this.map.fogParticles = [];
         }
         
-        // 🔴 关键修复：清空主画布，防止看到上一局残影
-        if (this.canvas && this.ctx) {
-          this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-          console.log('[RestartGame] 画布已清空');
-        }
-        
         // CRITICAL FIX: 每日挑战模式重试时，重新初始化 RNG 和配置
         if (wasDailyMode) {
           console.log('[RestartGame] 每日挑战模式重试，重新初始化配置...');
@@ -4963,6 +4927,7 @@ class Game {
           }
           
           // 🔴 关键修复：在生成新地图前清空画布，防止看到上一局残影
+          // 注意：此时幕布已完全遮挡，清空画布不会造成闪烁
           if (this.canvas && this.ctx) {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             console.log('[RestartGame] 画布已清空（每日挑战模式）');
@@ -5015,7 +4980,7 @@ class Game {
           // 🔴 关键修复：在生成新地图前清空画布，防止看到上一局残影
           if (this.canvas && this.ctx) {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            console.log('[RestartGame] 画布已清空（普通模式）');
+            console.log('[RestartGame] 画布已清空（普通模式，生成地图前）');
           }
           
           // Reset map and generate floor 1
@@ -5039,16 +5004,12 @@ class Game {
         // Resume game
         this.gameStarted = true;
         
-        // 3. 确保主界面准备好展示（使用 scene-fade-in 类来预备动画）
-        const mainUI = document.getElementById('main-ui');
-        if (mainUI) {
-          // 移除隐藏类和旧的控制类
-          mainUI.classList.remove('hidden', 'loaded', 'scene-active');
-          // 添加 scene-fade-in 类来预备动画（CSS 会处理 transition）
-          mainUI.classList.add('scene-fade-in');
-          // 注意：不在这里设置 opacity 和 display，让 performTransition 的视觉预备阶段处理
-          console.log('[RestartGame] 主UI已添加 scene-fade-in 类（转场将由 performTransition 控制）');
-        }
+        // 不要在这里手动设置 main-ui 的 display 和 opacity，让 performTransition 的视觉预备阶段统一处理
+        // performTransition 会：
+        // 1. 设置 display: flex, opacity: 0
+        // 2. 添加 scene-fade-in 类（如果还没有）
+        // 3. 触发重排
+        // 4. 添加 scene-active 类触发淡入动画
         
         console.log('[RestartGame] 重置逻辑已完成（幕布后）');
         

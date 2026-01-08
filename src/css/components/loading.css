@@ -11,8 +11,8 @@
   justify-content: center !important;
   align-items: center !important;
   flex-direction: column !important;
-  z-index: 1000002 !important; /* 确保高于 Tooltip (1000000) */
-  transition: opacity 0.8s ease-in-out;
+  z-index: 1000002 !important; /* 确保高于 Tooltip (1000000)，在淡出时也保持高位以避免闪烁 */
+  transition: opacity 0.8s ease-in-out !important; /* 确保 transition 定义在基本类上 */
   opacity: 1;
   pointer-events: auto;
   overflow: hidden;
@@ -20,8 +20,9 @@
 
 /* 淡出状态 - 电影级过渡 */
 #loading-overlay.overlay-exit {
-  opacity: 0;
+  opacity: 0 !important; /* 触发 transition */
   pointer-events: none !important; /* 🔴 关键：立即释放点击穿透，防止过渡期间无法操作 */
+  /* z-index 保持不变，避免淡出时闪烁 */
 }
 
 #loading-overlay.hidden {
