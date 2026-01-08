@@ -25,19 +25,28 @@ export class LeaderboardUI {
       container.id = 'leaderboard-panel';
       container.className = 'leaderboard-panel hidden';
       container.innerHTML = `
+        <!-- Left Sidebar - Category List -->
+        <div class="leaderboard-sidebar">
+          <div class="leaderboard-category active" data-tab="global">
+            <span class="category-name">全局排行榜</span>
+          </div>
+          <div class="leaderboard-category" data-tab="seasonal">
+            <span class="category-name">当前赛季</span>
+          </div>
+          <div class="leaderboard-category" data-tab="daily">
+            <span class="category-name">每日挑战</span>
+          </div>
+        </div>
+        
         <div class="leaderboard-content">
+          <!-- Leaderboard Header -->
           <div class="leaderboard-header">
-            <h2>排行榜</h2>
+            <h2 class="leaderboard-title">排行榜</h2>
             <button class="leaderboard-close-btn" onclick="game.closeLeaderboard()" aria-label="关闭"></button>
           </div>
           
+          <!-- Leaderboard Content -->
           <div class="leaderboard-body-container">
-            <div class="leaderboard-sidebar">
-              <div class="leaderboard-category active" data-tab="global">全局排行榜</div>
-              <div class="leaderboard-category" data-tab="seasonal">当前赛季</div>
-              <div class="leaderboard-category" data-tab="daily">每日挑战</div>
-            </div>
-            
             <div class="leaderboard-main-panel">
               <div id="season-info" class="season-info hidden">
                 <div class="season-name" id="season-name">-</div>

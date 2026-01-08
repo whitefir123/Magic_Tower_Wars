@@ -241,7 +241,7 @@
 
 /* 昵称模态框单独设置更高层级，确保在主菜单之上 */
 #nickname-modal {
-  z-index: 20001 !important;
+  z-index: 20010 !important;
 }
 
 /* 修复：当移除 hidden 类时，强制显示昵称模态框 */

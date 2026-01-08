@@ -699,9 +699,55 @@ class Game {
     if (input) input.value = '';
     if (errorSpan) errorSpan.textContent = '';
 
-    // 显示模态框
+    // 获取内容框
+    const content = modal.querySelector('.modal-content');
+    
+    // 显示模态框 - 添加正确的动画类
     modal.classList.remove('hidden');
-    modal.style.display = 'flex'; // 强制设置内联样式作为后备
+    modal.style.display = 'flex';
+    
+    // 强制浏览器重排，确保过渡动画生效
+    void modal.offsetWidth;
+    
+    // 添加淡入动画类，使弹窗变为不透明
+    modal.classList.remove('overlay-fade-out');
+    modal.classList.add('overlay-fade-in');
+    
+    // 获取内部 .modal-content，添加弹窗弹出动画
+    if (content) {
+      content.classList.remove('modal-animate-exit');
+      content.classList.add('modal-animate-enter');
+    }
+
+    // 封装关闭逻辑
+    const closeModal = () => {
+      // 移除淡入类，添加淡出类
+      modal.classList.remove('overlay-fade-in');
+      modal.classList.add('overlay-fade-out');
+      
+      // 移除进入动画，添加退出动画
+      if (content) {
+        content.classList.remove('modal-animate-enter');
+        content.classList.add('modal-animate-exit');
+      }
+
+      // 等待动画结束后隐藏
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('overlay-fade-out');
+        modal.style.display = 'none';
+        
+        // 清理动画类，供下次使用
+        if (content) {
+          content.classList.remove('modal-animate-exit');
+        }
+        
+        // 注册/跳过后，尝试再次检查公告（如果被本次弹窗阻挡过）
+        if (this.ui && this.ui.patchNotesUI) {
+          this.ui.patchNotesUI.checkAndShow();
+        }
+      }, 300);
+    };
 
     // 绑定注册按钮事件
     if (registerBtn) {
@@ -719,10 +765,11 @@ class Game {
 
         if (result.success) {
           console.log('[Leaderboard] 用户注册成功');
-          modal.classList.add('hidden');
           if (this.ui) {
             this.ui.logMessage(`欢迎，${nickname}！`, 'gain');
           }
+          // 使用统一的关闭逻辑
+          closeModal();
         } else {
           if (errorSpan) errorSpan.textContent = result.message;
           registerBtn.disabled = false;
@@ -734,8 +781,9 @@ class Game {
     // 绑定跳过按钮事件
     if (skipBtn) {
       skipBtn.onclick = () => {
-        modal.classList.add('hidden');
         console.log('[Leaderboard] 用户跳过注册');
+        // 使用统一的关闭逻辑
+        closeModal();
       };
     }
 

@@ -86,6 +86,13 @@ export class PatchNotesUI {
    */
   checkAndShow() {
     if (this.lastReadVersion !== CURRENT_VERSION) {
+      // 检测昵称注册弹窗是否正在显示
+      const nicknameModal = document.getElementById('nickname-modal');
+      if (nicknameModal && !nicknameModal.classList.contains('hidden')) {
+        console.log('[PatchNotesUI] 检测到注册弹窗，推迟显示更新公告');
+        return;
+      }
+
       // 延迟一点时间，确保主菜单已完全显示
       setTimeout(() => {
         this.open();
