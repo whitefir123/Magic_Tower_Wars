@@ -427,7 +427,7 @@ class Game {
       
       // 1. 立即显示加载界面
       this.loadingUI.init(); // 确保 DOM 引用已抓取
-      this.loadingUI.showOverlay('global', '正在初始化核心系统...');
+      this.loadingUI.show('正在初始化核心系统...');
       
       // 2. 定义并行任务池
       // 系统级任务 (通常很快)
@@ -441,7 +441,7 @@ class Game {
       // 将关键资源加载进度映射到 0-70%
       const assetTask = this.loader.loadCriticalAssets(CRITICAL_ASSETS, (percent) => {
         const visualPercent = Math.min(70, Math.floor(percent * 0.7));
-        this.loadingUI.setProgress(visualPercent, 'global');
+        this.loadingUI.setProgress(visualPercent);
       });
 
       // 音频加载任务 (并行进行)
@@ -452,8 +452,8 @@ class Game {
       await Promise.all([...sysTasks, assetTask, audioTask]);
       
       console.log('[Init] 核心资源并行加载完成');
-      this.loadingUI.setProgress(80, 'global');
-      this.loadingUI.setTip('正在构建游戏世界...', 'global');
+      this.loadingUI.setProgress(80);
+      this.loadingUI.setTip('正在构建游戏世界...');
 
       // 4. 初始化游戏系统 (同步逻辑)
       // 稍微延迟一帧以允许 UI 刷新
@@ -492,28 +492,23 @@ class Game {
       requestAnimationFrame(t => this.loop(t));
 
       // 5. 初始化排行榜 (异步，不阻塞)
-      this.loadingUI.setTip('连接排行榜服务...', 'global');
+      this.loadingUI.setTip('连接排行榜服务...');
       await this.initLeaderboardUser();
       
-      this.loadingUI.setProgress(100, 'global');
+      this.loadingUI.setProgress(100);
       
       // 6. 显示主菜单并隐藏加载屏（仅在主菜单页面）
       if (!isGamePage) {
-        // 预先初始化主菜单 DOM (但不显示)
-        this.showMainMenu(true); // 仅预备不显示
-        // 执行转场
-        await this.loadingUI.transitionToScene('main-menu', 'global');
-        
-        // 安全阀：强制移除全局加载层的阻挡 (防止按钮无法点击)
-        const loadingOverlay = document.getElementById('loading-overlay');
-        if (loadingOverlay) {
-          loadingOverlay.style.display = 'none';
-          loadingOverlay.style.pointerEvents = 'none';
-          console.log('[Init] 安全阀：强制移除加载层阻挡');
-        }
-        
-        // 显示主菜单（确保按钮已创建）
-        this.showMainMenu(false);
+        // 使用 performTransition 进行转场
+        await this.loadingUI.performTransition({
+          targetId: 'main-menu',
+          action: async () => {
+            // 预先初始化主菜单 DOM (但不显示)
+            this.showMainMenu(true); // 仅预备不显示
+            // 显示主菜单（确保按钮已创建）
+            this.showMainMenu(false);
+          }
+        });
         
         // 检查并自动弹出更新公告（如果有新版本）
         if (this.ui && this.ui.patchNotesUI) {
@@ -525,11 +520,11 @@ class Game {
         // FIX: 如果是每日挑战模式，不要隐藏加载层，直接保持显示以实现平滑过渡
         const gameMode = sessionStorage.getItem('gameMode');
         if (gameMode !== 'daily') {
-          this.loadingUI.hideOverlay('global');
+          this.loadingUI.hide();
         } else {
           console.log('[Init] 每日挑战模式：保持加载层显示，等待 startDailyChallenge 接管');
           // 可以更新一下提示文字
-          this.loadingUI.setTip('准备每日挑战...', 'global');
+          this.loadingUI.setTip('准备每日挑战...');
         }
       }
       
@@ -551,7 +546,7 @@ class Game {
     } catch (e) {
       console.error('[Init] CRITICAL ERROR:', e);
       alert('游戏初始化失败，请检查控制台。\n' + e.message);
-      this.loadingUI.hideOverlay('global');
+      this.loadingUI.hide();
     }
   }
 
@@ -1016,11 +1011,8 @@ class Game {
     if (this.gameStarted) {
       // Ensure loading overlay is hidden during gameplay (already handled in startGame)
       // This is just a safety check
-      const loadingOverlay = document.getElementById('loading-overlay');
-      if (loadingOverlay && loadingOverlay.style.display !== 'none') {
-        loadingOverlay.style.opacity = '0';
-        loadingOverlay.style.pointerEvents = 'none';
-        loadingOverlay.style.display = 'none';
+      if (this.loadingUI && this.loadingUI.isVisible()) {
+        this.loadingUI.hide();
       }
       
       try { if (this.player && !this.isPaused) this.update(dt); } catch (e) { console.error('Non-Fatal Game Loop Error (update):', e); }
@@ -3043,37 +3035,35 @@ class Game {
   // CHARACTER SELECTION SYSTEM - Risk of Rain 2 HUD Style
   async showCharacterSelect(mode = 'normal') {
     try {
-      // 1. 直接显示加载界面（它会覆盖在当前界面之上）
-      this.loadingUI.showOverlay('charSelect', '加载英雄选择界面...');
+      // 使用 performTransition 进行转场
+      await this.loadingUI.performTransition({
+        targetId: 'char-select-screen',
+        action: async () => {
+          // 初始化角色选择界面
+          this.initCharSelect();
+          await this.waitForCharSelectScreenResourcesLoaded();
+          
+          // 应用模式设置
+          if (this.ui && this.ui.showCharacterSelect) {
+            this.ui.showCharacterSelect(mode);
+          }
+          
+          // 在幕后隐藏主菜单（此时加载页已完全遮挡，用户看不见这个切换）
+          this.hideMainMenu();
+          
+          // 确保角色选择界面可见
+          const charSelectScreen = document.getElementById('char-select-screen');
+          if (charSelectScreen) {
+            charSelectScreen.style.display = 'block';
+            charSelectScreen.classList.add('loaded');
+          }
+        }
+      });
       
-      // 给一点时间让加载界面的淡入动画开始播放
-      await new Promise(r => setTimeout(r, 100));
-
-      // 初始化角色选择界面
-      this.initCharSelect();
-      await this.waitForCharSelectScreenResourcesLoaded();
-      this.loadingUI.setProgress(100, 'charSelect');
-      
-      // 应用模式设置
-      if (this.ui && this.ui.showCharacterSelect) {
-        this.ui.showCharacterSelect(mode);
-      }
-      
-      // 2. 在幕后隐藏主菜单（此时加载页已完全遮挡，用户看不见这个切换）
-      this.hideMainMenu();
-
-      // 3. 转场到角色选择界面
-      await this.loadingUI.transitionToScene('char-select-screen', 'charSelect');
-      
-      // 确保角色选择界面可见（兜底机制）
-      const charSelectScreen = document.getElementById('char-select-screen');
-      if (charSelectScreen) {
-        charSelectScreen.classList.add('loaded');
-        console.log('[CharSelect] Character selection screen shown with transition');
-      }
+      console.log('[CharSelect] Character selection screen shown with transition');
     } catch (e) {
       console.error('[CharSelect] Error showing character select:', e);
-      this.loadingUI.hideOverlay('charSelect');
+      this.loadingUI.hide();
     }
   }
 
@@ -3103,7 +3093,7 @@ class Game {
       const checkComplete = () => {
         loadedResources++;
         const percent = Math.round((loadedResources / totalResources) * 100);
-        this.loadingUI.setProgress(percent, 'charSelect');
+        this.loadingUI.setProgress(percent);
         
         if (loadedResources >= totalResources) {
           resolve();
@@ -3158,22 +3148,25 @@ class Game {
     console.log('[CharSelect] Returning to main menu with transition');
     
     try {
-      // 第一步：淡出角色选择界面
-      await this.loadingUI.fadeSceneOut('char-select-screen');
-      
-      // 显示加载界面
-      this.loadingUI.showOverlay('charSelect', '返回主菜单...');
-      
-      // 显示主菜单（使用过渡效果）
-      this.showMainMenu(true); // 仅预备不显示
-      await this.loadingUI.transitionToScene('main-menu', 'charSelect');
-      
-      // 关键修复：移除 char-select-screen 的 .scene-transition 类，防止它因为 CSS 规则 display: block !important 而无法隐藏
-      const charSelect = document.getElementById('char-select-screen');
-      if (charSelect) {
-        charSelect.classList.remove('scene-transition');
-        charSelect.style.setProperty('display', 'none', 'important');
-      }
+      // 使用 performTransition 进行转场
+      await this.loadingUI.performTransition({
+        targetId: 'main-menu',
+        action: async () => {
+          // 淡出角色选择界面
+          await this.loadingUI.fadeSceneOut('char-select-screen');
+          
+          // 显示主菜单（使用过渡效果）
+          this.showMainMenu(true); // 仅预备不显示
+          this.showMainMenu(false);
+          
+          // 关键修复：移除 char-select-screen 的 .scene-transition 类，防止它因为 CSS 规则 display: block !important 而无法隐藏
+          const charSelect = document.getElementById('char-select-screen');
+          if (charSelect) {
+            charSelect.classList.remove('scene-transition');
+            charSelect.style.setProperty('display', 'none', 'important');
+          }
+        }
+      });
       
       console.log('[CharSelect] Returned to main menu with transition');
     } catch (e) {
@@ -3611,16 +3604,7 @@ class Game {
             this.audio.playBgm('dungeon_theme');
           }
           
-          // 优化：先显示加载层，再切换界面（参考 returnToMainMenu 实现模式）
-          this.loadingUI.showOverlay('charSelect', '加载英雄选择界面...');
-          
-          // 等待遮罩显示
-          await new Promise(r => setTimeout(r, 200));
-          
-          // 隐藏主菜单 DOM
-          this.hideMainMenu();
-          
-          // 显示角色选择界面（内部已包含 transitionToScene）
+          // 显示角色选择界面（内部已使用 performTransition 处理加载层）
           await this.showCharacterSelect();
         } catch (error) {
           console.error('[Game] Error handling start game button click:', error);
@@ -3658,7 +3642,7 @@ class Game {
         sessionStorage.setItem('gameMode', 'normal'); // 确保模式正确
         
         // 显示加载遮罩，通过跳转进入游戏
-        this.loadingUI.showOverlay('gameplay', '正在读取存档...');
+        this.loadingUI.show('正在读取存档...');
         
         // 延迟跳转
         setTimeout(() => {
@@ -3706,16 +3690,7 @@ class Game {
             this.audio.playBgm('dungeon_theme');
           }
           
-          // 优化：先显示加载层，再切换界面（参考 returnToMainMenu 实现模式）
-          this.loadingUI.showOverlay('charSelect', '加载英雄选择界面...');
-          
-          // 等待遮罩显示
-          await new Promise(r => setTimeout(r, 200));
-          
-          // 隐藏主菜单 DOM
-          this.hideMainMenu();
-          
-          // 进入每日挑战模式选择界面（内部已包含 transitionToScene）
+          // 进入每日挑战模式选择界面（内部已使用 performTransition 处理加载层）
           await this.showCharacterSelect('daily');
         } catch (error) {
           console.error('[Game] Error handling daily challenge button click:', error);
@@ -3832,9 +3807,8 @@ class Game {
     console.log('[StartGameWithRedirect] Saving state and redirecting...');
     
     // 1. 显示加载界面（视觉反馈）
-    // 使用 'global' 或 'gameplay' 类型的遮罩
-    this.loadingUI.showOverlay('gameplay', '正在进入世界...');
-    this.loadingUI.setProgress(100, 'gameplay'); // 设为满，表示准备就绪
+    this.loadingUI.show('正在进入世界...');
+    this.loadingUI.setProgress(100); // 设为满，表示准备就绪
 
     // 检查当前是否为每日挑战模式
     const charSelectScreen = document.getElementById('char-select-screen');
@@ -3937,29 +3911,29 @@ class Game {
     // FIX: 重置伤害统计
     this.totalDamageDealt = 0;
     
-    // 触发游戏加载开始事件，通知 LoadingOverlayManager
+    // 触发游戏加载开始事件
     window.dispatchEvent(new CustomEvent('gameplayLoadingStart'));
     
     // 显示游玩界面加载界面
-    this.loadingUI.showOverlay('gameplay', '加载游戏资源...');
+    this.loadingUI.show('加载游戏资源...');
     
     try {
       // 🚀 优化：确认游戏内资源加载完成（资源可能已在后台预加载）
       // 如果资源已经由 init() 的后台预加载完成，这里的回调会瞬间完成（预期行为，秒开游戏）
       console.log('[StartGame] 确认游戏内资源加载状态...');
-      this.loadingUI.setTip('加载游戏资源（图片）...', 'gameplay');
+      this.loadingUI.setTip('加载游戏资源（图片）...');
       
       // 加载游戏内图片资源（如果已加载，会立即完成）
       await this.loader.loadGameplayAssets(GAMEPLAY_ASSETS, (percent, loaded, total) => {
         // 更新加载进度（0-70% 用于图片资源）
         const imageProgress = Math.round((percent * 0.7));
-        this.loadingUI.setProgress(imageProgress, 'gameplay');
+        this.loadingUI.setProgress(imageProgress);
         console.log(`[StartGame] 游戏资源加载进度: ${imageProgress}% (${loaded}/${total})`);
       });
       console.log('[StartGame] ✓ 游戏内图片资源已就绪');
       
       // 加载游戏内音频资源（后台加载，不阻塞）
-      this.loadingUI.setTip('加载游戏资源（音频）...', 'gameplay');
+      this.loadingUI.setTip('加载游戏资源（音频）...');
       this.audio.preloadGameplayAudio().then(() => {
         console.log('[StartGame] ✓ 游戏内音频资源后台加载完成');
       }).catch(err => {
@@ -3967,8 +3941,8 @@ class Game {
       });
       
       // 更新进度到 80%（音频在后台加载）
-      this.loadingUI.setProgress(80, 'gameplay');
-      this.loadingUI.setTip('初始化游戏界面...', 'gameplay');
+      this.loadingUI.setProgress(80);
+      this.loadingUI.setTip('初始化游戏界面...');
       // Capture the "Enable Fog of War" setting from sessionStorage (set by startGameWithRedirect)
       // or from the checkbox if it exists (for direct game start from index.html)
       const enableFogFromSession = sessionStorage.getItem('enableFog');
@@ -4142,42 +4116,43 @@ class Game {
       // 等待游玩界面的所有资源加载完毕
       await this.waitForGameplayScreenResourcesLoaded();
       
-      // 触发资源加载完成事件，通知 LoadingOverlayManager
+      // 触发资源加载完成事件
       window.dispatchEvent(new CustomEvent('gameplayResourcesLoaded'));
       
       // 更新进度条到 100%
-      this.loadingUI.setProgress(100, 'gameplay');
+      this.loadingUI.setProgress(100);
       
-      // ✅ 触发加载完成事件，通知 LoadingOverlayManager UI 已渲染完成
+      // ✅ 触发加载完成事件，通知 UI 已渲染完成
       window.dispatchEvent(new CustomEvent('gameplayLoadingComplete'));
       
-      // NOW show the main UI with smooth transition using transitionToScene
-      // This ensures all DOM construction is complete before displaying
-      await this.loadingUI.transitionToScene('main-ui', 'gameplay');
+      // 使用 performTransition 进行转场
+      await this.loadingUI.performTransition({
+        targetId: 'main-ui',
+        action: async () => {
+          // 准备主UI
+          const mainUI = document.getElementById('main-ui');
+          if (mainUI) {
+            mainUI.classList.remove('loaded');
+            mainUI.style.display = 'flex';
+            mainUI.style.opacity = '0';
+            mainUI.classList.add('scene-fade-in');
+          }
+        }
+      });
       
       // CRITICAL FIX: 确保主UI可见（双重保险）
-      // 注意：mainUI 变量已在前面声明过，这里使用新变量名
       const mainUIFinal = document.getElementById('main-ui');
       if (mainUIFinal) {
-        // 清除可能残留的内联样式
         mainUIFinal.style.opacity = '';
-        // 确保主UI可见
         mainUIFinal.style.display = 'flex';
-        mainUIFinal.classList.add('scene-fade-in', 'scene-active');
+        mainUIFinal.classList.add('scene-fade-in', 'scene-active', 'loaded');
         console.log('[StartGame] 主UI已确保可见');
-      }
-      
-      // 确保 LoadingOverlay 彻底隐藏 (双重保险)
-      const loadingOverlay = document.getElementById(this.loadingUI.overlays.gameplay.id);
-      if (loadingOverlay) {
-        loadingOverlay.style.display = 'none';
-        loadingOverlay.classList.add('hidden');
       }
       
       console.log('[StartGame] Game started successfully!');
     } catch (e) {
       console.error('[StartGame] Error starting game:', e);
-      this.loadingUI.hideOverlay('gameplay');
+      this.loadingUI.hide();
       
       // FIX: 错误恢复：尝试强制显示主界面，避免黑屏
       const mainUI = document.getElementById('main-ui');
@@ -4202,208 +4177,188 @@ class Game {
     this.isDailyMode = true; // 尽早设置标志位
     console.log('[DailyChallenge] 强制设置难度层级: 1 (每日挑战标准难度)');
     
-      // 2. 接管加载界面 (使用 gameplay 类型)
-      // 注意：如果之前 global 层还在，这里会平滑切换到 gameplay 层
-      this.loadingUI.showOverlay('gameplay', '加载每日挑战资源...');
-      
-      // 2. 稍微等待遮罩层出现，然后幕后隐藏旧界面
-      await new Promise(r => setTimeout(r, 100));
-      this.hideMainMenu();
-      const charSelect = document.getElementById('char-select-screen');
-      if(charSelect) charSelect.style.display = 'none';
-      
-      // ✅ 触发游戏加载开始事件
-      window.dispatchEvent(new CustomEvent('gameplayLoadingStart'));
-      
-      try {
-        // 加载游戏资源（与 startGame 相同）
-        await this.loader.loadGameplayAssets(GAMEPLAY_ASSETS, (percent, loaded, total) => {
-          const imageProgress = Math.round((percent * 0.7));
-          this.loadingUI.setProgress(imageProgress, 'gameplay');
-        });
+      // 使用 performTransition 进行转场
+      await this.loadingUI.performTransition({
+        targetId: 'main-ui',
+        action: async () => {
+          // 隐藏旧界面
+          this.hideMainMenu();
+          const charSelect = document.getElementById('char-select-screen');
+          if(charSelect) charSelect.style.display = 'none';
+          
+          // ✅ 触发游戏加载开始事件
+          window.dispatchEvent(new CustomEvent('gameplayLoadingStart'));
+          
+          // 加载游戏资源（与 startGame 相同）
+          await this.loader.loadGameplayAssets(GAMEPLAY_ASSETS, (percent, loaded, total) => {
+            const imageProgress = Math.round((percent * 0.7));
+            this.loadingUI.setProgress(imageProgress);
+          });
         
-        // 获取每日挑战配置
-        const dailyConfig = DailyChallengeSystem.getDailyConfig();
-        console.log('[DailyChallenge] 每日挑战配置:', dailyConfig);
+          // 获取每日挑战配置
+          const dailyConfig = DailyChallengeSystem.getDailyConfig();
+          console.log('[DailyChallenge] 每日挑战配置:', dailyConfig);
+          
+          // CRITICAL FIX: 保存挑战开始时的日期（YYYY-MM-DD 格式）
+          const now = new Date();
+          const year = now.getUTCFullYear();
+          const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+          const day = String(now.getUTCDate()).padStart(2, '0');
+          this.dailyChallengeDate = `${year}-${month}-${day}`;
+          console.log('[DailyChallenge] 保存挑战日期:', this.dailyChallengeDate);
+          
+          // 初始化 RNG（用于确定性生成）
+          this.rng = dailyConfig.rng;
+          
+          // 强制设置玩家角色为今日限定角色
+          this.selectedCharId = dailyConfig.character;
+          const charData = CHARACTERS[dailyConfig.character];
+          if (!charData) {
+            console.error(`[DailyChallenge] 角色 ${dailyConfig.character} 不存在`);
+            return;
+          }
         
-        // CRITICAL FIX: 保存挑战开始时的日期（YYYY-MM-DD 格式）
-        // 确保即使跨日完成挑战，提交成绩时也使用开始时的日期，防止数据污染
-        const now = new Date();
-        const year = now.getUTCFullYear();
-        const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(now.getUTCDate()).padStart(2, '0');
-        this.dailyChallengeDate = `${year}-${month}-${day}`;
-        console.log('[DailyChallenge] 保存挑战日期:', this.dailyChallengeDate);
-        
-        // 初始化 RNG（用于确定性生成）
-        this.rng = dailyConfig.rng;
-        
-        // 强制设置玩家角色为今日限定角色
-        this.selectedCharId = dailyConfig.character;
-        const charData = CHARACTERS[dailyConfig.character];
-        if (!charData) {
-          console.error(`[DailyChallenge] 角色 ${dailyConfig.character} 不存在`);
-          return;
-        }
-      
-      // 3. 准备主UI
-      const mainUI = document.getElementById('main-ui');
-      if (mainUI) {
-        mainUI.classList.remove('loaded');
-        // FIX: 使用 opacity: 0 隐藏，但必须强制 display: flex !important
-        // 否则 CSS 中的 display: none !important 会阻止元素渲染，导致资源加载挂起
-        mainUI.style.opacity = '0';
-        mainUI.style.setProperty('display', 'flex', 'important'); 
-      }
-      
-      // 创建玩家实例（使用限定角色）
-      this.player = new Player(this.map, this.loader, charData);
-      
-      // 重置玩家状态
-      this.player.stats.xp = 0;
-      this.player.stats.gold = 0;
-      this.player.stats.keys = 1;
-      this.player.stats.rage = 0;
-      this.player.stats.floor = 0; // nextLevel 会将其变为 1
-      this.player.equipment = { WEAPON: null, ARMOR: null, HELM: null, BOOTS: null, RING: null, AMULET: null, ACCESSORY: null };
-      this.player.inventory = new Array(20).fill(null);
-      
-      // 应用天赋树加成（如果有）
-      this.applyTalentBonuses();
-      
-      // 应用每日词缀效果
-      dailyConfig.modifiers.forEach(modifier => {
-        if (modifier.apply) {
-          modifier.apply(this.player, this);
-          console.log(`[DailyChallenge] 应用词缀: ${modifier.name} (${modifier.description})`);
+          // 准备主UI
+          const mainUI = document.getElementById('main-ui');
+          if (mainUI) {
+            mainUI.classList.remove('loaded');
+            mainUI.style.opacity = '0';
+            mainUI.style.setProperty('display', 'flex', 'important');
+          }
+          
+          // 创建玩家实例（使用限定角色）
+          this.player = new Player(this.map, this.loader, charData);
+          
+          // 重置玩家状态
+          this.player.stats.xp = 0;
+          this.player.stats.gold = 0;
+          this.player.stats.keys = 1;
+          this.player.stats.rage = 0;
+          this.player.stats.floor = 0; // nextLevel 会将其变为 1
+          this.player.equipment = { WEAPON: null, ARMOR: null, HELM: null, BOOTS: null, RING: null, AMULET: null, ACCESSORY: null };
+          this.player.inventory = new Array(20).fill(null);
+          
+          // 应用天赋树加成（如果有）
+          this.applyTalentBonuses();
+          
+          // 应用每日词缀效果
+          dailyConfig.modifiers.forEach(modifier => {
+            if (modifier.apply) {
+              modifier.apply(this.player, this);
+              console.log(`[DailyChallenge] 应用词缀: ${modifier.name} (${modifier.description})`);
+            }
+          });
+          
+          // 应用初始遗物（符文）
+          if (dailyConfig.startingRune && this.roguelike) {
+            const floor = 1;
+            const multiplier = RUNE_RARITY_MULTIPLIERS[dailyConfig.startingRune.rarity] || 1.0;
+            let value = 1;
+            
+            if (dailyConfig.startingRune.type === 'STAT') {
+              if (dailyConfig.startingRune.id.includes('might') || dailyConfig.startingRune.id.includes('brutal')) {
+                value = Math.floor(1 * multiplier * (1 + floor * 0.1));
+              } else if (dailyConfig.startingRune.id.includes('iron') || dailyConfig.startingRune.id.includes('fortress')) {
+                value = Math.floor(1 * multiplier * (1 + floor * 0.1));
+              } else if (dailyConfig.startingRune.id.includes('arcana') || dailyConfig.startingRune.id.includes('arcane')) {
+                value = Math.floor(1 * multiplier * (1 + floor * 0.1));
+              } else if (dailyConfig.startingRune.id.includes('ward') || dailyConfig.startingRune.id.includes('barrier')) {
+                value = Math.floor(1 * multiplier * (1 + floor * 0.1));
+              } else if (dailyConfig.startingRune.id.includes('vitality') || dailyConfig.startingRune.id.includes('life')) {
+                value = Math.floor(10 * multiplier * (1 + floor * 0.1));
+              } else if (dailyConfig.startingRune.id.includes('precision') || dailyConfig.startingRune.id.includes('deadly') || dailyConfig.startingRune.id.includes('assassin')) {
+                value = Math.floor(5 * multiplier);
+              } else if (dailyConfig.startingRune.id.includes('agility') || dailyConfig.startingRune.id.includes('phantom')) {
+                value = Math.floor(5 * multiplier);
+              }
+            }
+            
+            const runeOption = {
+              rune: dailyConfig.startingRune,
+              value: value,
+              name: dailyConfig.startingRune.name,
+              description: dailyConfig.startingRune.description || '',
+              rarity: dailyConfig.startingRune.rarity,
+              type: dailyConfig.startingRune.type
+            };
+            
+            this.roguelike.applyRune(runeOption);
+            console.log(`[DailyChallenge] 应用初始遗物: ${dailyConfig.startingRune.nameZh || dailyConfig.startingRune.name}`);
+          }
+          
+          // 重置游戏状态
+          this.killCount = 0;
+          this.totalXpGained = 0;
+          this.totalDamageDealt = 0;
+          this.startTime = Date.now();
+          this.isPaused = false;
+          this.inputStack = [];
+          this.gameStarted = true;
+          
+          // 重置商店价格
+          if (this.ui && this.ui.resetShopPrices) {
+            this.ui.resetShopPrices();
+          }
+          
+          // 成就系统：重置会话数据
+          if (this.achievementSystem) {
+            this.achievementSystem.onGameStart();
+          }
+          
+          // 生成第一层（使用 RNG）
+          this.nextLevel();
+          
+          // 更新UI
+          this.ui.updateStats(this.player);
+          this.ui.updateEquipmentSockets(this.player);
+          this.ui.initSkillBar(this.player);
+          
+          // 每日挑战模式：隐藏保存/读取按钮
+          this.updateSaveLoadButtonsVisibility();
+          
+          // 显示每日挑战信息
+          if (this.ui && this.ui.logMessage) {
+            const charName = charData.name;
+            const modifiersText = dailyConfig.modifiers.map(m => m.name).join('、');
+            this.ui.logMessage(`每日挑战：${charName} | 词缀：${modifiersText}`, 'info');
+          }
+          
+          // 等待资源加载 (添加超时保护)
+          const timeoutPromise = new Promise(resolve => setTimeout(resolve, 5000));
+          await Promise.race([
+            this.waitForGameplayScreenResourcesLoaded(),
+            timeoutPromise
+          ]);
+
+          // 触发资源加载完成事件
+          window.dispatchEvent(new CustomEvent('gameplayResourcesLoaded'));
+          
+          // 更新进度到 100%
+          this.loadingUI.setProgress(100);
+          
+          // 触发加载完成事件
+          window.dispatchEvent(new CustomEvent('gameplayLoadingComplete'));
+          
+          // 准备主UI
+          if (mainUI) {
+            mainUI.classList.add('scene-fade-in');
+          }
         }
       });
       
-      // 应用初始遗物（符文）
-      // FIX: 复用 RoguelikeSystem.applyRune 逻辑，避免代码重复和数值不一致
-      if (dailyConfig.startingRune && this.roguelike) {
-        // 使用 RoguelikeSystem 的 generateRuneOptions 逻辑来计算符文数值
-        // 这样可以确保初始符文的数值计算与正常符文选择一致
-        const floor = 1;
-        const multiplier = RUNE_RARITY_MULTIPLIERS[dailyConfig.startingRune.rarity] || 1.0;
-        let value = 1;
-        
-        // 根据符文类型和稀有度计算数值（与 generateRuneOptions 保持一致）
-        if (dailyConfig.startingRune.type === 'STAT') {
-          if (dailyConfig.startingRune.id.includes('might') || dailyConfig.startingRune.id.includes('brutal')) {
-            value = Math.floor(1 * multiplier * (1 + floor * 0.1));
-          } else if (dailyConfig.startingRune.id.includes('iron') || dailyConfig.startingRune.id.includes('fortress')) {
-            value = Math.floor(1 * multiplier * (1 + floor * 0.1));
-          } else if (dailyConfig.startingRune.id.includes('arcana') || dailyConfig.startingRune.id.includes('arcane')) {
-            value = Math.floor(1 * multiplier * (1 + floor * 0.1));
-          } else if (dailyConfig.startingRune.id.includes('ward') || dailyConfig.startingRune.id.includes('barrier')) {
-            value = Math.floor(1 * multiplier * (1 + floor * 0.1));
-          } else if (dailyConfig.startingRune.id.includes('vitality') || dailyConfig.startingRune.id.includes('life')) {
-            value = Math.floor(10 * multiplier * (1 + floor * 0.1));
-          } else if (dailyConfig.startingRune.id.includes('precision') || dailyConfig.startingRune.id.includes('deadly') || dailyConfig.startingRune.id.includes('assassin')) {
-            value = Math.floor(5 * multiplier);
-          } else if (dailyConfig.startingRune.id.includes('agility') || dailyConfig.startingRune.id.includes('phantom')) {
-            value = Math.floor(5 * multiplier);
-          }
-        }
-        
-        // FIX: 复用 RoguelikeSystem.applyRune 方法，确保逻辑一致
-        const runeOption = {
-          rune: dailyConfig.startingRune,
-          value: value,
-          name: dailyConfig.startingRune.name,
-          description: dailyConfig.startingRune.description || '',
-          rarity: dailyConfig.startingRune.rarity,
-          type: dailyConfig.startingRune.type
-        };
-        
-        this.roguelike.applyRune(runeOption);
-        
-        console.log(`[DailyChallenge] 应用初始遗物: ${dailyConfig.startingRune.nameZh || dailyConfig.startingRune.name}`);
-      }
-      
-      // 重置游戏状态
-      this.killCount = 0;
-      this.totalXpGained = 0;
-      // FIX: 重置伤害统计
-      this.totalDamageDealt = 0;
-      this.startTime = Date.now();
-      this.isPaused = false;
-      this.inputStack = [];
-      this.gameStarted = true;
-      
-      // 重置商店价格
-      if (this.ui && this.ui.resetShopPrices) {
-        this.ui.resetShopPrices();
-      }
-      
-      // 成就系统：重置会话数据
-      if (this.achievementSystem) {
-        this.achievementSystem.onGameStart();
-      }
-      
-      // 生成第一层（使用 RNG）
-      this.nextLevel();
-      
-      // 更新UI
-      this.ui.updateStats(this.player);
-      this.ui.updateEquipmentSockets(this.player);
-      this.ui.initSkillBar(this.player);
-      
-      // 每日挑战模式：隐藏保存/读取按钮
-      this.updateSaveLoadButtonsVisibility();
-      
-      // 显示每日挑战信息
-      if (this.ui && this.ui.logMessage) {
-        const charName = charData.name;
-        const modifiersText = dailyConfig.modifiers.map(m => m.name).join('、');
-        this.ui.logMessage(`每日挑战：${charName} | 词缀：${modifiersText}`, 'info');
-      }
-      
-      // 4. 等待资源加载 (FIX: 添加超时保护)
-      // 创建一个超时 Promise
-      const timeoutPromise = new Promise(resolve => setTimeout(resolve, 5000));
-      // 竞态等待：要么资源加载完成，要么 5秒超时，防止永久黑屏
-      await Promise.race([
-        this.waitForGameplayScreenResourcesLoaded(),
-        timeoutPromise
-      ]);
-
-      // 触发资源加载完成事件
-      window.dispatchEvent(new CustomEvent('gameplayResourcesLoaded'));
-      
-      // 更新进度到 100%
-      this.loadingUI.setProgress(100, 'gameplay');
-      
-      // 触发加载完成事件
-      window.dispatchEvent(new CustomEvent('gameplayLoadingComplete'));
-      
-      // 5. 显示主UI (transitionToScene 会处理 opacity 动画)
-      await this.loadingUI.transitionToScene('main-ui', 'gameplay');
-      
       // CRITICAL FIX: 确保主UI可见（双重保险）
-      // 注意：mainUI 变量已在前面声明过，这里直接使用
       const mainUIFinal = document.getElementById('main-ui');
       if (mainUIFinal) {
-        // 清除可能残留的内联 opacity 样式
         mainUIFinal.style.opacity = '';
-        // 确保主UI可见
         mainUIFinal.style.display = 'flex';
-        mainUIFinal.classList.add('scene-fade-in', 'scene-active');
+        mainUIFinal.classList.add('scene-fade-in', 'scene-active', 'loaded');
         console.log('[DailyChallenge] 主UI已确保可见');
-      }
-      
-      // 确保 LoadingOverlay 彻底隐藏
-      const loadingOverlay = document.getElementById(this.loadingUI.overlays.gameplay.id);
-      if (loadingOverlay) {
-        loadingOverlay.style.display = 'none';
-        loadingOverlay.classList.add('hidden');
       }
       
       console.log('[DailyChallenge] 每日挑战已启动');
     } catch (error) {
       console.error('[DailyChallenge] 启动失败:', error);
-      this.loadingUI.hideOverlay('gameplay');
+      this.loadingUI.hide();
       
       // FIX: 错误恢复：尝试强制显示主界面，避免黑屏
       const mainUI = document.getElementById('main-ui');
@@ -4458,12 +4413,12 @@ class Game {
           
           console.log(`[waitForGameplayScreenResourcesLoaded] 资源加载进度: ${loadedResources}/${totalResources} (${percent}%)`);
           
-          // 分发进度更新事件，通知 LoadingOverlayManager
-          window.dispatchEvent(new CustomEvent('gameplayLoadingProgress', {
+          // 分发进度更新事件（统一使用通用事件）
+          window.dispatchEvent(new CustomEvent('loadingProgress', {
             detail: { progress: percent }
           }));
           
-          this.loadingUI.setProgress(percent, 'gameplay');
+          this.loadingUI.setProgress(percent);
           
           if (loadedResources >= totalResources) {
             clearTimeout(timeoutId);
@@ -5132,8 +5087,9 @@ window.addEventListener('load', async () => {
   } catch (e) {
     console.error('GAME INIT ERROR:', e);
     // 发生致命错误时移除遮罩，显示错误
-    const loading = document.getElementById('loading-overlay');
-    if (loading) loading.style.display = 'none';
+    if (game.loadingUI) {
+      game.loadingUI.hide();
+    }
     alert('游戏初始化致命错误: ' + e.message);
   }
 });

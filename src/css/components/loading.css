@@ -3,49 +3,33 @@
    ======================================================================== */
 
 /* ⚡ 关键修复：背景改为透明，消除叠加时的黑屏闪烁 */
-#loading-overlay, .loading-overlay-screen { 
+#loading-overlay { 
   position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
+  inset: 0 !important; /* 使用 inset 替代 top/left/width/height */
   background: transparent !important; /* 让底层背景（或下层遮罩）透出来 */
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
   flex-direction: column !important;
-  z-index: 999999;
+  z-index: 1000002 !important; /* 确保高于 Tooltip (1000000) */
   transition: opacity 0.8s ease-in-out;
   opacity: 1;
   pointer-events: auto;
   overflow: hidden;
 }
 
-/* 显示状态 - 电影级过渡 */
-.loading-overlay-screen.overlay-active {
-  opacity: 1;
-  transition: opacity 0.8s ease-in-out;
-  pointer-events: auto;
-}
-
 /* 淡出状态 - 电影级过渡 */
-.loading-overlay-screen.overlay-exit,
-#loading-overlay.overlay-exit { /* 🔴 新增：确保 ID 选择器也能触发点击穿透 */
+#loading-overlay.overlay-exit {
   opacity: 0;
   pointer-events: none !important; /* 🔴 关键：立即释放点击穿透，防止过渡期间无法操作 */
 }
 
-.loading-overlay-screen.hidden,
-#loading-overlay.hidden { /* 🔴 新增：确保 ID 选择器也能完全隐藏 */
+#loading-overlay.hidden {
   opacity: 0;
   pointer-events: none !important;
   display: none !important; /* 强制 display none */
   visibility: hidden !important; /* 额外保险 */
   z-index: -1 !important; /* 沉到底部 */
-}
-
-.loading-overlay-screen {
-  display: flex;
 }
 
 .loader { 
@@ -105,7 +89,7 @@
   100% { background-position: 100px 0; }
 }
 
-#loading-bar-fill, .loading-bar-fill {
+#loading-bar-fill {
   height: 33px;
   width: 0%;
   position: relative;
@@ -123,7 +107,7 @@
   animation: bar-flow 2s linear infinite;
 }
 
-#loading-percent, .loading-percent {
+#loading-percent {
   margin-top: 15px;
   font-family: var(--font-header);
   font-size: 1.2rem;
@@ -179,7 +163,7 @@
   text-shadow: 0 2px 4px rgba(0,0,0,0.8);
 }
 
-#loading-tip-text, .loading-tip-text {
+#loading-tip-text {
   color: #aaa;
   font-family: var(--font-body);
   font-size: 0.95rem;
@@ -215,7 +199,7 @@
   z-index: 20;
 }
 
-#loading-butterfly, .loading-butterfly {
+#loading-butterfly {
   width: 128px;
   height: 64px;
   aspect-ratio: 2 / 1;
@@ -234,7 +218,7 @@
   box-shadow: none !important;
 }
 
-#loading-butterfly canvas, .loading-butterfly canvas {
+#loading-butterfly canvas {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
@@ -243,7 +227,7 @@
   height: 100%;
 }
 
-#loading-skeleton, .loading-skeleton {
+#loading-skeleton {
   width: 128px;
   height: 64px;
   aspect-ratio: 2 / 1;
@@ -260,7 +244,7 @@
   box-shadow: none !important;
 }
 
-#loading-skeleton canvas, .loading-skeleton canvas {
+#loading-skeleton canvas {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
@@ -292,13 +276,11 @@
    Dynamic Background System
    ======================================================================== */
 
-/* 优化：背景层容器 */
+/* 优化：背景层容器 - 撑满全屏并位于内容之下 */
 .loading-bg-layer {
   position: absolute;
-  inset: -5%;
-  width: 110%;
-  height: 110%;
-  z-index: 0;
+  inset: 0; /* 撑满全屏 */
+  z-index: 0; /* 位于所有内容之下 */
   background-color: #000; /* 图片未加载时显示黑色，避免透视到游戏画面 */
   background-size: cover;
   background-position: center;
@@ -338,8 +320,7 @@
 /* ========================================================================
    Atmospheric Vignette Overlay (Static Lens Effect)
    ======================================================================== */
-#loading-overlay::after,
-.loading-overlay-screen::after {
+#loading-overlay::after {
   content: '';
   position: absolute;
   top: 0;

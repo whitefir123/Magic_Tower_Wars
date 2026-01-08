@@ -74,39 +74,6 @@
     </div>
   </div>
 
-  <!-- CHARACTER SELECT LOADING OVERLAY -->
-  <div id="char-select-loading-overlay" class="loading-overlay-screen hidden">
-    <div class="loader"></div>
-    <div class="loading-bar-container">
-      <div class="loading-bar-fill" style="width: 0%"></div>
-    </div>
-    <div class="loading-percent">0%</div>
-    <div class="loading-tips-container">
-      <span class="tip-label">提示:</span>
-      <span class="loading-tip-text">加载英雄选择界面...</span>
-    </div>
-    <div class="loading-chase-container">
-      <div class="loading-skeleton"></div>
-      <div class="loading-butterfly"></div>
-    </div>
-  </div>
-
-  <!-- GAMEPLAY LOADING OVERLAY -->
-  <div id="gameplay-loading-overlay" class="loading-overlay-screen hidden">
-    <div class="loader"></div>
-    <div class="loading-bar-container">
-      <div class="loading-bar-fill" style="width: 0%"></div>
-    </div>
-    <div class="loading-percent">0%</div>
-    <div class="loading-tips-container">
-      <span class="tip-label">提示:</span>
-      <span class="loading-tip-text">加载游戏界面...</span>
-    </div>
-    <div class="loading-chase-container">
-      <div class="loading-skeleton"></div>
-      <div class="loading-butterfly"></div>
-    </div>
-  </div>
 
   <!-- Character Selection Screen - Risk of Rain 2 HUD Style -->
   <div id="char-select-screen" class="hidden scene-transition">
@@ -1071,15 +1038,10 @@
         // 计算进度百分比：已完成的资源数 / 总资源数
         const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
         
-        // 分发进度更新事件
+        // 分发进度更新事件（统一格式，不包含 overlayType）
         const progressEvent = new CustomEvent('loadingProgress', {
           detail: {
-            progress: progress,
-            loaded: loadedCount,
-            failed: failedCount,
-            completed: completedCount,
-            total: totalCount,
-            overlayType: 'global'
+            progress: progress
           }
         });
         window.dispatchEvent(progressEvent);

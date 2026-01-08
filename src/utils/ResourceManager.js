@@ -45,12 +45,14 @@ export class ResourceManager {
   
   /**
    * 触发所有进度回调
+   * 同时触发统一的 loadingProgress 事件（单例幕布模式）
    */
   triggerProgressCallbacks() {
     const percent = this.totalResources > 0 
       ? Math.round(((this.loadedCount + this.failedCount) / this.totalResources) * 100) 
       : 0;
     
+    // 触发回调函数
     this.onProgressCallbacks.forEach(callback => {
       try {
         callback(percent, this.loadedCount + this.failedCount, this.totalResources);
@@ -58,6 +60,13 @@ export class ResourceManager {
         console.error('Progress callback error:', e);
       }
     });
+    
+    // ⚡ 触发统一的 loadingProgress 事件（不包含 overlayType，因为现在只有一个 overlay）
+    window.dispatchEvent(new CustomEvent('loadingProgress', {
+      detail: {
+        progress: percent
+      }
+    }));
   }
   
   /**
