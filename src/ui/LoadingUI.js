@@ -147,6 +147,10 @@ export class LoadingUI {
     // 停止提示词轮播
     this.stopTipRotation();
 
+    // ⚡ 关键修复：立即禁用鼠标事件，不要等到 setTimeout 结束
+    // 这样即使视觉上还在淡出动画，也不会拦截底层按钮的点击
+    this.dom.overlay.style.pointerEvents = 'none';
+
     // 添加淡出类
     this.dom.overlay.classList.add('overlay-exit');
 
@@ -467,16 +471,32 @@ export class LoadingUI {
       // ⚡ 关键：强制等待两帧，确保 DOM 渲染完成，防止闪烁
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-      // 4. 拉开幕布
+      // 4. 拉开幕布（正常流程）
       this.hide();
 
       // 等待隐藏动画完成
       await this.wait(800);
 
     } catch (error) {
+      // ⚠️ 关键修复：发生错误时也要强制关闭遮罩，否则界面卡死
       console.error('[LoadingUI] performTransition 执行异常:', error);
+      console.error('[LoadingUI] 错误堆栈:', error.stack);
+      
+      // 强制隐藏遮罩层，防止界面被阻塞
+      try {
+        this.hide();
+      } catch (hideError) {
+        console.error('[LoadingUI] 隐藏遮罩时发生错误:', hideError);
+        // 如果 hide() 也失败，直接强制隐藏 DOM 元素
+        if (this.dom.overlay) {
+          this.dom.overlay.classList.add('hidden');
+          this.dom.overlay.style.display = 'none';
+          this.visible = false;
+          console.warn('[LoadingUI] 已强制隐藏遮罩层（兜底方案）');
+        }
+      }
     } finally {
-      // 清理转场标志位
+      // 清理转场标志位（无论成功或失败都会执行）
       this.isTransitioning = false;
       console.log(`✨ 转场完成: -> ${targetId}`);
     }

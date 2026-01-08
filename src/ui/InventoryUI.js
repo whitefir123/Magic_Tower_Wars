@@ -176,13 +176,25 @@ export class InventoryUI {
       // 支持两种类名：.inventory-close-btn 或 .btn-modal-close
       const closeBtn = this.elements.overlay.querySelector('.inventory-close-btn, .btn-modal-close');
       if (closeBtn) {
-        closeBtn.addEventListener('click', () => this.close());
+        closeBtn.addEventListener('click', () => {
+          // 修复：通过 UIManager 关闭，确保 OverlayManager 状态栈同步更新
+          if (window.game && window.game.ui) {
+            window.game.ui.closeInventory();
+          } else {
+            this.close(); // 兜底
+          }
+        });
       }
       
       // 点击 overlay 外部关闭
       this.elements.overlay.addEventListener('click', (e) => {
         if (e.target === this.elements.overlay) {
-          this.close();
+          // 修复：通过 UIManager 关闭，确保 OverlayManager 状态栈同步更新
+          if (window.game && window.game.ui) {
+            window.game.ui.closeInventory();
+          } else {
+            this.close(); // 兜底
+          }
         }
       });
     }
@@ -548,9 +560,24 @@ export class InventoryUI {
       }, 300);
       this.isOpen = false;
       this.hideActionMenu();
+      
+      // 修复：恢复游戏状态，确保玩家可以移动
+      const game = window.game;
+      if (game) {
+        game.isPaused = false;
+        console.log('[InventoryUI] 游戏状态已恢复（isPaused = false）');
+      }
+      
       console.log('✓ InventoryUI 已关闭');
     } else {
       console.warn('Inventory overlay element not found when closing');
+      
+      // 即使 overlay 不存在，也要恢复游戏状态
+      const game = window.game;
+      if (game) {
+        game.isPaused = false;
+        console.log('[InventoryUI] 游戏状态已恢复（isPaused = false）');
+      }
     }
   }
 

@@ -3051,12 +3051,33 @@ class Game {
           // 在幕后隐藏主菜单（此时加载页已完全遮挡，用户看不见这个切换）
           this.hideMainMenu();
           
-          // 确保角色选择界面可见
+          // 确保角色选择界面可见并启用交互
           const charSelectScreen = document.getElementById('char-select-screen');
           if (charSelectScreen) {
+            // 移除隐藏类（index.html 中默认有此类，优先级很高）
+            charSelectScreen.classList.remove('hidden');
+            // 添加激活状态（确保 pointer-events: auto）
+            charSelectScreen.classList.add('loaded', 'scene-active');
+            // 显示界面
             charSelectScreen.style.display = 'block';
-            charSelectScreen.classList.add('loaded');
+            // 强制开启交互
+            charSelectScreen.style.pointerEvents = 'auto';
+            console.log('[CharSelect] 角色选择界面已显示并启用交互');
           }
+          
+          // 🔒 关键安全网：强制清理遮挡层，防止 LoadingUI 类状态不同步导致的残留
+          const blockers = ['loading-overlay', 'main-menu'];
+          blockers.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+              el.style.pointerEvents = 'none';
+              // 如果元素仍然可见，也隐藏它
+              if (!el.classList.contains('hidden')) {
+                el.style.display = 'none';
+              }
+              console.log(`[CharSelect] 强制清理遮挡层: ${id}`);
+            }
+          });
         }
       });
       
@@ -3090,12 +3111,21 @@ class Game {
         return;
       }
 
+      // FIX: 添加超时保护，防止某些资源永远不触发load/error事件
+      // 如果资源加载挂起，5秒后强制完成，确保游戏流程不被卡死
+      const timeoutId = setTimeout(() => {
+        console.warn(`[waitForCharSelectScreenResourcesLoaded] 资源加载超时，强制进入 (已加载: ${loadedResources}/${totalResources})`);
+        resolve();
+      }, 5000);
+
       const checkComplete = () => {
         loadedResources++;
         const percent = Math.round((loadedResources / totalResources) * 100);
         this.loadingUI.setProgress(percent);
         
         if (loadedResources >= totalResources) {
+          clearTimeout(timeoutId);
+          console.log('[waitForCharSelectScreenResourcesLoaded] 所有资源加载完成');
           resolve();
         }
       };
@@ -3556,7 +3586,17 @@ class Game {
 
   hideMainMenu() {
     const mainMenu = document.getElementById('main-menu');
-    if (mainMenu) mainMenu.style.display = 'none';
+    if (mainMenu) {
+      // 移除激活状态（该类在 CSS 中强制了 pointer-events: auto !important）
+      mainMenu.classList.remove('scene-active');
+      // 添加隐藏类
+      mainMenu.classList.add('hidden');
+      // 隐藏显示
+      mainMenu.style.display = 'none';
+      // 禁用交互（双重保险）
+      mainMenu.style.pointerEvents = 'none';
+      console.log('[Game] 主菜单已隐藏并禁用交互');
+    }
   }
 
   /**
@@ -4170,13 +4210,14 @@ class Game {
    * 基于 UTC 日期生成每日挑战配置，应用词缀和初始遗物
    */
   async startDailyChallenge() {
-    console.log('[DailyChallenge] Starting daily challenge...');
-    
-    // 1. 强制设置每日挑战难度
-    this.selectedAscensionLevel = 1;
-    this.isDailyMode = true; // 尽早设置标志位
-    console.log('[DailyChallenge] 强制设置难度层级: 1 (每日挑战标准难度)');
-    
+    try {
+      console.log('[DailyChallenge] Starting daily challenge...');
+      
+      // 1. 强制设置每日挑战难度
+      this.selectedAscensionLevel = 1;
+      this.isDailyMode = true; // 尽早设置标志位
+      console.log('[DailyChallenge] 强制设置难度层级: 1 (每日挑战标准难度)');
+      
       // 使用 performTransition 进行转场
       await this.loadingUI.performTransition({
         targetId: 'main-ui',
