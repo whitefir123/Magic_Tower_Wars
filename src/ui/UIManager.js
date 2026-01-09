@@ -37,6 +37,19 @@ export class UIManager {
       console.warn('⚠️ UIManager: 游戏页面缺少必需的DOM元素 (log-panel/system-log-container)');
     }
     
+    // 设置日志容器的滚轮事件（仅当在游戏页面时）
+    if (this.isGamePage && this.container) {
+      this.container.addEventListener('wheel', (e) => {
+        // 只有在日志锁定状态下才处理滚轮事件
+        if (this.isLogLocked) {
+          e.stopPropagation(); // 阻止事件冒泡到 canvas-wrapper，避免触发地图缩放
+          // 默认的滚动行为会被浏览器处理，不需要手动滚动
+          // 但如果需要更精细的控制，可以手动控制滚动：
+          // this.container.scrollTop += e.deltaY;
+        }
+      }, { passive: true });
+    }
+    
     // 初始化吉祥物（仅在主菜单页面存在）
     const btnStart = document.getElementById('btn-start-game');
     this.mascot = btnStart ? new Mascot(btnStart) : null;
@@ -148,12 +161,16 @@ export class UIManager {
     if (this.container) {
       if (this.isLogLocked) {
         this.container.style.opacity = '1';
+        // 启用 pointer-events，允许接收鼠标滚轮事件
+        this.container.style.pointerEvents = 'auto';
         if (this.logTimer) { clearTimeout(this.logTimer); this.logTimer = null; }
         const tip = document.createElement('div');
         tip.className = 'log-entry log-info';
         tip.innerHTML = '> 日志已锁定';
         this.logPanel.appendChild(tip);
       } else {
+        // 禁用 pointer-events，恢复默认行为
+        this.container.style.pointerEvents = 'none';
         if (this.logTimer) { clearTimeout(this.logTimer); this.logTimer = null; }
         this.container.style.opacity = '0';
         const tip = document.createElement('div');

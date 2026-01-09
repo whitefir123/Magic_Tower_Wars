@@ -13,7 +13,7 @@
   border-radius: 0; 
   overflow: hidden;
   position: relative;
-  transform-origin: right center;
+  transform-origin: center center;
   transform: scale(1);
   transition: transform 0.1s ease-out;
   flex-direction: row;
@@ -53,8 +53,13 @@
 .scene-active,
 .scene-visible {
   opacity: 1 !important;
-  transform: scale(1) !important;
   pointer-events: auto !important; /* 🔴 关键修复：强制开启交互，覆盖 scene-exit 的 none */
+}
+
+/* 仅对带有 scene-transition 的元素应用缩放复位，避免干扰 #main-ui 的 JS 缩放 */
+.scene-transition.scene-active,
+.scene-transition.scene-visible {
+  transform: scale(1) !important;
 }
 
 /* scene-fade-in 的激活状态（仅控制 opacity） */
@@ -109,10 +114,16 @@
   background:#000; 
   display:flex; 
   justify-content:center; 
-  align-items:center; 
+  align-items:flex-start; 
   overflow:visible; 
   z-index: 1; 
   isolation: isolate; 
+  /* 向左和向下拉伸地图 */
+  width: calc(100% + 60px);
+  height: calc(100% + 180px); /* 增加高度，向下延伸 */
+  margin-left: -70px;
+  margin-top: -90px;
+  padding-top: 20px; /* 保持上边间距不变 */
 }
 
 canvas { 
@@ -122,6 +133,11 @@ canvas {
   z-index: 0; 
   position: relative; 
   pointer-events: auto; 
+}
+
+#gameCanvas {
+  width: 1304px;
+  height: 892px;
 }
 
 /* Game Icons Container - Between map and right panel */
@@ -139,6 +155,8 @@ canvas {
   gap: 25px;
   z-index: 100;
   pointer-events: auto;
+  margin-left: -8px;
+  margin-right: -8px;
 }
 
 /* Right Sidebar - Character Stats & Actions */

@@ -389,6 +389,20 @@ class Game {
     if (canvasWrapper) {
       canvasWrapper.addEventListener('wheel', (e) => {
         if (!this.gameStarted) return;
+        
+        // 检查鼠标是否在日志容器内，且日志已锁定
+        const logContainer = document.getElementById('system-log-container');
+        if (logContainer && this.ui && this.ui.isLogLocked) {
+          const rect = logContainer.getBoundingClientRect();
+          const mouseX = e.clientX;
+          const mouseY = e.clientY;
+          // 如果鼠标在日志容器内，不执行地图缩放，让日志容器自己处理滚动
+          if (mouseX >= rect.left && mouseX <= rect.right && 
+              mouseY >= rect.top && mouseY <= rect.bottom) {
+            return; // 不阻止默认行为，让日志容器滚动
+          }
+        }
+        
         e.preventDefault();
         
         // 以玩家为中心缩放（不改变canvas尺寸，只改变绘制缩放）
@@ -827,7 +841,7 @@ class Game {
       // 计算缩放因子（保持宽高比，取较小值 - Letterbox，保证完整显示）
       const scaleX = windowWidth / designWidth;
       const scaleY = windowHeight / designHeight;
-      const scale = Math.min(scaleX, scaleY);
+      const scale = Math.min(scaleX, scaleY) * 1;
       
       // 应用缩放变换到 #main-ui 容器
       const mainUI = document.getElementById('main-ui');
