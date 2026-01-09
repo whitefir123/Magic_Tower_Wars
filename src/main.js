@@ -4500,13 +4500,14 @@ class Game {
           const percent = Math.round((loadedResources / totalResources) * 100);
           
           console.log(`[waitForGameplayScreenResourcesLoaded] 资源加载进度: ${loadedResources}/${totalResources} (${percent}%)`);
-          
-          // 分发进度更新事件（统一使用通用事件）
-          window.dispatchEvent(new CustomEvent('loadingProgress', {
-            detail: { progress: percent }
-          }));
-          
-          this.loadingUI.setProgress(percent);
+
+          // 将 DOM 资源加载进度 (0–100) 映射到 全局 80–100 区间，
+          // 并确保不会低于当前全局进度（防止任何形式的回退）
+          const globalProgress = Math.max(
+            this.loadingUI?.currentProgress || 80,
+            80 + Math.round(percent * 0.2)
+          );
+          this.loadingUI.setProgress(globalProgress);
           
           if (loadedResources >= totalResources) {
             clearTimeout(timeoutId);

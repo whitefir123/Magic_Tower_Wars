@@ -87,12 +87,6 @@ export class LoadingUI {
       self.setTip('游戏已就绪');
     });
 
-    // 加载进度更新监听
-    window.addEventListener('loadingProgress', (e) => {
-      const progress = e.detail?.progress || 0;
-      self.setProgress(progress);
-    });
-
     // 标记为已绑定
     this.eventListenersBound = true;
     console.log('✅ 事件监听器已绑定');
@@ -101,8 +95,9 @@ export class LoadingUI {
   /**
    * 显示加载遮罩
    * @param {string} tipText - 提示文本，默认为 '加载中...'
+   * @param {boolean} forceReset - 是否强制重置进度（默认 false）
    */
-  show(tipText = '加载中...') {
+  show(tipText = '加载中...', forceReset = false) {
     if (!this.dom.overlay) {
       console.warn('❌ 加载遮罩元素未找到');
       return;
@@ -110,6 +105,27 @@ export class LoadingUI {
 
     // 设置随机背景
     this.setRandomBackground();
+
+    // 1. 判断是否完全隐藏 (不包括正在淡出的情况)
+    const isFullyHidden =
+      !this.visible || this.dom.overlay.classList.contains('hidden');
+
+    // 2. 判断是否正在淡出
+    const isFadingOut = this.dom.overlay.classList.contains('overlay-exit');
+
+    // 3. 智能重置逻辑
+    // - 如果强制重置: 重置
+    // - 如果完全隐藏: 重置 (新会话)
+    // - 如果正在淡出: 仅当进度不为 100% 时重置 (如果是 100% 则视为延续)
+    let shouldReset = forceReset || isFullyHidden;
+
+    if (!shouldReset && isFadingOut) {
+      if (this.currentProgress !== 100) {
+        shouldReset = true;
+      } else {
+        console.log('🔄 拦截淡出：保持 100% 进度以实现无缝转场');
+      }
+    }
 
     // ⚡ 幕布逻辑：立即设置为不透明且可见，覆盖全屏
     // 1. 先移除所有可能阻止显示的类
@@ -128,8 +144,14 @@ export class LoadingUI {
     
     this.visible = true;
 
-    // 重置进度
-    this.setProgress(0);
+    // 仅在需要时重置进度
+    if (shouldReset) {
+      this.currentProgress = 0;
+      // 直接操作 DOM，而不是调用 setProgress，
+      // 避免触发单向递增保护逻辑导致后续进度异常
+      if (this.dom.bar) this.dom.bar.style.width = '0%';
+      if (this.dom.percent) this.dom.percent.textContent = '0%';
+    }
 
     // 设置提示文本
     this.setTip(tipText);
@@ -140,7 +162,7 @@ export class LoadingUI {
     // 开始提示词轮播
     this.startTipRotation();
 
-    console.log('✅ 显示加载遮罩（幕布已立即遮挡）');
+    console.log(`✅ 显示加载遮罩 (重置进度: ${shouldReset})`);
   }
 
   /**
@@ -182,19 +204,38 @@ export class LoadingUI {
   setProgress(percent) {
     // 限制进度在 0-100 之间
     percent = Math.max(0, Math.min(100, percent));
+    
+    // 添加调试日志（如需查看详细进度流向，可取消注释）
+    // console.log(`[LoadingUI] setProgress: ${percent}% (current: ${this.currentProgress}%)`);
+
+    // 单向递增保护：除非在 show() 中已显式重置 currentProgress，
+    // 否则不允许进度条出现“回退”（例如 80% -> 10%）
+    if (percent < this.currentProgress) {
+      return;
+    }
+
     this.currentProgress = percent;
 
-    if (!this.dom.overlay || !this.visible) {
+    // DOM 防御性检查：确保 overlay 存在且当前处于可见状态
+    if (!this.dom || !this.dom.overlay || !this.visible) {
+      return;
+    }
+
+    // 如果 overlay 虽标记为 visible，但仍带有 hidden/overlay-exit 类，则不更新 DOM，避免无意义操作
+    if (
+      this.dom.overlay.classList.contains('hidden') ||
+      this.dom.overlay.classList.contains('overlay-exit')
+    ) {
       return;
     }
 
     // 更新进度条
-    if (this.dom.bar) {
+    if (this.dom && this.dom.bar) {
       this.dom.bar.style.width = percent + '%';
     }
 
     // 更新进度百分比文本
-    if (this.dom.percent) {
+    if (this.dom && this.dom.percent) {
       this.dom.percent.textContent = percent + '%';
     }
 
