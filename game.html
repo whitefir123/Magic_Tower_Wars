@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="./mobile-adapt.css" />
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Spectral:wght@400;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Spectral:wght@400;700&display=swap" /></noscript>
+  <link href="https://gs.jurieo.com/gemini/fonts-googleapis/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y8qjTQAAAAASUVORK5CYII=" />
   <style>
     /* 游戏页面专用样式 */
@@ -120,7 +121,10 @@
         <div id="skill-bar">
           <!-- Skill slots will be generated here by JavaScript -->
         </div>
-        <div id="level-splash" class="level-splash">第 2 层</div>
+        <div id="level-splash-container" class="level-splash-container">
+          <div id="level-splash-main" class="level-splash-main"></div>
+          <div id="level-splash-sub" class="level-splash-sub"></div>
+        </div>
 
         <div id="system-log-container">
           <div id="log-panel"><div class="log-entry log-entry-init">&gt; 系统已初始化...</div></div>

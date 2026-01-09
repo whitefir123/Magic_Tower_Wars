@@ -191,3 +191,9 @@ export const DAILY_MODIFIERS = {
   }
 };
 
+// Zone/Biomes Configuration
+export const FLOOR_ZONES = [
+  // Override: All floors are now "Dark Dungeon"
+  { maxFloor: 9999, name: 'Dark Dungeon', nameZh: '暗黑地牢' }
+];
+

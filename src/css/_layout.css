@@ -200,26 +200,91 @@ canvas {
   display:none; 
 }
 
-/* Level Splash Animation */
-.level-splash { 
-  position:absolute; 
-  font-family: var(--font-header); 
-  font-size:5rem; 
-  color:#ffd700; 
-  text-shadow:0 0 30px #ff4500, 2px 2px 0 #000; 
-  opacity:0; 
-  pointer-events:none; 
-  z-index:30; 
-  top:50%; 
-  left:50%; 
-  transform: translate(-50%, -50%); 
+/* ========================================================================
+   LEVEL SPLASH ANIMATION
+   ======================================================================== */
+.level-splash-container {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  pointer-events: none;
+  width: 100%;
+  text-align: center;
+  opacity: 0;
 }
 
-@keyframes splashAnim { 
-  0%{opacity:0; transform:translate(-50%,-50%) scale(.8);} 
-  20%{opacity:1; transform:translate(-50%,-50%) scale(1.1);} 
-  80%{opacity:1; transform:translate(-50%,-50%) scale(1);} 
-  100%{opacity:0; transform:translate(-50%,-50%) scale(1.2);} 
+.level-splash-container.active {
+  /* Reduced duration from 4s to 3.25s */
+  animation: splashSequence 3.25s ease-out forwards;
+}
+
+.level-splash-main {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 4rem;
+  line-height: 1.2;
+  color: #D32F2F; /* Deep Blood Red */
+  text-transform: uppercase;
+  /* Hard Blocky Shadows: No blur radius */
+  /* Layer 1: Darker Red (Depth) | Layer 2: Black (Drop Shadow) */
+  text-shadow: 
+    4px 4px 0 #8b0000, 
+    8px 8px 0 #000000; 
+  margin-bottom: 20px;
+  /* Crisp rendering settings */
+  -webkit-font-smoothing: none;
+  image-rendering: pixelated;
+}
+
+.level-splash-sub {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 1.2rem;
+  color: #e0e0e0; /* Light Grey */
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  /* Simple hard shadow */
+  text-shadow: 3px 3px 0 #000;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ensure decoration lines are thick and blocky */
+.level-splash-sub::before,
+.level-splash-sub::after {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 4px; 
+  background: #e0e0e0;
+  margin: 0 20px;
+  box-shadow: 3px 3px 0 #000; /* Match text shadow */
+}
+
+@keyframes splashSequence {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5); /* Start smaller */
+    filter: blur(0px); /* Pixel art doesn't blur well usually */
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.0);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60%) scale(1.4); /* End slightly enlarged */
+  }
 }
 
 /* ========================================================================

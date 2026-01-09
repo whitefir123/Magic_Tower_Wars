@@ -654,6 +654,20 @@ export class AudioManager {
   }
   
   /**
+   * 播放楼层开始音效（楼层切换时的重击/钟声）
+   */
+  playLevelStart() {
+    // Placeholder: 使用 metalPot 音效模拟沉重敲击感
+    return this.play('metalPot', { 
+      volume: 0.5, 
+      pitchVar: 0,
+      waitForLoad: false
+    });
+    // 说明：目前 play() 没有直接的音高控制接口，
+    // 这里将 pitchVar 设为 0，后续可以替换为专门的 level_start.ogg 资源。
+  }
+  
+  /**
    * 播放金币音效
    * @param {object} options - 播放选项（支持 forceCategory）
    */

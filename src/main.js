@@ -24,6 +24,7 @@ import { lootGenerator } from './systems/LootGenerationSystem.js';
 import { SeededRandom } from './utils/SeededRandom.js';
 import { DailyChallengeSystem } from './systems/DailyChallengeSystem.js';
 import { SettingsUI } from './ui/SettingsUI.js';
+import { FLOOR_ZONES } from './data/config.js';
 
 
 class Game {
@@ -946,6 +947,29 @@ class Game {
     
     // 3. 解锁游戏
     this.isPaused = false;
+
+    // 显示楼层切换动画
+    if (this.ui && typeof this.ui.showLevelSplash === 'function') {
+      this.ui.showLevelSplash(this.player.stats.floor);
+    }
+
+    // --- NEW: 楼层日志记录 ---
+    let zoneName = '未知区域';
+    const currentFloor = this.player.stats.floor;
+    const zone = FLOOR_ZONES.find(z => currentFloor <= z.maxFloor);
+    if (zone) {
+      zoneName = zone.nameZh || zone.name;
+    } else if (FLOOR_ZONES.length > 0) {
+      // Fallback: 使用配置中的最后一个区域
+      const lastZone = FLOOR_ZONES[FLOOR_ZONES.length - 1];
+      zoneName = lastZone.nameZh || lastZone.name;
+    }
+    
+    if (this.ui && typeof this.ui.logMessage === 'function') {
+      this.ui.logMessage(`已抵达 第 ${currentFloor} 层 - ${zoneName}`, 'info');
+    }
+    // --------------------------
+
     console.log(`[NextLevel] 楼层切换完成：第 ${this.player.stats.floor} 层`);
   }
   
@@ -4125,8 +4149,13 @@ class Game {
           this.achievementSystem.onGameStart();
         }
         
-            // FIX: 调用nextLevel生成第1层（nextLevel会将floor从0变为1）
+        // FIX: 调用 nextLevel 生成第 1 层（nextLevel 会将 floor 从 0 变为 1）
         await this.nextLevel();
+
+        // 初始楼层进场动画（固定显示 FLOOR 1）
+        if (this.ui && typeof this.ui.showLevelSplash === 'function') {
+          this.ui.showLevelSplash(1);
+        }
       } else {
         // Loaded game - just regenerate current level without incrementing floor
         // 使用新的噩梦层级系统（确保有默认值1）

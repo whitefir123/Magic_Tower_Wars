@@ -2,6 +2,7 @@
 // 负责协调各个 UI 组件，提供公共接口，不负责具体 DOM 渲染
 
 import { TILE_SIZE, ICON_GRID_COLS, ICON_GRID_ROWS, EQUIPMENT_DB, ASSETS, RUNE_RARITY_MULTIPLIERS } from '../constants.js';
+import { FLOOR_ZONES } from '../data/config.js';
 import { Mascot } from './Mascot.js';
 import { OverlayManager } from './OverlayManager.js';
 import { InventoryUI } from './InventoryUI.js';
@@ -1286,5 +1287,48 @@ export class UIManager {
     }
     
     console.log('✓ UIManager 已销毁');
+  }
+
+  /**
+   * 显示楼层进场大字动画
+   * @param {number} floor - 当前楼层
+   */
+  showLevelSplash(floor) {
+    const container = document.getElementById('level-splash-container');
+    const mainText = document.getElementById('level-splash-main');
+    const subText = document.getElementById('level-splash-sub');
+    
+    if (!container || !mainText || !subText) return;
+    
+    // 1. 主标题文本
+    mainText.textContent = `FLOOR ${floor}`;
+    
+    // 2. 查找所属区域名称
+    let zoneName = 'Unknown Zone';
+    const zone = FLOOR_ZONES.find(z => floor <= z.maxFloor);
+    if (zone) {
+      zoneName = zone.nameZh || zone.name;
+    } else if (FLOOR_ZONES.length > 0) {
+      const lastZone = FLOOR_ZONES[FLOOR_ZONES.length - 1];
+      zoneName = lastZone.nameZh || lastZone.name;
+    }
+    
+    // 每日挑战模式特殊文案
+    if (window.game && window.game.isDailyMode) {
+       subText.textContent = `每日挑战 - ${zoneName}`;
+    } else {
+       subText.textContent = zoneName;
+    }
+
+    // 3. 重置并触发动画
+    container.classList.remove('active');
+    // 强制回流以重置动画
+    void container.offsetWidth;
+    container.classList.add('active');
+    
+    // 4. 播放音效
+    if (window.game && window.game.audio && typeof window.game.audio.playLevelStart === 'function') {
+      window.game.audio.playLevelStart();
+    }
   }
 }
