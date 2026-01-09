@@ -308,3 +308,59 @@ body.page-exit-active {
   z-index: 1000003 !important;
 }
 
+/* ========================================================================
+   VFX LAYERS - Screen Flash & Flying Loot
+   ======================================================================== */
+
+#vfx-flash-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000002;
+  /* 使用阴影实现暗角式闪烁，而非整屏纯色 */
+  --flash-color: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 0 150px var(--flash-color);
+  opacity: 0;
+  transition: opacity 0.22s ease-out;
+  mix-blend-mode: screen;
+}
+
+#vfx-fly-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000002;
+  overflow: visible;
+}
+
+.vfx-fly-item {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+/* ========================================================================
+   Backpack Bounce - 背包图标轻微弹跳
+   ======================================================================== */
+
+@keyframes bounceIcon {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.15);
+  }
+  60% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.backpack-bounce {
+  animation: bounceIcon 0.35s ease-out;
+}
+
+

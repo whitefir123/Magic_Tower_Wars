@@ -25,7 +25,7 @@ import { SeededRandom } from './utils/SeededRandom.js';
 import { DailyChallengeSystem } from './systems/DailyChallengeSystem.js';
 import { SettingsUI } from './ui/SettingsUI.js';
 import { FLOOR_ZONES } from './data/config.js';
-
+import { VisualEffectsSystem } from './systems/VisualEffectsSystem.js';
 
 class Game {
   constructor() {
@@ -151,6 +151,9 @@ class Game {
     window.devModeManager = getDevModeManager();
     console.log('[Game] 开发者模式管理器已初始化');
     
+    // 视觉特效系统（粒子 / 掉落飞行 / 屏幕闪烁）
+    this.vfx = new VisualEffectsSystem(this);
+
     window.game = this; // Expose globally for UI onclick
   }
 
@@ -1224,8 +1227,15 @@ class Game {
     let it = this.map.getItemAt(nx, ny);
     if (!it) it = this.map.getItemAt(this.player.x, this.player.y);
     if (it) {
+      // 计算掉落物的世界坐标（中心点）
+      const lootWorldX = (it.x + 0.5) * TILE_SIZE;
+      const lootWorldY = (it.y + 0.5) * TILE_SIZE;
+
       if (it.type === 'ITEM_EQUIP') {
         const def = getItemDefinition(it.itemId);
+        // 调试日志
+        // console.log('[Main] Pickup item:', it.type, it.itemId);
+        
         if (def && !this.player.equipment[def.type]) {
           this.player.equip(it.itemId);
           this.map.removeItem(it);
@@ -1243,6 +1253,13 @@ class Game {
             this.ui.logMessage('背包已满！', 'info');
           }
         }
+        
+        // 无论是否装备，都播放飞行动画
+        if (this.vfx) {
+          const iconIndex = def ? (def.iconIndex !== undefined ? def.iconIndex : 0) : 0;
+          this.vfx.flyLoot(lootWorldX, lootWorldY, 'ICONS_EQUIP', 'backpack-icon', iconIndex);
+        }
+        
         this.ui.updateStats(this.player);
       } else if (it.type === 'ITEM_CONSUMABLE') {
         const def = EQUIPMENT_DB[it.itemId];
@@ -1257,12 +1274,22 @@ class Game {
         } else {
           this.ui.logMessage('背包已满！', 'info');
         }
+        
+        if (this.vfx) {
+          const iconIndex = def ? (def.iconIndex !== undefined ? def.iconIndex : 0) : 0;
+          this.vfx.flyLoot(lootWorldX, lootWorldY, 'ICONS_CONSUMABLES', 'backpack-icon', iconIndex);
+        }
+        
         this.ui.updateStats(this.player);
       } else {
         if (it.type.includes('KEY')) { 
           this.player.stats.keys++; 
           this.ui.logMessage('发现了一把钥匙！', 'gain'); 
           if (this.audio) this.audio.playCoins({ forceCategory: 'gameplay' });
+          if (this.vfx) {
+            // 钥匙是单张图片，iconIndex 传 null
+            this.vfx.flyLoot(lootWorldX, lootWorldY, it.type, 'backpack-icon', null);
+          }
         }
         if (it.type.includes('CHEST')) { 
           this.generateChestLoot(it.x, it.y);
@@ -1294,6 +1321,11 @@ class Game {
     // Update player state (buffs, cooldowns)
     if (this.player && this.player.update) {
       this.player.update(dt);
+    }
+
+    // 更新 VFX 系统（粒子 / 掉落飞行 / 屏幕闪烁）
+    if (this.vfx) {
+      this.vfx.update(dt);
     }
     
     // Input
@@ -1561,6 +1593,14 @@ class Game {
       }
       this.ui.logMessage(`触发陷阱！-${damage} HP`, 'combat');
       
+      // 陷阱视觉特效：红色喷发 + 轻微屏幕闪烁
+      if (this.vfx) {
+        const wx = this.player.x * TILE_SIZE + TILE_SIZE / 2;
+        const wy = this.player.y * TILE_SIZE + TILE_SIZE / 2;
+        this.vfx.emitParticles(wx, wy, 'TRAP');
+        this.vfx.triggerFlash('DAMAGE');
+      }
+      
       // 成就系统：检测陷阱触发
       if (this.achievementSystem) {
         this.achievementSystem.check('onTrap');
@@ -1608,8 +1648,13 @@ class Game {
     if (this.floatingTexts && this.floatingTexts.length) {
       this.floatingTexts.forEach(ft => ft.draw(this.ctx, TILE_SIZE));
     }
+
+    // 在相机/缩放变换下绘制粒子效果
+    if (this.vfx) {
+      this.vfx.draw(this.ctx, this.camera);
+    }
     
-    // 每日挑战模式：绘制水印
+    // 每日挑战模式：绘制水印（使用屏幕坐标）
     if (this.isDailyMode) {
       this.drawDailyChallengeWatermark();
     }
@@ -2957,6 +3002,13 @@ class Game {
     };
 
     const lootType = selectFromWeightedTable(LOOT_TABLE);
+
+    // 打开宝箱时触发金色粒子特效
+    if (this.vfx) {
+      const wx = chestX * TILE_SIZE + TILE_SIZE / 2;
+      const wy = chestY * TILE_SIZE + TILE_SIZE / 2;
+      this.vfx.emitParticles(wx, wy, 'CHEST');
+    }
     
     switch (lootType) {
       case 'GOLD': {

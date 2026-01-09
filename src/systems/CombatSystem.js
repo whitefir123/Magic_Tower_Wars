@@ -2272,5 +2272,28 @@ export class CombatSystem {
     
     return 'MONSTER_ATTACK';
   }
+
+  /**
+   * 怪物死亡时的通用处理（供闪电链、顺劈等间接击杀调用）
+   * 目前主要用于触发视觉特效，并安全移除怪物
+   * @param {Entity} monster
+   * @param {Entity} attacker
+   */
+  static handleMonsterDeath(monster, attacker) {
+    const game = window.game;
+    if (!game || !monster) return;
+
+    // 视觉效果：死亡烟雾粒子
+    if (game.vfx) {
+      const wx = monster.x * TILE_SIZE + TILE_SIZE / 2;
+      const wy = monster.y * TILE_SIZE + TILE_SIZE / 2;
+      game.vfx.emitParticles(wx, wy, 'DEATH');
+    }
+
+    // 目前保持逻辑最小侵入：只负责移除怪物，避免破坏既有掉落/经验结算流程
+    if (game.map && game.map.removeMonster) {
+      game.map.removeMonster(monster);
+    }
+  }
 }
 
