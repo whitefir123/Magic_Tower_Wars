@@ -748,8 +748,16 @@ export class Monster extends Entity {
       this.shieldTimer += dt;
       if (this.shieldTimer >= this.shieldCooldown) {
         this.shieldTimer = 0;
-        // 获得一层临时防御BUFF（简化实现：增加临时防御值）
-        // 这里可以添加视觉提示，例如显示"护盾!"浮动文字
+        // ✅ FIX: 回复5%最大生命值（模拟护盾再生效果）
+        const healAmount = Math.floor(this.stats.maxHp * 0.05);
+        this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
+        
+        // 显示视觉提示
+        const game = window.game;
+        if (game && game.floatingTextPool && game.floatingTexts) {
+          const shieldText = game.floatingTextPool.create(this.visualX, this.visualY - 30, '护盾!', '#cccccc');
+          game.floatingTexts.push(shieldText);
+        }
       }
     }
     
@@ -1934,6 +1942,12 @@ export class Player extends Entity {
     let effectiveMoveSpeed = this.moveSpeed;
     if (this.frostAuraSlowed) {
       effectiveMoveSpeed *= 0.7; // 30% slow = 70% speed
+    }
+    
+    // ✅ FIX: 检查 SLOW 状态（史莱姆的 STICKY 特性）
+    if (this.hasStatus('SLOW')) {
+      const slowDef = STATUS_TYPES.SLOW;
+      effectiveMoveSpeed *= (slowDef.speedMultiplier || 0.7);
     }
     
     // ✅ 不屈堡垒：移速-10%
