@@ -17,7 +17,9 @@ export class VisualEffectsSystem {
      * x:number,y:number,vx:number,vy:number,
      * life:number,maxLife:number,color:string,
      * size:number,gravity:number,alpha:number,
-     * drag:number, stretch:boolean
+     * drag:number, stretch:boolean, blendMode:string,
+     * width:number, stretchFactor:number, shape:string,
+     * initialAlpha:number
      * }>} */
     this.particles = [];
 
@@ -95,6 +97,11 @@ export class VisualEffectsSystem {
       let life = 450 + Math.random() * 350; // ms
       let drag = 1.0; // 空气阻力 (1.0 = 无阻力)
       let stretch = false; // 是否根据速度拉伸
+      let blendMode = 'source-over'; // 混合模式，默认正常遮盖
+      let width = 3; // 线条宽度（像素）
+      let stretchFactor = 0; // 拉伸系数（速度乘以此系数得到额外长度）
+      let shape = 'rect'; // 形状：'rect' 矩形/线条，'circle' 圆形
+      let initialAlpha = 1.0; // 初始透明度
 
       if (type === 'CHEST') {
         // 金币 / 宝箱爆：偏向上抛，金色
@@ -106,52 +113,82 @@ export class VisualEffectsSystem {
         color = goldenPalette[Math.floor(Math.random() * goldenPalette.length)];
         size = 3 + Math.random() * 2;
         gravity = 0.0008;
+        blendMode = 'lighter'; // 金币发光效果
+        width = size; // 金币使用方块渲染
+        stretch = false; // 金币不拉伸
+        stretchFactor = 0; // 拉伸系数为0
+        shape = 'rect'; // 方块形状
+
       } else if (type === 'TRAP') {
-        // === 陷阱优化逻辑：向上锥形喷射 + 物理分层 ===
+        // === 高压液体喷射：三类粒子混合 ===
         const rand = Math.random();
         
-        if (rand < 0.5) {
-          // A类：主喷溅血滴 (50%) - 向上猛冲，迅速减速，拉伸
-          // 角度：向上稍微左右偏离 (-90度 ± 20度)
-          const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.8;
-          // 速度：爆发力极强
-          const speed = 0.18 + Math.random() * 0.15; 
-          vx = Math.cos(angle) * speed * 0.6; // 横向分量收窄
+        if (rand < 0.6) {
+          // Type A: 喷射血线 (60%) - 极细线条，高速向上喷
+          // 角度：向上锥形喷射 (-90度 ±15度)
+          const angle = -Math.PI / 2 + (Math.random() - 0.5) * (Math.PI / 6); // ±15度 = π/6
+          // 速度：高压喷射，非常快
+          const speed = 0.20 + Math.random() * 0.18; // 0.20 ~ 0.38 px/ms
+          vx = Math.cos(angle) * speed * 0.5; // 横向分量收窄，更集中向上
           vy = Math.sin(angle) * speed;
           
-          const bloodPalette = ['#8b0000', '#660000', '#4d0000']; // 深红到暗红
+          // 鲜红色调色板
+          const bloodPalette = ['#e00000', '#ff1a1a', '#ff3333', '#cc0000'];
           color = bloodPalette[Math.floor(Math.random() * bloodPalette.length)];
-          size = 2 + Math.random() * 2.5;
-          gravity = 0.0016; // 重力较大，液体感
-          drag = 0.94; // 强空气阻力，模拟液体粘滞感
-          life = 400 + Math.random() * 300;
-          stretch = true; // 启用拉伸渲染
+          
+          size = 4 + Math.random() * 6; // 基础长度，会被速度拉伸
+          width = 1; // 极细，1px宽度
+          gravity = 0.0012; // 适中重力
+          drag = 0.92; // 强空气阻力，模拟液体粘滞感
+          life = 350 + Math.random() * 250;
+          stretch = true; // 启用拉伸
+          stretchFactor = 12; // 拉伸系数大，高速时拉得很长
+          blendMode = 'source-over'; // 正常遮盖，不发光
+          shape = 'rect'; // 长条形状
 
-        } else if (rand < 0.85) {
-          // B类：机关灰尘 (35%) - 低空扩散
-          const angle = -Math.PI / 2 + (Math.random() - 0.5) * 2.5; // 扇面更宽
-          const speed = 0.05 + Math.random() * 0.08;
+        } else if (rand < 0.9) {
+          // Type B: 重力血滴 (30%) - 小短线，快速下坠
+          // 角度：向四周扩散
+          const angle = Math.random() * Math.PI * 2; // 360度全方向
+          const speed = 0.06 + Math.random() * 0.08; // 较慢的初速度
           vx = Math.cos(angle) * speed;
           vy = Math.sin(angle) * speed;
           
-          const dustPalette = ['#888888', '#aaaaaa', '#6d6d6d'];
-          color = dustPalette[Math.floor(Math.random() * dustPalette.length)];
-          size = 1 + Math.random() * 1.5; // 细碎
-          gravity = 0.0006;
-          life = 300 + Math.random() * 200;
-          drag = 0.96;
+          // 深暗红色调色板
+          const darkBloodPalette = ['#8a0000', '#6b0000', '#5c0000', '#4a0000'];
+          color = darkBloodPalette[Math.floor(Math.random() * darkBloodPalette.length)];
+          
+          size = 2 + Math.random() * 2; // 基础长度
+          width = 2; // 稍粗，2px宽度
+          gravity = 0.0020; // 重力很大，模拟重液快速下坠
+          drag = 0.96; // 中等阻力
+          life = 400 + Math.random() * 300;
+          stretch = true; // 启用拉伸
+          stretchFactor = 2; // 拉伸系数小
+          blendMode = 'source-over'; // 正常遮盖
+          shape = 'rect'; // 矩形/线条形状
 
         } else {
-          // C类：高光液滴 (15%) - 亮色，增加层次
-          const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.5;
-          const speed = 0.12 + Math.random() * 0.12;
+          // Type C: 浑浊血雾 (10%) - 暗红色圆形气团，不发光
+          const angle = Math.random() * Math.PI * 2; // 全方向
+          const speed = 0.02 + Math.random() * 0.04; // 很慢，飘散感
           vx = Math.cos(angle) * speed;
           vy = Math.sin(angle) * speed;
           
-          color = '#ff9999'; // 亮粉白
-          size = 1.5;
-          gravity = 0.0012;
-          life = 350 + Math.random() * 200;
+          // 暗褐红色调色板（不再是淡粉色）
+          const mistPalette = ['#660000', '#7a0a0a', '#8a1c1c', '#751515'];
+          color = mistPalette[Math.floor(Math.random() * mistPalette.length)];
+          
+          size = 3 + Math.random() * 2; // 3~5，中等大小
+          width = size; // 圆形直径
+          gravity = -0.0001; // 轻微上浮
+          drag = 0.98; // 很轻的阻力
+          life = 500 + Math.random() * 400; // 存活时间长
+          stretch = false; // 不拉伸
+          stretchFactor = 0;
+          blendMode = 'source-over'; // 正常遮盖，不发光（不再是 lighter）
+          shape = 'circle'; // 圆形形状
+          initialAlpha = 0.6; // 初始透明度 0.6，随时间淡出
         }
 
       } else if (type === 'DEATH') {
@@ -165,6 +202,12 @@ export class VisualEffectsSystem {
         size = 4 + Math.random() * 3;
         gravity = -0.00015; // 轻微上浮
         life = 650 + Math.random() * 500;
+        blendMode = 'lighter'; // 烟雾发光效果
+        width = size; // 使用圆形渲染
+        stretch = false; // 烟雾不拉伸
+        stretchFactor = 0; // 拉伸系数为0
+        drag = 0.98; // 很轻的阻力
+        shape = 'circle'; // 圆形形状，获得更好的烟雾效果
       }
 
       this.particles.push({
@@ -179,7 +222,12 @@ export class VisualEffectsSystem {
         gravity,
         drag, 
         stretch,
-        alpha: 1,
+        blendMode,
+        width,
+        stretchFactor,
+        shape,
+        initialAlpha, // 保存初始透明度
+        alpha: initialAlpha, // 当前透明度（从初始值开始）
       });
     }
   }
@@ -344,7 +392,9 @@ export class VisualEffectsSystem {
           continue;
         }
         const t = 1 - p.life / p.maxLife;
-        p.alpha = 1 - t;
+        // 从初始透明度淡出到0
+        const initialAlpha = p.initialAlpha !== undefined ? p.initialAlpha : 1.0;
+        p.alpha = initialAlpha * (1 - t);
 
         // 应用空气阻力 (模拟液体的粘滞感)
         if (p.drag) {
@@ -416,42 +466,62 @@ export class VisualEffectsSystem {
     if (!this.particles.length) return;
 
     ctx.save();
-    // 使用 lighter 可以让叠加的粒子更亮，更有能量感
-    ctx.globalCompositeOperation = 'lighter';
 
     for (const p of this.particles) {
+      // 根据粒子的混合模式动态设置
+      ctx.globalCompositeOperation = p.blendMode || 'source-over';
       ctx.globalAlpha = p.alpha;
       ctx.fillStyle = p.color;
       
-      // 判断是否需要进行速度拉伸渲染
-      // 条件：标记为 stretch 且速度足够快
-      const speedSq = p.vx * p.vx + p.vy * p.vy;
-      // 0.0025 约等于 0.05 px/ms 的速度，低于这个速度就看不出拉伸了，回归方块
-      if (p.stretch && speedSq > 0.0025) {
-        ctx.save();
+      // 判断形状类型
+      if (p.shape === 'circle') {
+        // === 圆形渲染：用于血雾和死亡烟雾 ===
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2);
+        ctx.fill();
         
-        // 移动到粒子中心
-        ctx.translate(p.x, p.y);
+      } else if (p.stretch) {
+        // === 拉伸线条渲染：细长液体喷射效果 ===
+        const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        const speedSq = speed * speed;
         
-        // 计算旋转角度
-        const angle = Math.atan2(p.vy, p.vx);
-        ctx.rotate(angle);
+        // 只有速度足够快时才拉伸
+        if (speedSq > 0.0001 && p.width < p.size) {
+          ctx.save();
+          
+          // 移动到粒子位置
+          ctx.translate(p.x, p.y);
+          
+          // 根据速度方向旋转画布
+          const angle = Math.atan2(p.vy, p.vx);
+          ctx.rotate(angle);
+          
+          // 计算线条长度：基础长度 + 速度拉伸
+          const length = p.size + speed * (p.stretchFactor || 8);
+          
+          // 绘制细长线条（从原点向右延伸）
+          // 线条宽度由 p.width 控制（1px 或 2px），这是产生"液体感"的关键
+          const halfWidth = (p.width || 1) / 2;
+          ctx.fillRect(0, -halfWidth, length, p.width || 1);
+          
+          ctx.restore();
+        } else {
+          // 速度太慢，不拉伸，绘制小方块或圆形
+          if (p.width < p.size) {
+            // 细线不拉伸时画小点
+            const half = p.width / 2;
+            ctx.fillRect(p.x - half, p.y - half, p.width, p.width);
+          } else {
+            // 使用 size 画方块
+            const half = p.size / 2;
+            ctx.fillRect(p.x - half, p.y - half, p.size, p.size);
+          }
+        }
         
-        // 拉伸因子：速度越快越长
-        // 基础长度 + 速度加成
-        const speed = Math.sqrt(speedSq);
-        const stretchFactor = 1 + speed * 8; // 系数可调，越大拖尾越长
-        
-        // 绘制旋转后的长条矩形
-        // 宽度稍微变窄一点点，模拟拉伸变细
-        const halfSize = p.size / 2;
-        ctx.fillRect(-halfSize * stretchFactor, -halfSize * 0.8, p.size * stretchFactor, p.size * 0.8);
-        
-        ctx.restore();
       } else {
-        // 普通绘制（灰尘、低速血滴、金币等）
-        const half = p.size / 2;
-        ctx.fillRect(p.x - half, p.y - half, p.size, p.size);
+        // === 兜底：普通方块渲染（用于金币等）===
+        const half = (p.width || p.size) / 2;
+        ctx.fillRect(p.x - half, p.y - half, p.width || p.size, p.width || p.size);
       }
     }
 
