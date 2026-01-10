@@ -2113,7 +2113,7 @@ export class CombatSystem {
       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
         const offsetX = (Math.random() - 0.5) * 15;
         const offsetY = -10 - Math.random() * 10;
-        const missText = game.floatingTextPool.create(player.visualX + offsetX, player.visualY + offsetY, 'MISS', '#ff0000');
+        const missText = game.floatingTextPool.create(player.visualX + offsetX, player.visualY + offsetY, 'MISS', '#ffffff');
         game.floatingTexts.push(missText);
       }
       return 'DODGED';

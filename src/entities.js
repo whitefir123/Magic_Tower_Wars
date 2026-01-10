@@ -29,12 +29,31 @@ export class Entity {
       existing.tickTimer = 0;
       
       // Handle stackable statuses (e.g., POISON)
+      let stacksIncreased = false;
       if (statusDef.stackable) {
         const currentStacks = existing.config?.stacks || 1;
         const maxStacks = 10; // 最大叠加层数
         existing.config = existing.config || {};
-        existing.config.stacks = Math.min(currentStacks + 1, maxStacks);
+        const newStacks = Math.min(currentStacks + 1, maxStacks);
+        stacksIncreased = newStacks > currentStacks;
+        existing.config.stacks = newStacks;
       }
+      
+      // 情况A (叠加): 如果是可叠加状态且已存在，层数增加后显示飘字
+      if (statusDef.stackable && stacksIncreased && window.game && window.game.player === this) {
+        const game = window.game;
+        if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
+          const stacks = existing.config?.stacks || 1;
+          const statusText = `${statusDef.name} x${stacks}!`;
+          const statusColor = this.getStatusColor(type);
+          const floatingText = game.floatingTextPool.create(this.visualX, this.visualY - 30, statusText, statusColor);
+          if (game.floatingTexts) {
+            game.floatingTexts.push(floatingText);
+          }
+        }
+      }
+      // 情况B (刷新): 如果状态已存在且不可叠加（仅刷新时间），不显示飘字
+      // 这里不需要额外处理，直接返回即可
       
       return;
     }
@@ -55,6 +74,19 @@ export class Entity {
     }
     
     this.statuses.push(status);
+    
+    // 情况C (新增): 如果是新添加的状态，且目标是玩家，显示飘字
+    if (window.game && window.game.player === this) {
+      const game = window.game;
+      if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
+        const statusText = `${statusDef.name}!`;
+        const statusColor = this.getStatusColor(type);
+        const floatingText = game.floatingTextPool.create(this.visualX, this.visualY - 30, statusText, statusColor);
+        if (game.floatingTexts) {
+          game.floatingTexts.push(floatingText);
+        }
+      }
+    }
   }
   
   // Check if entity has a specific status
@@ -265,7 +297,8 @@ export class Entity {
       'FROZEN': '#00bfff',    // 冰冻 - 青色
       'FREEZE_DOT': '#00bfff', // 冰封伤害 - 青色
       'SHOCK': '#ffff00',     // 感电 - 黄色
-      'POISON': '#00ff00'     // 中毒 - 绿色
+      'POISON': '#00ff00',    // 中毒 - 绿色
+      'SLOW': '#cccccc'       // 减速 - 灰色
     };
     return colorMap[statusType] || '#ffffff';
   }
