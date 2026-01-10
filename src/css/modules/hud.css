@@ -565,37 +565,65 @@
   border-color: #444;
 }
 
-/* ✅ FIX: 技能预备状态高亮效果 - 优化为图标边缘高亮 */
+/* ✅ FIX: 技能预备状态高亮效果 - 优化为图标边缘流动电流 */
 /* 外框：稍微亮一点的外框（微弱发光） */
 .skill-slot.skill-active {
   border-color: rgba(255, 215, 0, 0.5) !important;
 }
 
-/* 重点：针对图标本身添加金色电流/脉冲效果 */
+/* 针对 Active 状态的 Icon 容器设置 */
 .skill-slot.skill-active .skill-icon {
-  border: 1px solid #ffd700 !important;
-  /* 移除 !important 以启用动画 */
-  box-shadow: 0 0 8px #ffd700, inset 0 0 10px rgba(255, 215, 0, 0.8);
-  animation: skill-icon-pulse 0.8s ease-in-out infinite alternate;
-  z-index: 10; /* 提高层级，确保在遮罩和文字之上 */
-  position: relative; /* 确保 z-index 生效 */
+  border-color: transparent !important; /* 隐藏原始边框，由流动框代替 */
+  position: relative;
+  z-index: 4; /* 提高图标层级，确保在边框之上 */
+  overflow: visible; /* 允许电流溢出一点点 */
 }
 
-@keyframes skill-icon-pulse {
+/* 创建流动的金色电流框 - 边框层 */
+.skill-slot.skill-active .skill-icon::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px; /* 边框厚度，多出图标 3px，形成 66px x 66px */
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    transparent 18%,
+    #ffd700 35%,
+    #ffec8b 42%,
+    #ffd700 48%,
+    #ffec8b 52%,
+    #ffd700 58%,
+    transparent 82%,
+    transparent 100%
+  );
+  border-radius: 4px; /* 匹配 Icon 圆角 */
+  z-index: 3; /* 在图标下方，但比 slot 背景高 */
+  animation: electric-flow 1.5s linear infinite;
+  pointer-events: none; /* 不阻挡点击事件 */
+  /* 使用 mask 让中间部分透明，只显示边缘 3px */
+  /* 创建外框和内框的遮罩，实现镂空效果 */
+  mask: 
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  padding: 3px; /* 边框厚度，与 inset 保持一致 */
+  box-sizing: border-box;
+}
+
+/* 流动电流旋转动画 */
+@keyframes electric-flow {
   0% {
-    /* 移除所有 !important */
-    box-shadow: 
-      0 0 5px #ffd700, 
-      inset 0 0 5px rgba(255, 215, 0, 0.5);
-    filter: brightness(1.2);
+    transform: rotate(0deg);
   }
   100% {
-    /* 移除所有 !important */
-    box-shadow: 
-      0 0 15px #ffd700, 
-      0 0 5px #ffaa00,
-      inset 0 0 15px rgba(255, 215, 0, 1);
-    filter: brightness(1.5);
+    transform: rotate(360deg);
   }
 }
 

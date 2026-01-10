@@ -372,6 +372,22 @@ export class HUD {
               return;
             }
             
+            // 检查是否已经处于就绪状态 (Primed)
+            // 这里的检查逻辑与 updateStats 中的高亮逻辑保持一致
+            const activeStateKey = skillData.id ? `${skillData.id}Primed` : null;
+            const isPrimed = (player.states && (
+              player.states.activeSkillPrimed || 
+              (activeStateKey && player.states[activeStateKey]) ||
+              // 兼容旧代码
+              player.states.slashPrimed || 
+              player.states.scorchPrimed
+            ));
+
+            if (isPrimed) {
+              console.log('Skill is already primed, ignoring click.');
+              return; // 已经就绪，忽略点击
+            }
+            
             // 调用主动技能
             if (player.castActiveSkill) {
               player.castActiveSkill();
