@@ -25,3 +25,8 @@
 
 @import './_legacy.css'; /* 暂时保留旧代码，逐步移除 */
 
+/* Death Phase Grayscale Effect */
+#gameCanvas.death-filter {
+  filter: grayscale(100%) brightness(80%) !important;
+  transition: filter 2s ease-out;
+}

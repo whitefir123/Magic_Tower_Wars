@@ -1927,6 +1927,11 @@ export class Player extends Entity {
     return prev;
   }
   update(dt) {
+    // ✅ CRITICAL FIX: 卫语句：死亡阶段禁止操作
+    if (window.game && window.game.deathPhase && window.game.deathPhase.active) {
+      return;
+    }
+    
     // ✅ FIX: 冰冻状态下禁止使用技能（在update中检查，确保技能无法激活）
     // 注意：实际的技能激活检查在main.js的输入处理中，这里只是确保状态正确
     
@@ -2330,7 +2335,18 @@ export class Player extends Entity {
     }
     
     if (window.game&&window.game.ui) window.game.ui.updateStats(this); 
-    if (this.stats.hp <= 0 && window.game) window.game.endGame(true); 
+    // 死亡时触发子弹时间阶段，而不是立即结束游戏
+    // ✅ FIX: 更安全的检查，防止因为对象不存在而报错
+    if (this.stats.hp <= 0 && window.game) {
+      if (window.game.triggerDeathPhase && typeof window.game.triggerDeathPhase === 'function') {
+        window.game.triggerDeathPhase();
+      } else {
+        // 降级方案：如果 triggerDeathPhase 不存在，直接结束游戏
+        if (window.game.endGame && typeof window.game.endGame === 'function') {
+          window.game.endGame(true);
+        }
+      }
+    } 
   }
 
   // Use item in a specific inventory slot (consumables only)

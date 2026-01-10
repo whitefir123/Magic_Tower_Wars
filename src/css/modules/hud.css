@@ -626,3 +626,12 @@
   pointer-events: none;
   display: none;
 }
+
+/* ========================================================================
+   DEATH BULLET TIME - Visual Filter
+   ======================================================================== */
+/* 死亡时的视觉滤镜：灰阶 + 高对比 */
+.death-filter {
+  filter: grayscale(100%) contrast(120%);
+  transition: filter 1.5s ease-out;
+}

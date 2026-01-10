@@ -126,6 +126,19 @@ class Game {
     this.maxZoom = 3.0;
     this.zoomSpeed = 0.1;
     
+    // 死亡子弹时间系统
+    this.timeScale = 1.0; // 全局时间流速
+    this.deathPhase = { 
+      active: false, 
+      startTime: 0, 
+      duration: 2000, // 持续2秒
+      startZoom: 1,
+      targetZoom: 2.5 // 死亡时镜头拉近倍率
+    };
+    
+    // ✅ FIX: 确保 lastTime 在构造函数中初始化（虽然会在 init 中重新设置，但这里作为默认值）
+    this.lastTime = 0;
+    
     // Settings system
     this.settings = this.loadSettings();
     
@@ -170,6 +183,10 @@ class Game {
     }
 
     window.game = this; // Expose globally for UI onclick
+    
+    // ✅ CRITICAL FIX: 强制初始化时间相关变量（确保在主循环开始前正确初始化）
+    this.lastTime = 0;
+    this.timeScale = 1.0;
   }
 
 
@@ -1080,15 +1097,38 @@ class Game {
     }
   }
 
-  loop(ts) {
-    const dt = ts - this.lastTime; this.lastTime = ts;
+  loop(timestamp) {
+    // 1. 初始化 lastTime (防止第一帧跳跃)
+    if (!this.lastTime) {
+      this.lastTime = timestamp;
+    }
+
+    // 2. 计算真实时间差 (秒)
+    // 注意：必须先计算 diff，再更新 lastTime
+    const rawDt = (timestamp - this.lastTime) / 1000;
+    
+    // 3. 立即更新 lastTime
+    this.lastTime = timestamp;
+
+    // 4. 计算游戏时间差 (应用时间流速)
+    // 安全检查：如果 timeScale 未定义，强制默认为 1.0
+    const currentScale = (typeof this.timeScale === 'number') ? this.timeScale : 1.0;
+    
+    // FIX: Convert to Milliseconds for game logic compatibility
+    // The VisualEffectsSystem and physics logic expect MS (e.g. life -= 16), not Seconds (life -= 0.016)
+    const gameDtMs = rawDt * currentScale * 1000;
+
+    // 5. 限制最大帧时间 (防止切换标签页造成的长帧导致穿墙)
+    // Cap at 100ms to prevent huge jumps
+    const safeDt = Math.min(gameDtMs, 100);
 
     // FPS 计算逻辑（严格限制为每秒更新一次，避免 DOM 抖动）
+    // 使用真实时间，不受 timeScale 影响
     this.frameCount++;
-    if (ts - this.lastFpsTime >= 1000) {
+    if (timestamp - this.lastFpsTime >= 1000) {
       this.currentFps = this.frameCount;
       this.frameCount = 0;
-      this.lastFpsTime = ts;
+      this.lastFpsTime = timestamp;
       
       // 仅在需要时更新 FPS 显示（每秒最多一次 DOM 操作）
       if (this.settings && this.settings.showFps) {
@@ -1105,25 +1145,48 @@ class Game {
       }
     }
 
-    if (this.gameStarted) {
-      // Ensure loading overlay is hidden during gameplay (already handled in startGame)
-      // This is just a safety check
+    // 6. 执行更新 (必须传入 safeDt)
+    if (this.gameStarted && !this.isPaused) {
+      // Ensure loading overlay is hidden during gameplay
       if (this.loadingUI && this.loadingUI.isVisible()) {
         this.loadingUI.hide();
       }
       
-      try { if (this.player && !this.isPaused) this.update(dt); } catch (e) { console.error('Non-Fatal Game Loop Error (update):', e); }
-      try { this.render(); } catch (e) { console.error('Non-Fatal Game Loop Error (render):', e); }
+      try { 
+        if (this.player) {
+          // 关键：必须把 safeDt 传进去！（即使第一帧为 0，update 方法会处理）
+          this.update(safeDt); 
+        }
+      } catch (e) { 
+        console.error('Non-Fatal Game Loop Error (update):', e); 
+      }
       
-      // 成就系统：更新层游戏时间（排除暂停时间）
-      if (this.achievementSystem && !this.isPaused) {
-        this.achievementSystem.updateLevelPlayTime(dt);
+      // 成就系统：更新层游戏时间（使用真实时间，不受 timeScale 影响）
+      if (this.achievementSystem) {
+        this.achievementSystem.updateLevelPlayTime(rawDt);
+      }
+    }
+    
+    // 7. 执行渲染 (render 方法不需要 dt 参数)
+    if (this.gameStarted) {
+      try { 
+        this.render(); 
+      } catch (e) { 
+        console.error('Non-Fatal Game Loop Error (render):', e); 
       }
     }
 
-    // Update mascot animation every frame
-    try { if (this.ui && this.ui.mascot) this.ui.mascot.update(dt); } catch (e) { console.error('Non-Fatal Mascot Update Error:', e); }
-    requestAnimationFrame(t => this.loop(t));
+    // Update mascot animation every frame (使用真实时间)
+    try { 
+      if (this.ui && this.ui.mascot) {
+        this.ui.mascot.update(rawDt); 
+      }
+    } catch (e) { 
+      console.error('Non-Fatal Mascot Update Error:', e); 
+    }
+    
+    // 8. 下一帧
+    requestAnimationFrame((ts) => this.loop(ts));
   }
 
   /**
@@ -1132,6 +1195,11 @@ class Game {
    * @returns {boolean} - 是否成功处理了输入
    */
   processInput(key) {
+    // 死亡阶段禁止操作
+    if (this.deathPhase && this.deathPhase.active) {
+      return false;
+    }
+    
     if (!this.player || this.player.isMoving || this.player.pendingCombat) {
       return false;
     }
@@ -1333,6 +1401,39 @@ class Game {
     // Guard: ensure player exists before proceeding
     if (!this.player) return;
     
+    // ✅ CRITICAL FIX: Ensure dt is valid number (Default to 16ms, not 0.016s)
+    if (!dt || isNaN(dt) || dt <= 0 || !isFinite(dt)) {
+      dt = 16; // 60fps ~ 16ms
+    }
+    
+    // 死亡子弹时间阶段处理
+    if (this.deathPhase && this.deathPhase.active) {
+      const now = performance.now();
+      const elapsed = now - this.deathPhase.startTime;
+      const progress = Math.min(elapsed / this.deathPhase.duration, 1);
+      
+      // 镜头平滑拉近 (Lerp)
+      this.cameraZoom = this.deathPhase.startZoom + (this.deathPhase.targetZoom - this.deathPhase.startZoom) * progress;
+      
+      // 检查结束
+      if (progress >= 1) {
+        // 恢复时间流速
+        this.timeScale = 1.0;
+        
+        // REMOVED: Do not remove death-filter here. Let it persist until restart.
+        // const canvas = document.querySelector('canvas');
+        // if (canvas) {
+        //   canvas.classList.remove('death-filter');
+        // }
+        
+        // 重置死亡阶段状态
+        this.deathPhase.active = false;
+        // 调用原本的结束逻辑
+        this.endGame(true);
+        return; // 提前返回，不执行后续更新逻辑
+      }
+    }
+    
     // Update player state (buffs, cooldowns)
     if (this.player && this.player.update) {
       this.player.update(dt);
@@ -1343,48 +1444,56 @@ class Game {
       this.vfx.update(dt);
     }
     
-    // Input
-    // Check if player is frozen - cannot move or act
-    const playerFrozen = this.player.hasStatus && this.player.hasStatus('FREEZE');
+    // ✅ FIX: 死亡阶段禁止输入处理，但允许视觉更新继续
+    const isDeathPhaseActive = this.deathPhase && this.deathPhase.active;
     
-    // ✅ FIX: Check post-kill delay to prevent immediate movement after killing a monster
-    const postKillDelayActive = this.player.postKillDelay && Date.now() < this.player.postKillDelay;
-    if (postKillDelayActive) {
-      this.player.postKillDelay = 0; // Clear delay once expired
-    }
-    
-    // ✅ 性能优化：标记是否已处理输入，用于互斥 Buffer 和 Stack
-    let inputHandled = false;
+    // Input (仅在非死亡阶段处理)
+    if (!isDeathPhaseActive) {
+      // Check if player is frozen - cannot move or act
+      const playerFrozen = this.player.hasStatus && this.player.hasStatus('FREEZE');
+      
+      // ✅ FIX: Correctly handle post-kill delay
+      // Only block if delay is SET and CURRENT time is LESS than delay time
+      const postKillDelayActive = this.player.postKillDelay && Date.now() < this.player.postKillDelay;
+      
+      // Cleanup: Only reset if the delay has EXPIRED
+      if (this.player.postKillDelay && Date.now() >= this.player.postKillDelay) {
+        this.player.postKillDelay = 0; 
+      }
+      
+      // ✅ 性能优化：标记是否已处理输入，用于互斥 Buffer 和 Stack
+      let inputHandled = false;
 
-    // 1. 优先检查 Buffer（输入缓冲系统）
-    if (!this.player.isMoving && this.inputBuffer.length > 0 && !this.player.pendingCombat && !playerFrozen && !postKillDelayActive) {
-      const now = Date.now();
-      // 查找有效的 buffer 指令
-      for (let i = 0; i < this.inputBuffer.length; i++) {
-        const input = this.inputBuffer[i];
-        if (now - input.timestamp <= this.INPUT_BUFFER_WINDOW) {
-          // 找到有效指令，执行它
-          const key = input.key;
-          const validInput = this.processInput(key);
-          if (validInput) {
-            // 执行后立即清空 buffer
-            this.inputBuffer = [];
-            inputHandled = true; // 标记已处理
-            break; // 只执行第一个有效指令
+      // 1. 优先检查 Buffer（输入缓冲系统）
+      if (!this.player.isMoving && this.inputBuffer.length > 0 && !this.player.pendingCombat && !playerFrozen && !postKillDelayActive) {
+        const now = Date.now();
+        // 查找有效的 buffer 指令
+        for (let i = 0; i < this.inputBuffer.length; i++) {
+          const input = this.inputBuffer[i];
+          if (now - input.timestamp <= this.INPUT_BUFFER_WINDOW) {
+            // 找到有效指令，执行它
+            const key = input.key;
+            const validInput = this.processInput(key);
+            if (validInput) {
+              // 执行后立即清空 buffer
+              this.inputBuffer = [];
+              inputHandled = true; // 标记已处理
+              break; // 只执行第一个有效指令
+            }
           }
         }
+        // 清理过期的 buffer 条目
+        this.inputBuffer = this.inputBuffer.filter(input => now - input.timestamp <= this.INPUT_BUFFER_WINDOW);
       }
-      // 清理过期的 buffer 条目
-      this.inputBuffer = this.inputBuffer.filter(input => now - input.timestamp <= this.INPUT_BUFFER_WINDOW);
-    }
 
-    // 2. 如果 Buffer 未处理，再检查 Stack（长按移动）
-    if (!inputHandled && !this.player.isMoving && this.inputStack.length > 0 && !this.player.pendingCombat && !playerFrozen && !postKillDelayActive) {
-      const key = this.inputStack[this.inputStack.length - 1];
-      // 使用 processInput 方法处理输入
-      this.processInput(key);
-      // 注意：原有的移动逻辑已移至 processInput 方法中
-      // ✅ 修复：删除 return，确保后续逻辑正常执行
+      // 2. 如果 Buffer 未处理，再检查 Stack（长按移动）
+      if (!inputHandled && !this.player.isMoving && this.inputStack.length > 0 && !this.player.pendingCombat && !playerFrozen && !postKillDelayActive) {
+        const key = this.inputStack[this.inputStack.length - 1];
+        // 使用 processInput 方法处理输入
+        this.processInput(key);
+        // 注意：原有的移动逻辑已移至 processInput 方法中
+        // ✅ 修复：删除 return，确保后续逻辑正常执行
+      }
     }
 
     this.player.updateVisuals(dt); 
@@ -4092,6 +4201,22 @@ class Game {
     // FIX: 重置伤害统计
     this.totalDamageDealt = 0;
     
+    // ✅ FIX: 重置死亡子弹时间状态（确保每次进入游戏都是干净的状态）
+    this.deathPhase = { 
+      active: false, 
+      startTime: 0, 
+      duration: 2000, 
+      startZoom: 1,
+      targetZoom: 2.5 
+    };
+    this.timeScale = 1.0;
+    this.cameraZoom = 1.0;
+    
+    // ✅ FIX: 移除死亡滤镜 - Use this.canvas directly
+    if (this.canvas) {
+      this.canvas.classList.remove('death-filter');
+    }
+    
     // 触发游戏加载开始事件
     window.dispatchEvent(new CustomEvent('gameplayLoadingStart'));
     
@@ -4666,6 +4791,35 @@ class Game {
     });
   }
 
+  /**
+   * 触发死亡子弹时间阶段
+   * 当玩家 HP 归零时调用，进入慢动作 + 灰阶滤镜 + 镜头拉近效果
+   */
+  triggerDeathPhase() {
+    if (this.deathPhase.active) return;
+    
+    this.deathPhase.active = true;
+    this.deathPhase.startTime = performance.now();
+    this.deathPhase.startZoom = this.cameraZoom || 1; // 记录当前缩放
+    
+    // 1. 开启慢动作（时间流速降至 10%）
+    this.timeScale = 0.1; 
+    
+    // 2. Visual FX: Add grayscale filter
+    // FIX: Use this.canvas directly to ensure correct element targeting
+    if (this.canvas) {
+      this.canvas.classList.add('death-filter');
+    }
+    
+    // REMOVED: Do not hide HUD anymore - player should still see their stats/skills sidebar after death
+    // if (this.ui && this.ui.hideHUD) {
+    //   this.ui.hideHUD();
+    // }
+    
+    // 4. 音效（占位，可根据需要添加）
+    // if (this.audio) this.audio.stopMusic();
+  }
+
   // END GAME
   endGame(isDeath = true) {
     try {
@@ -4900,7 +5054,7 @@ class Game {
     await this.loadingUI.performTransition({
       targetId: 'main-ui',
       action: async () => {
-        // 1. 幕布后：立即隐藏死亡界面/排行榜（立即 display = 'none'，释放内存，避免渲染干扰）
+        // 1. 隐藏其他界面
         const lbOverlay = document.getElementById('leaderboard-overlay');
         if (lbOverlay) {
           // 🔴 关键修复：立即使用 important 强制隐藏，不要淡出，释放内存
@@ -4912,17 +5066,37 @@ class Game {
           console.log('[RestartGame] 死亡界面已立即隐藏（释放内存）');
         }
         
-        // 2. 执行原有的重置逻辑
-        // Reset all game state
+        // 关闭所有弹窗
+        if (this.ui && this.ui.closeAllOverlays) {
+          this.ui.closeAllOverlays();
+        }
+        
+        // 2. 重置核心变量
         this.killCount = 0;
         this.totalXpGained = 0;
-        // FIX: 重置伤害统计
         this.totalDamageDealt = 0;
         this.startTime = Date.now();
-        this.isPaused = false;
+        this.isPaused = false; // ✅ CRITICAL: 确保游戏状态解锁
         this.inputStack = [];
+        this.inputBuffer = []; // ✅ FIX: 同时也清空 buffer
         
-        // Clear object pools to prevent memory leaks
+        // 3. 重置死亡和时间状态 (CRITICAL FIX)
+        this.deathPhase = { 
+          active: false, 
+          startTime: 0, 
+          duration: 2000, 
+          startZoom: 1, 
+          targetZoom: 2.5 
+        };
+        this.timeScale = 1.0;
+        this.cameraZoom = 1.0;
+        
+        // FIX: Use this.canvas directly
+        if (this.canvas) {
+          this.canvas.classList.remove('death-filter');
+        }
+        
+        // 清理对象池和残留对象
         if (this.floatingTextPool) {
           this.floatingTexts.forEach(ft => this.floatingTextPool.release(ft));
           this.floatingTexts = [];
@@ -4930,6 +5104,11 @@ class Game {
         if (this.fogParticlePool && this.map) {
           this.map.fogParticles.forEach(particle => this.fogParticlePool.release(particle));
           this.map.fogParticles = [];
+        }
+        
+        // 清理 VFX 系统
+        if (this.vfx && this.vfx.clear) {
+          this.vfx.clear();
         }
         
         // CRITICAL FIX: 每日挑战模式重试时，重新初始化 RNG 和配置
@@ -4973,7 +5152,7 @@ class Game {
           this.player = new Player(this.map, this.loader, charData);
           
           // 重置玩家状态
-          this.player.stats.floor = 0; // nextLevel 会将其变为 1
+          this.player.stats.floor = 1; // ✅ FIX: 强制第1层（不再依赖 nextLevel）
           this.player.stats.xp = 0;
           this.player.stats.gold = 0;
           this.player.stats.keys = 1;
@@ -5054,8 +5233,32 @@ class Game {
             console.log('[RestartGame] 画布已清空（每日挑战模式）');
           }
           
-          // 生成第一层（使用 RNG）
-          await this.nextLevel();
+          // ✅ FIX: 手动生成第 1 层（替代 nextLevel 以避免嵌套转场）
+          this.player.stats.floor = 1; // 强制第1层
+          const ascensionLevel = this.selectedAscensionLevel ?? 1;
+          this.map.generateLevel(1, ascensionLevel, this.rng);
+          
+          // 设置玩家初始位置
+          let startX = 1, startY = 1;
+          let foundStairs = false;
+          // 尝试寻找上楼梯作为出生点
+          for (let y = 0; y < this.map.height && !foundStairs; y++) {
+            for (let x = 0; x < this.map.width; x++) {
+              if (this.map.grid[y][x] === TILE.STAIRS_UP) {
+                startX = x;
+                startY = y;
+                foundStairs = true;
+                break;
+              }
+            }
+          }
+          this.player.x = startX;
+          this.player.y = startY;
+          this.player.visualX = startX * TILE_SIZE;
+          this.player.visualY = startY * TILE_SIZE;
+          this.player.destX = this.player.visualX;
+          this.player.destY = this.player.visualY;
+          this.camera.follow(this.player);
           
           // 显示每日挑战信息
           if (this.ui && this.ui.logMessage) {
@@ -5063,7 +5266,7 @@ class Game {
             this.ui.logMessage(`每日挑战重试：${charData.name} | 词缀：${modifiersText}`, 'info');
           }
         } else {
-          // 普通模式的重试逻辑（原有逻辑）
+          // 普通模式的重试逻辑
           // FIX: 显式重置每日挑战状态（防御性编程，防止状态污染）
           this.isDailyMode = false;
           this.rng = null;
@@ -5074,7 +5277,7 @@ class Game {
           // Reset player completely
           const charData = CHARACTERS[this.selectedCharId];
           this.player = new Player(this.map, this.loader, charData);
-          this.player.stats.floor = 1;
+          this.player.stats.floor = 1; // ✅ FIX: 强制第1层
           this.player.stats.xp = 0;
           this.player.stats.gold = 0;
           this.player.stats.keys = 1;
@@ -5090,6 +5293,9 @@ class Game {
             this.ui.updateRelicBar(new Map()); // 清空遗物栏
           }
           
+          // 应用天赋树加成（如果有）
+          this.applyTalentBonuses();
+          
           // Apply difficulty multiplier
           const diffKey = this.selectedDiff.toUpperCase();
           const diffData = DIFFICULTY_LEVELS[diffKey];
@@ -5104,17 +5310,43 @@ class Game {
             console.log('[RestartGame] 画布已清空（普通模式，生成地图前）');
           }
           
-          // Reset map and generate floor 1
-          this.map.difficultyMultiplier = this.difficultyMultiplier;
-          await this.nextLevel();
+          // ✅ FIX: 手动生成第 1 层（替代 nextLevel 以避免嵌套转场）
+          const ascensionLevel = this.selectedAscensionLevel ?? 1;
+          this.map.generateLevel(1, ascensionLevel, null);
+          
+          // 设置玩家初始位置
+          let startX = 1, startY = 1;
+          let foundStairs = false;
+          // 尝试寻找上楼梯作为出生点
+          for (let y = 0; y < this.map.height && !foundStairs; y++) {
+            for (let x = 0; x < this.map.width; x++) {
+              if (this.map.grid[y][x] === TILE.STAIRS_UP) {
+                startX = x;
+                startY = y;
+                foundStairs = true;
+                break;
+              }
+            }
+          }
+          this.player.x = startX;
+          this.player.y = startY;
+          this.player.visualX = startX * TILE_SIZE;
+          this.player.visualY = startY * TILE_SIZE;
+          this.player.destX = this.player.visualX;
+          this.player.destY = this.player.visualY;
+          this.camera.follow(this.player);
         }
         
-        // Clear log panel
+        // 6. 清理视觉残留（确保飘字等完全清除）
+        this.floatingTexts = [];
+        if (this.floatingTextPool && this.floatingTextPool.clear) {
+          this.floatingTextPool.clear();
+        }
+        
+        // 7. 更新UI状态
         if (this.ui && this.ui.clearLog) {
           this.ui.clearLog();
         }
-        
-        // Update UI
         this.ui.updateStats(this.player);
         this.ui.updateEquipmentSockets(this.player);
         this.ui.initSkillBar(this.player);
@@ -5124,6 +5356,19 @@ class Game {
         
         // Resume game
         this.gameStarted = true;
+        
+        // ✅ CRITICAL FIX: 确保状态完全解锁（双重保险）
+        this.isPaused = false;
+        
+        // 8. 自动保存 (如果是普通模式且启用了自动保存)
+        if (this.settings && this.settings.autoSave && !this.isDailyMode) {
+          try {
+            SaveSystem.save(this);
+            console.log('[RestartGame] 自动保存完成');
+          } catch (e) {
+            console.warn('[RestartGame] 自动保存失败:', e);
+          }
+        }
         
         // 不要在这里手动设置 main-ui 的 display 和 opacity，让 performTransition 的视觉预备阶段统一处理
         // performTransition 会：

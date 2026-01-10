@@ -192,6 +192,77 @@ export class UIManager {
     }
   }
 
+  /**
+   * 隐藏 HUD（死亡子弹时间阶段使用）
+   * 隐藏血条、技能栏、遗物栏、日志等界面元素，只保留纯净的游戏画面
+   */
+  hideHUD() {
+    // 隐藏右侧状态栏（包含血条、属性、装备等）
+    const rightSidebar = document.getElementById('right-sidebar');
+    if (rightSidebar) {
+      rightSidebar.style.opacity = '0';
+      rightSidebar.style.pointerEvents = 'none';
+      rightSidebar.style.transition = 'opacity 1.5s ease-out';
+    }
+    
+    // 隐藏技能栏
+    const skillBar = document.getElementById('skill-bar');
+    if (skillBar) {
+      skillBar.style.opacity = '0';
+      skillBar.style.pointerEvents = 'none';
+      skillBar.style.transition = 'opacity 1.5s ease-out';
+    }
+    
+    // 隐藏遗物栏
+    const relicBar = document.getElementById('relic-bar');
+    if (relicBar) {
+      relicBar.style.opacity = '0';
+      relicBar.style.pointerEvents = 'none';
+      relicBar.style.transition = 'opacity 1.5s ease-out';
+    }
+    
+    // 隐藏系统日志
+    if (this.container) {
+      this.container.style.opacity = '0';
+      this.container.style.pointerEvents = 'none';
+      this.container.style.transition = 'opacity 1.5s ease-out';
+    }
+    
+    console.log('[UIManager] HUD 已隐藏（死亡子弹时间阶段）');
+  }
+
+  /**
+   * 显示 HUD（恢复显示所有界面元素）
+   */
+  showHUD() {
+    // 显示右侧状态栏
+    const rightSidebar = document.getElementById('right-sidebar');
+    if (rightSidebar) {
+      rightSidebar.style.opacity = '1';
+      rightSidebar.style.pointerEvents = 'auto';
+      rightSidebar.style.transition = 'opacity 1.5s ease-out';
+    }
+    
+    // 显示技能栏
+    const skillBar = document.getElementById('skill-bar');
+    if (skillBar) {
+      skillBar.style.opacity = '1';
+      skillBar.style.pointerEvents = 'auto';
+      skillBar.style.transition = 'opacity 1.5s ease-out';
+    }
+    
+    // 显示遗物栏
+    const relicBar = document.getElementById('relic-bar');
+    if (relicBar) {
+      relicBar.style.opacity = '1';
+      relicBar.style.pointerEvents = 'auto';
+      relicBar.style.transition = 'opacity 1.5s ease-out';
+    }
+    
+    // 系统日志保持隐藏状态（默认是隐藏的）
+    // 不在这里恢复，因为日志有自己的显示逻辑
+  }
+
   // ========================================================================
   // 公共接口：背包系统
   // ========================================================================
