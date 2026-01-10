@@ -593,6 +593,20 @@ export class Monster extends Entity {
     return this.stats.traits && this.stats.traits.includes(trait);
   }
   
+  // 检查怪物是否有特定标签（例如UNDEAD、BOSS等）
+  hasTag(tagId) {
+    // 如果 tags 不存在或为空，返回 false
+    if (!this.stats.tags || !Array.isArray(this.stats.tags) || this.stats.tags.length === 0) {
+      return false;
+    }
+    
+    // 统一转为大写进行比较，增强健壮性
+    const upperTagId = String(tagId).toUpperCase();
+    
+    // 检查 tags 数组中是否包含该标签（也转为大写比较）
+    return this.stats.tags.some(tag => String(tag).toUpperCase() === upperTagId);
+  }
+  
   // 重写 applyStatus 方法以处理特性免疫
   applyStatus(type, source, config = {}) {
     // MOLTEN_CORE: 免疫灼烧和冰冻

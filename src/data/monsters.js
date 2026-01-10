@@ -15,6 +15,7 @@ export const MONSTER_STATS = {
     size: 20,
     base_as: 0.5,
     traits: ['STICKY'],
+    tags: ['NATURE'],
     lore: "一种常见的低等魔物。史莱姆是由魔力凝聚而成的生命体，它们通常出现在魔法塔的浅层。虽然单个史莱姆的威胁不大，但它们繁殖迅速，往往成群结队出现。据说史莱姆可以通过分裂来繁殖，这使得它们成为魔法塔中最常见的敌人。"
   },
   BAT: { 
@@ -30,6 +31,7 @@ export const MONSTER_STATS = {
     size: 28,
     base_as: 1.5,
     traits: ['ECHOLOCATION'],
+    tags: ['BEAST', 'FLYING'],
     lore: "蝙蝠是魔法塔中层的常见敌人。它们拥有敏锐的听觉和魔法感知能力，能够发出具有魔法属性的尖啸。蝙蝠通常在黑暗中活动，它们的魔法攻击往往令人措手不及。许多冒险者在面对蝙蝠群时都吃过亏。"
   },
   SKELETON: { 
@@ -45,6 +47,7 @@ export const MONSTER_STATS = {
     size: 40,
     base_as: 0.8,
     traits: ['BONE_SHIELD'],
+    tags: ['UNDEAD', 'HUMANOID'],
     lore: "骷髅战士是被诅咒的亡灵，曾经是魔法塔的守卫者。它们拥有坚硬的骨骼和丰富的战斗经验，能够使用各种武器。骷髅战士对物理伤害有一定的抵抗力，但对魔法伤害相对脆弱。传说中，只有摧毁它们的灵魂才能彻底消灭它们。"
   },
   VOID: { 
@@ -60,6 +63,7 @@ export const MONSTER_STATS = {
     size: 40,
     base_as: 1.0,
     traits: ['OVERLOAD'],
+    tags: ['ELEMENTAL', 'CONSTRUCT'],
     lore: "虚空晶体是魔法塔中层出现的神秘物体。它们由纯粹的魔法能量凝聚而成，散发着诡异的紫色光芒。虚空晶体拥有强大的魔法攻击力，但防御力较弱。据说它们是魔法塔深层某种强大存在的碎片。"
   },
   SWAMP: { 
@@ -75,6 +79,7 @@ export const MONSTER_STATS = {
     size: 50,
     base_as: 0.6,
     traits: ['TOXIC_SKIN'],
+    tags: ['HUMANOID', 'NATURE'],
     lore: "沼泽居民是魔法塔中层沼泽区域的主要敌人。它们由泥土和腐烂物质组成，拥有强大的物理攻击力和一定的防御能力。沼泽居民行动缓慢但力量惊人，能够造成大量伤害。它们似乎与魔法塔的沼泽地形有某种神秘的联系。"
   },
   CLOCKWORK: { 
@@ -90,6 +95,7 @@ export const MONSTER_STATS = {
     size: 56,
     base_as: 0.5,
     traits: ['PLATING'],
+    tags: ['CONSTRUCT'],
     lore: "发条骑士是魔法塔中层的精英敌人。它们是由古代魔法师创造的自动装置，拥有坚硬的金属外壳和精密的机械结构。发条骑士拥有高超的战斗技巧和强大的防御能力，但行动相对缓慢。传说中，每个发条骑士的核心都藏着一个强大的魔法源。"
   },
   REAPER: { 
@@ -105,6 +111,7 @@ export const MONSTER_STATS = {
     size: 35,
     base_as: 1.3,
     traits: ['EXECUTION'],
+    tags: ['UNDEAD', 'DEMON'],
     lore: "死神收割者是魔法塔中层出现的危险敌人。它们是由诅咒和魔法能量凝聚而成的生命体，挥舞着致命的魔法镰刀。死神收割者拥有极高的魔法攻击力和惊人的速度，但防御力较弱。许多冒险者在面对它们时都因为躲避不及而丧生。"
   },
   GOLEM: { 
@@ -120,6 +127,7 @@ export const MONSTER_STATS = {
     size: 56,
     base_as: 0.5,
     traits: ['MOLTEN_CORE'],
+    tags: ['CONSTRUCT', 'ELEMENTAL'],
     lore: "岩浆巨人是魔法塔深层的终极敌人之一。它们由熔融的岩浆和魔法能量组成，拥有巨大的体型和压倒性的力量。岩浆巨人拥有极高的物理攻击力和防御能力，能够造成毁灭性的伤害。据说击败岩浆巨人是成为真正冒险者的标志。"
   },
   GHOST: {
@@ -135,6 +143,7 @@ export const MONSTER_STATS = {
     size: 40,
     base_as: 1.2,
     traits: ['ETHEREAL'],
+    tags: ['UNDEAD', 'SPIRIT', 'FLYING'],
     lore: "幽灵是魔法塔中最神秘的敌人之一。它们可以隐藏在阴影中，只有在光照范围内才能被看见。幽灵拥有强大的魔法攻击能力，但防御力较弱。小心它们的偷袭！"
   },
   BOSS: { 
@@ -149,6 +158,7 @@ export const MONSTER_STATS = {
     speed: 0.16,
     size: 56,
     base_as: 1.0,
+    tags: ['DEMON', 'BOSS'],
     lore: "黑暗领主是魔法塔的最终守护者,也是整个塔的核心。它是一个拥有强大魔法力量和战斗技巧的古老存在。黑暗领主同时拥有强大的物理和魔法攻击能力，以及均衡的防御。传说中，黑暗领主曾经是魔法塔的创造者，但被诅咒后堕落成了现在的模样。击败它是所有冒险者的终极目标。"
   }
 };

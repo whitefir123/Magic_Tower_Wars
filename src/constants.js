@@ -34,6 +34,20 @@ export * from './data/sets.js';
 // 怪物数据
 export * from './data/monsters.js';
 
+// 怪物标签系统
+export const MONSTER_TAGS = {
+  UNDEAD: { name: '亡灵', color: '#a0a0a0' },      // 深灰
+  CONSTRUCT: { name: '构装', color: '#b08d55' },   // 铜色
+  BEAST: { name: '野兽', color: '#8b4513' },       // 棕色
+  HUMANOID: { name: '人形', color: '#e0c0a0' },    // 肤色
+  ELEMENTAL: { name: '元素', color: '#4da6ff' },   // 亮蓝
+  DEMON: { name: '恶魔', color: '#ff3333' },       // 红色
+  FLYING: { name: '飞行', color: '#87ceeb' },      // 天蓝
+  BOSS: { name: '首领', color: '#ffd700' },        // 金色
+  NATURE: { name: '自然', color: '#4caf50' },      // 绿色
+  SPIRIT: { name: '灵体', color: '#e6e6fa' }       // 淡紫
+};
+
 // 系统对象配置 (Buffs, Objects, Shop etc.)
 export * from './data/system.js';
 

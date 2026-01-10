@@ -1,7 +1,7 @@
 // BestiaryUI.js - 怪物图鉴 UI
 // 独立管理图鉴UI的所有渲染和交互逻辑
 
-import { MONSTER_STATS, MONSTER_TRAITS } from '../constants.js';
+import { MONSTER_STATS, MONSTER_TRAITS, MONSTER_TAGS } from '../constants.js';
 
 /**
  * BestiaryUI - 怪物图鉴界面管理器
@@ -48,6 +48,7 @@ export class BestiaryUI {
       listContainer: null,
       detailsPanel: null,
       statsGrid: null,
+      tagsContainer: null,
       infoSection: null,
       traitsSection: null,
       loreSection: null
@@ -128,6 +129,11 @@ export class BestiaryUI {
               <span class="stat-grid-label">怒气</span>
               <span class="stat-grid-value" id="bestiary-rage">-</span>
             </div>
+          </div>
+
+          <!-- Monster Tags -->
+          <div class="bestiary-tags-container" id="bestiary-tags-container">
+            <!-- Tags will be rendered here -->
           </div>
 
           <!-- Monster Info -->
@@ -229,6 +235,7 @@ export class BestiaryUI {
 
     this.elements.loreSection = document.getElementById('bestiary-lore');
     this.elements.traitsSection = document.getElementById('bestiary-traits-section');
+    this.elements.tagsContainer = document.getElementById('bestiary-tags-container');
   }
 
   /**
@@ -477,6 +484,7 @@ export class BestiaryUI {
 
     // 渲染各个部分
     this.renderStatsGrid(stats);
+    this.renderTags(stats);
     this.renderInfoSection(stats);
     this.renderTraits(stats);
     this.renderLore(stats);
@@ -499,6 +507,43 @@ export class BestiaryUI {
     if (elements.xp) elements.xp.textContent = stats.xp || '-';
     if (elements.gold) elements.gold.textContent = stats.gold || '-';
     if (elements.rage) elements.rage.textContent = stats.rageYield || '-';
+  }
+
+  /**
+   * 渲染怪物标签
+   * @param {object} stats - 怪物属性对象
+   */
+  renderTags(stats) {
+    const tagsContainer = this.elements.tagsContainer;
+    if (!tagsContainer) return;
+
+    // 清空现有内容
+    tagsContainer.innerHTML = '';
+
+    // 获取怪物的标签列表
+    const tags = stats.tags || [];
+    
+    if (tags.length === 0) {
+      // 如果没有标签，不显示容器
+      return;
+    }
+
+    // 遍历标签并渲染
+    tags.forEach((tagKey) => {
+      const tagDef = MONSTER_TAGS[tagKey];
+      if (!tagDef) return;
+
+      // 创建标签元素
+      const tagElement = document.createElement('span');
+      tagElement.className = 'monster-tag';
+      tagElement.textContent = tagDef.name;
+      
+      // 设置背景颜色和文字颜色
+      tagElement.style.backgroundColor = tagDef.color;
+      tagElement.style.color = '#ffffff'; // 统一使用白色文字
+      
+      tagsContainer.appendChild(tagElement);
+    });
   }
 
   /**
