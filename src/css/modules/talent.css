@@ -302,3 +302,41 @@
   }
 }
 
+/* ========================================================================
+   天赋树解锁动画样式 (Talent Unlock Animation Styles)
+   ======================================================================== */
+
+/* 传导光点样式 - 用于节点之间的能量传导效果 */
+.talent-spark {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700, 0 0 30px #ffd700;
+  z-index: 15; /* 位于节点之上 */
+  pointer-events: none;
+  transition: transform 0.4s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+}
+
+/* 节点爆发动画关键帧 */
+@keyframes nodeUnlockPulse {
+  0% {
+    transform: scale(1.0);
+    filter: brightness(1.0) drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
+  }
+  50% {
+    transform: scale(1.5);
+    filter: brightness(2.0) drop-shadow(0 0 20px rgba(255, 215, 0, 1)) drop-shadow(0 0 30px rgba(255, 215, 0, 0.8));
+  }
+  100% {
+    transform: scale(1.0);
+    filter: brightness(1.0) drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
+  }
+}
+
+/* 节点解锁动画类 - 应用爆发动画效果 */
+.talent-node-unlocking {
+  animation: nodeUnlockPulse 0.5s ease-out;
+  z-index: 20; /* 动画期间节点处于最上层 */
+}

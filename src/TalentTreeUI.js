@@ -621,9 +621,9 @@ export class TalentTreeUI {
     }
     
     /**
-     * 解锁节点
+     * 解锁节点 - 带动态动画效果
      */
-    unlockNode(nodeId) {
+    async unlockNode(nodeId) {
         const node = TALENT_TREE_DATA[nodeId];
         if (!node) return;
         
@@ -635,24 +635,155 @@ export class TalentTreeUI {
         if (!isNodeReachable(nodeId, unlockedIds)) return;
         if (saveData.soulCrystals < node.cost) return;
         
-        // 扣除水晶
+        // 立即扣除水晶，防止连点
         saveData.soulCrystals -= node.cost;
+        // 更新水晶显示
+        const currentSC = saveData.soulCrystals;
+        this.scDisplay.innerHTML = `
+            <img src="https://i.postimg.cc/CKS2nRQG/linghunjiejing1.png" 
+                 alt="灵魂结晶" 
+                 style="width: 28px; height: 28px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));" />
+            <span>${currentSC} 灵魂水晶</span>
+        `;
         
-        // 解锁节点
-        unlockedIds.push(nodeId);
+        // 寻找所有指向目标节点的已解锁源节点
+        const sourceNodeIds = this.connections
+            .filter(conn => conn.to === nodeId && unlockedIds.includes(conn.from))
+            .map(conn => conn.from);
+        
+        // 执行动画序列
+        await this.animateUnlockFlow(nodeId, sourceNodeIds, node);
+    }
+    
+    /**
+     * 执行解锁动画流程
+     * @param {string} targetNodeId - 目标节点ID
+     * @param {Array<string>} sourceNodeIds - 源节点ID数组（已解锁且连接到目标节点）
+     * @param {Object} targetNode - 目标节点数据对象
+     */
+    async animateUnlockFlow(targetNodeId, sourceNodeIds, targetNode) {
+        // 如果没有源节点（例如根节点），直接跳过光点飞行，触发爆发
+        if (sourceNodeIds.length === 0) {
+            // 直接更新数据并触发爆发动画
+            await this.finalizeUnlock(targetNodeId, targetNode);
+            return;
+        }
+        
+        // 阶段一：光点飞行
+        const sparks = [];
+        const sparkSize = 12;
+        
+        // 获取目标节点坐标
+        const targetX = targetNode.x;
+        const targetY = targetNode.y;
+        
+        // 为每个源节点创建光点
+        sourceNodeIds.forEach(sourceNodeId => {
+            const sourceNode = TALENT_TREE_DATA[sourceNodeId];
+            if (!sourceNode) return;
+            
+            // 创建光点元素
+            const spark = document.createElement('div');
+            spark.className = 'talent-spark';
+            
+            // 设置初始位置（源节点位置，注意节点坐标是中心点）
+            const sourceX = sourceNode.x;
+            const sourceY = sourceNode.y;
+            spark.style.left = `${sourceX - sparkSize / 2}px`;
+            spark.style.top = `${sourceY - sparkSize / 2}px`;
+            
+            // 初始化 transform 为空（或 translate(0, 0)），确保 transition 生效
+            spark.style.transform = 'translate(0, 0)';
+            
+            // 添加到节点容器
+            this.nodeContainer.appendChild(spark);
+            sparks.push(spark);
+            
+            // 强制重排以确保初始位置生效
+            spark.offsetHeight;
+            
+            // 设置目标位置（目标节点位置），触发 transition 动画
+            const deltaX = targetX - sourceX;
+            const deltaY = targetY - sourceY;
+            spark.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+        });
+        
+        // 等待光点飞行完成（400ms，与CSS transition一致）
+        await new Promise(resolve => setTimeout(resolve, 400));
+        
+        // 移除所有光点
+        sparks.forEach(spark => {
+            if (spark.parentNode) {
+                spark.parentNode.removeChild(spark);
+            }
+        });
+        
+        // 阶段二：节点爆发与数据更新
+        await this.finalizeUnlock(targetNodeId, targetNode);
+    }
+    
+    /**
+     * 完成解锁流程：更新数据、刷新UI、触发爆发动画、显示通知
+     * @param {string} targetNodeId - 目标节点ID
+     * @param {Object} targetNode - 目标节点数据对象
+     */
+    async finalizeUnlock(targetNodeId, targetNode) {
+        // 更新元数据
+        const saveData = this.game.metaSaveSystem.data;
+        const unlockedIds = saveData.unlockedTalentIds || ['root'];
+        unlockedIds.push(targetNodeId);
         saveData.unlockedTalentIds = unlockedIds;
         
         // 保存
         this.game.metaSaveSystem.save();
         
-        // 播放音效（如果有）
-        // this.game.playSound('talent_unlock');
-        
-        // 刷新UI
+        // 刷新UI（重绘连线和节点状态）
         this.refresh();
         
-        // 显示通知
-        this.showUnlockNotification(node);
+        // 等待DOM更新完成
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        
+        // 找到目标节点的DOM元素并添加爆发动画
+        const targetNodeEl = this.nodeElements.get(targetNodeId);
+        if (targetNodeEl) {
+            // 节点爆发阶段：播放音效
+            if (this.game && this.game.audio) {
+                if (this.game.audio.playMetalClick) {
+                    // 使用金属点击音效，音量稍高以配合爆发效果
+                    this.game.audio.playMetalClick();
+                } else if (this.game.audio.play) {
+                    // 备用方案：直接调用 play 方法
+                    this.game.audio.play('metalPot', { 
+                        volume: 0.4,
+                        waitForLoad: false 
+                    });
+                }
+            }
+            
+            targetNodeEl.classList.add('talent-node-unlocking');
+            
+            // 监听动画结束事件（兼容不同浏览器）
+            const handleAnimationEnd = (e) => {
+                // 确保是目标元素的动画
+                if (e.target === targetNodeEl) {
+                    targetNodeEl.classList.remove('talent-node-unlocking');
+                    targetNodeEl.removeEventListener('animationend', handleAnimationEnd);
+                    targetNodeEl.removeEventListener('webkitAnimationEnd', handleAnimationEnd);
+                }
+            };
+            targetNodeEl.addEventListener('animationend', handleAnimationEnd);
+            targetNodeEl.addEventListener('webkitAnimationEnd', handleAnimationEnd);
+            
+            // 设置超时保险（500ms，与动画时长一致）
+            setTimeout(() => {
+                targetNodeEl.classList.remove('talent-node-unlocking');
+                targetNodeEl.removeEventListener('animationend', handleAnimationEnd);
+                targetNodeEl.removeEventListener('webkitAnimationEnd', handleAnimationEnd);
+            }, 500);
+        }
+        
+        // 显示解锁通知
+        this.showUnlockNotification(targetNode);
     }
     
     /**
