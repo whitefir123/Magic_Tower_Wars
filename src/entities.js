@@ -2222,6 +2222,8 @@ export class Player extends Entity {
       // ✅ FIX: 移除立即设置CD的代码，改为在造成伤害后设置
       if (window.game && window.game.ui) {
         window.game.ui.logMessage('斩击准备就绪！下次攻击造成150%伤害。', 'ultimate');
+        // [新增] 强制刷新 UI 以显示高亮框
+        window.game.ui.updateStats(this);
       }
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
         const readyText = window.game.floatingTextPool.create(this.visualX, this.visualY - 30, '已准备!', '#ffff00');
@@ -2234,6 +2236,8 @@ export class Player extends Entity {
       // ✅ FIX: 移除立即设置CD的代码，改为在造成伤害后设置
       if (window.game && window.game.ui) {
         window.game.ui.logMessage('灼烧准备就绪！下次攻击附加火元素和灼烧状态。', 'ultimate');
+        // [新增] 强制刷新 UI 以显示高亮框
+        window.game.ui.updateStats(this);
       }
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
         const scorchText = window.game.floatingTextPool.create(this.visualX, this.visualY - 30, '火球术!', '#ff6b6b');
@@ -2256,6 +2260,8 @@ export class Player extends Entity {
       // ✅ FIX: 移除立即设置CD的代码，改为在造成伤害后设置
       if (window.game && window.game.ui) {
         window.game.ui.logMessage('冰封陵墓准备就绪！下次攻击附加冰元素和冰封状态。', 'ultimate');
+        // [新增] 强制刷新 UI 以显示高亮框
+        window.game.ui.updateStats(this);
       }
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
         const freezeText = window.game.floatingTextPool.create(this.visualX, this.visualY - 30, '冰墓术!', '#00bfff');

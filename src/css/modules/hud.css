@@ -504,7 +504,7 @@
   flex-shrink: 0;
   visibility: visible;
   opacity: 1;
-  overflow: hidden; /* ✅ 遮罩超出部分隐藏 */
+  overflow: visible; /* ✅ 修改：允许发光效果显示，防止被裁剪 */
   /* ✅ 关键：强制开启交互，防止 CSS 层级遮挡 */
   pointer-events: auto !important;
   user-select: none; /* 防止文本选择 */
@@ -574,10 +574,11 @@
 /* 重点：针对图标本身添加金色电流/脉冲效果 */
 .skill-slot.skill-active .skill-icon {
   border: 1px solid #ffd700 !important;
-  /* 移除这里的 !important 以允许动画覆盖 */
+  /* 移除 !important 以启用动画 */
   box-shadow: 0 0 8px #ffd700, inset 0 0 10px rgba(255, 215, 0, 0.8);
   animation: skill-icon-pulse 0.8s ease-in-out infinite alternate;
-  z-index: 2; /* 确保图标在冷却遮罩之上 */
+  z-index: 10; /* 提高层级，确保在遮罩和文字之上 */
+  position: relative; /* 确保 z-index 生效 */
 }
 
 @keyframes skill-icon-pulse {
