@@ -6,8 +6,8 @@
   --accent-gold: #ffd700;
   --text-main: #e0d6c8;
   --text-dim: #8c8273;
-  --font-header: 'Cinzel', serif;
-  --font-body: 'Spectral', serif;
+  --font-header: 'FusionPixel', monospace;
+  --font-body: 'FusionPixel', monospace;
   --gold-gradient: linear-gradient(135deg, #ffd700, #ffed4e, #ffa500);
   /* 按钮尺寸控制（不扭曲） */
   --btn-w: 320px;       /* 按钮基础宽度，根据素材调整 */

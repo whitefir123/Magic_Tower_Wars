@@ -1,5 +1,14 @@
 /* Base Styles - Reset & Global Utilities */
 
+/* 像素字体定义 */
+@font-face {
+  font-family: 'FusionPixel';
+  src: url('../../assets/fonts/fusion-pixel-12px-proportional.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* 全局 Box Model 重置 */
 * { 
   box-sizing: border-box; 
@@ -23,6 +32,8 @@ body {
   align-items: center;
   overflow: hidden; 
   font-size: 18px;
+  -webkit-font-smoothing: none;
+  image-rendering: pixelated;
 }
 
 /* 通用工具类 */
