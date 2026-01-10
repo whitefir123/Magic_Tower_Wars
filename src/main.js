@@ -26,6 +26,7 @@ import { DailyChallengeSystem } from './systems/DailyChallengeSystem.js';
 import { SettingsUI } from './ui/SettingsUI.js';
 import { FLOOR_ZONES } from './data/config.js';
 import { VisualEffectsSystem } from './systems/VisualEffectsSystem.js';
+import { MenuVisuals } from './ui/MenuVisuals.js';
 
 class Game {
   constructor() {
@@ -153,6 +154,20 @@ class Game {
     
     // 视觉特效系统（粒子 / 掉落飞行 / 屏幕闪烁）
     this.vfx = new VisualEffectsSystem(this);
+    
+    // 主菜单视觉特效系统（粒子、视差、暗角）
+    this.menuVisuals = new MenuVisuals();
+    // 延迟初始化，等待 DOM 就绪
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        this.menuVisuals.init();
+      });
+    } else {
+      // DOM 已经就绪，立即初始化
+      setTimeout(() => {
+        this.menuVisuals.init();
+      }, 100); // 短暂延迟确保所有元素都已创建
+    }
 
     window.game = this; // Expose globally for UI onclick
   }
@@ -3306,7 +3321,7 @@ class Game {
           // 显示主菜单（使用过渡效果）
           // performTransition 会统一处理 display 和 opacity，不需要手动设置
           this.showMainMenu(true); // 仅预备不显示
-          this.showMainMenu(false);
+          this.showMainMenu(false); // 实际显示，会启动菜单视觉特效
           
           // 统一调用 scrollTo 确保视角重置
           window.scrollTo(0, 0);
@@ -3690,6 +3705,11 @@ class Game {
         mainMenu.style.zIndex = '10000';
         mainMenu.style.pointerEvents = 'auto';
         
+        // 启动菜单视觉特效
+        if (this.menuVisuals) {
+          this.menuVisuals.start();
+        }
+        
         // 初始化更新公告按钮
         if (this.ui && this.ui.patchNotesUI) {
           this.ui.patchNotesUI.initButton();
@@ -3703,6 +3723,11 @@ class Game {
   hideMainMenu() {
     const mainMenu = document.getElementById('main-menu');
     if (mainMenu) {
+      // 停止菜单视觉特效
+      if (this.menuVisuals) {
+        this.menuVisuals.stop();
+      }
+      
       // 移除激活状态（该类在 CSS 中强制了 pointer-events: auto !important）
       mainMenu.classList.remove('scene-active');
       // 添加隐藏类
