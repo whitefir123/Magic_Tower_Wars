@@ -487,13 +487,6 @@ export class TooltipManager {
       </div>`;
     }
 
-    // ✅ 英雄联盟风格：操作提示（仅主动技能）
-    if (!isPassive) {
-      content += `<div class="tt-skill-hint" style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed rgba(255, 255, 255, 0.15); font-size: 0.8rem; color: #888; display: flex; align-items: center; gap: 6px;">
-        <span class="tt-mouse-icon">🖱️</span> 点击图标或按键施放
-      </div>`;
-    }
-
     console.log('✅ [TooltipManager] Skill tooltip content generated');
     return content;
   }

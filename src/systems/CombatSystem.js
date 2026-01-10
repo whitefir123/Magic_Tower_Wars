@@ -340,6 +340,11 @@ export class CombatSystem {
           game.killCount = (game.killCount || 0) + 1;
           if (game.achievementSystem) game.achievementSystem.check('onKill');
           
+          // 任务系统：检查击杀事件
+          if (game.questSystem) {
+            game.questSystem.check('onKill', { monsterType: enemy.type });
+          }
+          
           // 掉落物品（30%概率）
           if (Math.random() < 0.3) {
             // ✅ FIX: 应用每日挑战词缀 - LUCKY（幸运）词缀的魔法发现加成
@@ -465,6 +470,11 @@ export class CombatSystem {
                 
                 game.killCount = (game.killCount || 0) + 1;
                 if (game.achievementSystem) game.achievementSystem.check('onKill');
+                
+                // 任务系统：检查击杀事件
+                if (game.questSystem) {
+                  game.questSystem.check('onKill', { monsterType: entity.type });
+                }
                 
                 // ✅ FIX: 触发 onKill 遗物效果（如吸血鬼之牙）
                 if (game.combatSystem) {
@@ -609,6 +619,11 @@ export class CombatSystem {
               game.killCount = (game.killCount || 0) + 1;
               if (game.achievementSystem) game.achievementSystem.check('onKill');
               
+              // 任务系统：检查击杀事件
+              if (game.questSystem) {
+                game.questSystem.check('onKill', { monsterType: nearestEnemy.type });
+              }
+              
               // 掉落物品（技能击杀）
               if (Math.random() < 0.3) {
                 // ✅ FIX: 应用每日挑战词缀 - LUCKY（幸运）词缀的魔法发现加成
@@ -680,6 +695,11 @@ export class CombatSystem {
               
               game.killCount = (game.killCount || 0) + 1;
               if (game.achievementSystem) game.achievementSystem.check('onKill');
+              
+              // 任务系统：检查击杀事件
+              if (game.questSystem) {
+                game.questSystem.check('onKill', { monsterType: entity.type });
+              }
               
               // ✅ FIX: 触发 onKill 遗物效果（如吸血鬼之牙）
               if (game.combatSystem) {
@@ -2186,6 +2206,12 @@ export class CombatSystem {
         
         game.killCount = (game.killCount || 0) + 1;
         if (game.achievementSystem) game.achievementSystem.check('onKill');
+        
+        // 任务系统：检查击杀事件
+        if (game.questSystem) {
+          game.questSystem.check('onKill', { monsterType: monster.type });
+        }
+        
         if (game.roguelike && game.roguelike.triggerDraft) {
           game.roguelike.triggerDraft('NORMAL', monster, 'MONSTER_KILL');
         }

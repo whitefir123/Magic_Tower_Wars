@@ -147,6 +147,8 @@ export class SaveSystem {
         },
         // 噩梦层级（1-25）
         ascensionLevel: game.selectedAscensionLevel ?? 1,
+        // ✅ 任务系统：保存任务数据
+        questData: game.questSystem ? game.questSystem.getQuestData() : null,
         // 时间戳
         timestamp: Date.now(),
       };
@@ -612,6 +614,16 @@ export class SaveSystem {
       const savedAscensionLevel = parseAscensionLevel(saveData.ascensionLevel);
       game.selectedAscensionLevel = savedAscensionLevel;
       console.log(`[SaveSystem] Restored ascensionLevel: ${savedAscensionLevel}`);
+      
+      // ✅ 任务系统：恢复任务数据
+      if (saveData.questData && game.questSystem) {
+        game.questSystem.loadQuestData(saveData.questData);
+        console.log('[SaveSystem] Quest data restored');
+      } else if (game.questSystem) {
+        // 如果没有任务数据，初始化任务系统（新存档兼容）
+        game.questSystem.init();
+        console.log('[SaveSystem] Quest system initialized (no saved data)');
+      }
       
       game.map.generateLevel(currentFloor, game.selectedAscensionLevel);
 

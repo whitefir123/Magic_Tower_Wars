@@ -19,6 +19,8 @@ import { supabaseService } from './services/SupabaseService.js';
 import { LeaderboardUI } from './ui/LeaderboardUI.js';
 import { AchievementSystem } from './systems/AchievementSystem.js';
 import { AchievementUI } from './ui/AchievementUI.js';
+import { QuestSystem } from './systems/QuestSystem.js';
+import { QuestUI } from './ui/QuestUI.js';
 import { getDevModeManager } from './utils/DevModeManager.js';
 import { lootGenerator } from './systems/LootGenerationSystem.js';
 import { SeededRandom } from './utils/SeededRandom.js';
@@ -70,6 +72,14 @@ class Game {
     this.achievementUI = new AchievementUI(this);
     this.achievementSystem.setUI(this.achievementUI);
     console.log('[Game] 成就系统已初始化');
+    
+    // 初始化任务系统
+    this.questSystem = new QuestSystem(this);
+    this.questUI = new QuestUI(this);
+    if (this.ui) {
+      this.ui.setQuestUI(this.questUI);
+    }
+    console.log('[Game] 任务系统已初始化');
     
     // 初始化音效管理器
     this.audio = AudioManager.getInstance();
@@ -1354,6 +1364,11 @@ class Game {
             this.ui.logMessage(`发现了 ${itemName}！`, 'gain');
           }
           if (this.audio) this.audio.playCloth();
+          
+          // 任务系统：检查物品拾取事件
+          if (this.questSystem) {
+            this.questSystem.check('onLoot', { itemId: it.itemId, itemType: it.type });
+          }
         } else {
           this.ui.logMessage('背包已满！', 'info');
         }
@@ -1937,6 +1952,11 @@ class Game {
           const def = EQUIPMENT_DB[potionType];
           const itemName = def ? (def.nameZh || def.name) : '药水';
           this.ui.logMessage(`发现了 ${itemName}！`, 'gain');
+          
+          // 任务系统：检查物品拾取事件
+          if (this.questSystem) {
+            this.questSystem.check('onLoot', { itemId: potionType, itemType: 'POTION' });
+          }
           
           if (this.settings && this.settings.showDamageNumbers !== false) {
             const floatingText = this.floatingTextPool.create(x * TILE_SIZE, y * TILE_SIZE - 10, itemName, '#00ff88');
@@ -3171,6 +3191,11 @@ class Game {
         if (consumable) {
           const added = this.player.addToInventory(consumable.id);
           if (added) {
+            // 任务系统：检查物品拾取事件
+            if (this.questSystem) {
+              this.questSystem.check('onLoot', { itemId: consumable.id, itemType: 'POTION' });
+            }
+            
             const rarity = RARITY[consumable.rarity] || RARITY.COMMON;
             this.ui.logMessage(`宝箱打开！获得 ${consumable.nameZh || consumable.name} [${rarity.name}]`, 'gain');
             
@@ -4088,6 +4113,68 @@ class Game {
     } else {
       console.warn('Backpack icon not found!');
     }
+    
+    // 设置任务图标（在背包图标下方）
+    this.setupQuestIcon();
+  }
+
+  setupQuestIcon() {
+    const gameIconsContainer = document.getElementById('game-icons-container');
+    if (!gameIconsContainer) {
+      console.warn('Game icons container not found!');
+      return;
+    }
+
+    // 检查任务图标是否已存在
+    let questIcon = document.getElementById('quest-icon');
+    if (!questIcon) {
+      // 创建任务图标
+      questIcon = document.createElement('img');
+      questIcon.id = 'quest-icon';
+      questIcon.src = 'https://i.postimg.cc/RhBDz0W5/renwutubiao1.png';
+      questIcon.alt = '任务';
+      questIcon.className = 'quest-icon';
+      questIcon.style.cssText = `
+        width: 48px;
+        height: 48px;
+        cursor: pointer;
+        margin-top: 10px;
+        display: block;
+        image-rendering: pixelated;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: crisp-edges;
+      `;
+      
+      // 添加到容器（在背包图标下方）
+      gameIconsContainer.appendChild(questIcon);
+    }
+
+    // 移除可能存在的旧监听器
+    const newQuestIcon = questIcon.cloneNode(true);
+    questIcon.parentNode.replaceChild(newQuestIcon, questIcon);
+    
+    // 添加悬停效果
+    newQuestIcon.addEventListener('mouseenter', () => {
+      newQuestIcon.style.opacity = '0.8';
+      newQuestIcon.style.transform = 'scale(1.1)';
+    });
+    
+    newQuestIcon.addEventListener('mouseleave', () => {
+      newQuestIcon.style.opacity = '1';
+      newQuestIcon.style.transform = 'scale(1)';
+    });
+    
+    // 添加点击监听器
+    newQuestIcon.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('📋 Quest icon clicked!');
+      if (this.ui && this.ui.toggleQuestLog) {
+        this.ui.toggleQuestLog();
+      }
+    });
+    
+    console.log('✓ Quest icon event listeners attached');
   }
 
   /**
@@ -4349,6 +4436,11 @@ class Game {
         // 成就系统：重置会话数据
         if (this.achievementSystem) {
           this.achievementSystem.onGameStart();
+        }
+        
+        // 任务系统：初始化任务（新游戏时）
+        if (this.questSystem) {
+          this.questSystem.init();
         }
         
         // FIX: 调用 nextLevel 生成第 1 层（nextLevel 会将 floor 从 0 变为 1）

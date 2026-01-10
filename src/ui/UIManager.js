@@ -10,6 +10,7 @@ import { BestiaryUI } from './BestiaryUI.js';
 import { ShopUI } from './ShopUI.js';
 import { GamblerUI } from './GamblerUI.js';
 import { PatchNotesUI } from './PatchNotesUI.js';
+import { QuestUI } from './QuestUI.js';
 import { globalTooltipManager } from '../utils/TooltipManager.js';
 import { DailyChallengeSystem } from '../systems/DailyChallengeSystem.js';
 import { supabaseService } from '../services/SupabaseService.js';
@@ -94,6 +95,9 @@ export class UIManager {
     });
     
     this.patchNotesUI = new PatchNotesUI();
+    
+    // 注意：QuestUI 需要 game 实例，将在 main.js 中设置
+    this.questUI = null;
     
     // 注册弹窗到 OverlayManager
     this.overlayManager.register('inventory', this.inventoryUI);
@@ -1087,6 +1091,42 @@ export class UIManager {
       emptySlot.className = 'relic-slot empty';
       relicBar.appendChild(emptySlot);
     }
+  }
+
+  // ========================================================================
+  // 公共接口：任务系统
+  // ========================================================================
+
+  /**
+   * 设置任务UI实例（由main.js调用）
+   * @param {QuestUI} questUI - 任务UI实例
+   */
+  setQuestUI(questUI) {
+    this.questUI = questUI;
+    if (questUI) {
+      this.overlayManager.register('quest', questUI);
+    }
+  }
+
+  /**
+   * 打开任务日志
+   */
+  openQuestLog() {
+    this.overlayManager.open('quest');
+  }
+
+  /**
+   * 关闭任务日志
+   */
+  closeQuestLog() {
+    this.overlayManager.close('quest');
+  }
+
+  /**
+   * 切换任务日志
+   */
+  toggleQuestLog() {
+    this.overlayManager.toggle('quest');
   }
 
   // ========================================================================
