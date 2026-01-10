@@ -1,6 +1,8 @@
 // SettingsUI.js - 设置界面
 // 独立管理设置UI的所有渲染和交互逻辑
 
+import { CURRENT_VERSION } from '../data/changelog.js';
+
 /**
  * SettingsUI - 设置界面管理器
  * 负责渲染设置界面、处理设置项交互等
@@ -227,7 +229,7 @@ export class SettingsUI {
               </div>
               <div class="about-item">
                 <span class="about-label">版本:</span>
-                <span class="about-value">1.0.0</span>
+                <span class="about-value">${CURRENT_VERSION}</span>
               </div>
               <div class="about-item">
                 <span class="about-label">开发者:</span>
@@ -314,6 +316,35 @@ export class SettingsUI {
   }
 
   /**
+   * 更新版本号显示
+   * 确保版本号始终与 changelog.js 中的 CURRENT_VERSION 保持同步
+   */
+  updateVersion() {
+    if (!this.elements.overlay) return;
+
+    // 查找所有的 .about-item 元素
+    const aboutItems = this.elements.overlay.querySelectorAll('.about-item');
+    
+    for (const item of aboutItems) {
+      // 查找该 item 内的 .about-label 元素
+      const label = item.querySelector('.about-label');
+      if (!label) continue;
+
+      // 检查标签文本是否包含 "版本" 或 "Version"
+      const labelText = label.textContent || label.innerText || '';
+      if (labelText.includes('版本') || labelText.includes('Version')) {
+        // 找到对应的 .about-value 元素并更新版本号
+        const valueElement = item.querySelector('.about-value');
+        if (valueElement) {
+          valueElement.textContent = CURRENT_VERSION;
+          console.log(`✓ 版本号已更新为: ${CURRENT_VERSION}`);
+          break; // 找到后退出循环
+        }
+      }
+    }
+  }
+
+  /**
    * 打开设置界面
    */
   open() {
@@ -330,6 +361,9 @@ export class SettingsUI {
     if (this.game && this.game.loadSettingsUI) {
       this.game.loadSettingsUI();
     }
+
+    // 更新版本号显示（确保始终是最新版本）
+    this.updateVersion();
 
     // 显示 overlay
     this.elements.overlay.classList.remove('hidden');
