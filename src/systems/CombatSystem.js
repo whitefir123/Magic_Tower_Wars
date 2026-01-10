@@ -1885,7 +1885,7 @@ export class CombatSystem {
         const skillName = player.skills?.ACTIVE?.name || activeSkillId;
         if (isCrit) {
           damageText = `${skillName}暴击！-${dmgToMon}`;
-          damageColor = '#ff00ff';
+          damageColor = '#FF2424'; // 红色
         } else {
           damageText = `${skillName}！-${dmgToMon}`;
           damageColor = '#ff6b6b';
