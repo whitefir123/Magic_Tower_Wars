@@ -2204,6 +2204,12 @@ export class Player extends Entity {
       return false;
     }
     
+    // ✅ FIX: 防止重复按键重置状态 - 如果技能已就绪但未打出，不允许再次按键
+    if (this.states && (this.states.slashPrimed || this.states.scorchPrimed)) {
+      // 技能已就绪，等待玩家攻击，不允许重复按键
+      return false;
+    }
+    
     // ✅ FIX: 清除之前的技能预备状态，确保同一时间只有一个技能生效
     this.clearPrimedStates();
     

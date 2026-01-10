@@ -79,6 +79,11 @@ export class TooltipManager {
       return '';
     }
     
+    // 如果是技能对象，使用专用生成器
+    if (itemOrId && itemOrId.type === 'SKILL') {
+      return this.generateSkillTooltip(itemOrId);
+    }
+    
     // ✅ FIX: 支持物品对象和字符串ID
     let item = null;
     let itemId = null;
@@ -428,6 +433,68 @@ export class TooltipManager {
       }
     }
 
+    return content;
+  }
+
+  /**
+   * 生成技能的 tooltip 内容（HTML）
+   * 优化为英雄联盟风格：标题高亮、消耗/冷却分行显示、描述清晰
+   * @param {Object} skillInfo - 技能信息对象 { type: 'SKILL', category: 'ACTIVE'|'PASSIVE'|'ULT', data: {...} }
+   * @returns {string} HTML 内容
+   */
+  generateSkillTooltip(skillInfo) {
+    const { data, category } = skillInfo;
+    if (!data) {
+      console.warn('⚠️ [TooltipManager] generateSkillTooltip: data is null', skillInfo);
+      return '';
+    }
+    
+    console.log('🎨 [TooltipManager] Generating skill tooltip for', { category, data });
+    
+    const isPassive = category === 'PASSIVE';
+    const isUlt = category === 'ULT';
+    
+    // ✅ 英雄联盟风格：标题高亮显示
+    let content = `<div class="tt-skill-header">
+      <span class="tt-skill-name">${data.name || '未知技能'}</span>
+      ${data.key ? `<span class="tt-skill-key">[${data.key === 'SPACE' ? '空格' : data.key}]</span>` : ''}
+    </div>`;
+
+    // ✅ 英雄联盟风格：技能类型和冷却时间分行显示
+    const typeName = isUlt ? '终极技能' : (isPassive ? '被动技能' : '主动技能');
+    const typeColor = isUlt ? '#ff6b9d' : (isPassive ? '#88ccff' : '#4a9eff');
+    
+    content += `<div class="tt-skill-type-row" style="color: ${typeColor}; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;">
+      ${typeName}
+    </div>`;
+
+    // ✅ 英雄联盟风格：冷却时间单独一行，使用醒目的颜色
+    if (!isPassive && data.cd) {
+      const cdSeconds = (data.cd / 1000).toFixed(1);
+      content += `<div class="tt-skill-cd-row" style="color: #ffaa88; font-size: 0.85rem; margin-bottom: 10px;">
+        <span style="color: #aaa;">冷却时间：</span><span style="font-weight: 600;">${cdSeconds} 秒</span>
+      </div>`;
+    }
+
+    // ✅ 英雄联盟风格：技能描述清晰，使用合适的行高和颜色
+    if (data.desc) {
+      content += `<div class="tt-skill-desc" style="color: #e0e0e0; font-size: 0.9rem; line-height: 1.6; margin-bottom: 8px;">
+        ${data.desc}
+      </div>`;
+    } else {
+      content += `<div class="tt-skill-desc" style="color: #888; font-size: 0.85rem; font-style: italic; margin-bottom: 8px;">
+        暂无描述
+      </div>`;
+    }
+
+    // ✅ 英雄联盟风格：操作提示（仅主动技能）
+    if (!isPassive) {
+      content += `<div class="tt-skill-hint" style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed rgba(255, 255, 255, 0.15); font-size: 0.8rem; color: #888; display: flex; align-items: center; gap: 6px;">
+        <span class="tt-mouse-icon">🖱️</span> 点击图标或按键施放
+      </div>`;
+    }
+
+    console.log('✅ [TooltipManager] Skill tooltip content generated');
     return content;
   }
 

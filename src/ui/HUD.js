@@ -2,6 +2,7 @@
 // 负责左侧状态栏、血条、技能栏、日志的更新
 
 import { ASSETS } from '../constants.js';
+import { globalTooltipManager } from '../utils/TooltipManager.js';
 
 /**
  * HUD - 抬头显示界面管理器
@@ -174,34 +175,46 @@ export class HUD {
     this.updateTextIfChanged('ui-xp', xpNow);
     this.updateTextIfChanged('ui-xp-max', xpNext);
     
-    // FIX: 技能预备状态高亮显示
-    // 技能槽位索引：0=Slash, 1=Scorch, 2=Freeze
-    const skillSlots = [
-      { id: 'skill-icon-0', state: 'slashPrimed' },
-      { id: 'skill-icon-1', state: 'scorchPrimed' },
-      { id: 'skill-icon-2', state: 'freezePrimed' }
-    ];
+    // ✅ FIX: 技能预备状态高亮显示 - 重写逻辑，修正映射关系
+    // 索引映射：0=Passive, 1=Active (Q技能), 2=Ult (大招)
     
-    skillSlots.forEach(({ id, state }) => {
-      const skillIcon = this.getCachedElement(id);
-      if (skillIcon) {
-        const skillSlot = skillIcon.closest('.skill-slot');
-        const isActive = player.states && player.states[state];
-        
-        // ✅ 性能优化：仅在状态变化时更新类
-        const skillStateKey = `skill-${id}-active`;
-        if (this.stateCache[skillStateKey] !== isActive) {
-          if (isActive) {
-            // 添加高亮类
-            skillSlot?.classList.add('skill-active');
-          } else {
-            // 移除高亮类
-            skillSlot?.classList.remove('skill-active');
-          }
-          this.stateCache[skillStateKey] = isActive;
+    // Q 技能图标 (skill-icon-1) - 对应 Active 技能
+    const activeSkillIcon = this.getCachedElement('skill-icon-1');
+    if (activeSkillIcon) {
+      const activeSkillSlot = activeSkillIcon.closest('.skill-slot');
+      // 检查 slashPrimed (战士) 或 scorchPrimed (法师) 是否为真
+      const isActiveSkillPrimed = !!(player.states && (player.states.slashPrimed || player.states.scorchPrimed));
+      
+      // ✅ 性能优化：仅在状态变化时更新类
+      const activeSkillStateKey = 'skill-icon-1-active';
+      if (this.stateCache[activeSkillStateKey] !== isActiveSkillPrimed) {
+        if (isActiveSkillPrimed) {
+          activeSkillSlot?.classList.add('skill-active');
+        } else {
+          activeSkillSlot?.classList.remove('skill-active');
         }
+        this.stateCache[activeSkillStateKey] = isActiveSkillPrimed;
       }
-    });
+    }
+    
+    // Ult 技能图标 (skill-icon-2) - 对应大招
+    const ultSkillIcon = this.getCachedElement('skill-icon-2');
+    if (ultSkillIcon) {
+      const ultSkillSlot = ultSkillIcon.closest('.skill-slot');
+      // 检查 freezePrimed 是否为真
+      const isUltSkillPrimed = !!(player.states && player.states.freezePrimed);
+      
+      // ✅ 性能优化：仅在状态变化时更新类
+      const ultSkillStateKey = 'skill-icon-2-active';
+      if (this.stateCache[ultSkillStateKey] !== isUltSkillPrimed) {
+        if (isUltSkillPrimed) {
+          ultSkillSlot?.classList.add('skill-active');
+        } else {
+          ultSkillSlot?.classList.remove('skill-active');
+        }
+        this.stateCache[ultSkillStateKey] = isUltSkillPrimed;
+      }
+    }
   }
 
   /**
@@ -329,11 +342,74 @@ export class HUD {
       const slot = document.createElement('div');
       slot.className = 'skill-slot';
       slot.dataset.skillType = skillType;
-      slot.title = skillData.name || skillType;
+      
+      // 绑定高级 Tooltip
+      globalTooltipManager.bind(slot, {
+        type: 'SKILL',
+        category: skillType,
+        data: skillData
+      });
+      
+      // 添加点击交互（被动技能不可点击）
+      if (skillType !== 'PASSIVE') {
+        slot.style.cursor = 'pointer';
+        slot.onclick = (e) => {
+          e.stopPropagation();
+          
+          // 简单的视觉反馈
+          slot.style.transform = 'scale(0.95)';
+          setTimeout(() => {
+            slot.style.transform = '';
+          }, 100);
+          
+          // 调用玩家施法逻辑
+          if (skillType === 'ACTIVE') {
+            // 检查是否被冰冻
+            if (player.hasStatus && player.hasStatus('FROZEN')) {
+              if (window.game && window.game.ui) {
+                window.game.ui.logMessage('冰冻状态下无法使用技能！', 'warning');
+              }
+              return;
+            }
+            
+            // 调用主动技能
+            if (player.castActiveSkill) {
+              player.castActiveSkill();
+            }
+          } else if (skillType === 'ULT') {
+            // 调用终极技能（activateUltimate 内部会检查冰冻状态和怒气）
+            if (window.game && window.game.activateUltimate) {
+              window.game.activateUltimate();
+            } else if (player.castUltimateSkill) {
+              // 如果没有 game.activateUltimate，直接调用 player 方法（需要手动检查）
+              if (player.hasStatus && player.hasStatus('FROZEN')) {
+                if (window.game && window.game.ui) {
+                  window.game.ui.logMessage('冰冻状态下无法使用必杀技！', 'warning');
+                }
+                return;
+              }
+              
+              if (player.stats.rage < 100) {
+                if (window.game && window.game.ui) {
+                  window.game.ui.logMessage('怒气不足！需要100%怒气才能使用终极技能。', 'warning');
+                }
+                return;
+              }
+              
+              player.castUltimateSkill();
+              player.stats.rage = 0;
+              if (window.game && window.game.ui) {
+                window.game.ui.updateStats(player);
+              }
+            }
+          }
+        };
+      }
       
       // Create skill icon
       const icon = document.createElement('div');
       icon.className = 'skill-icon';
+      icon.id = `skill-icon-${index}`; // ✅ 分配 ID (0=Passive, 1=Active, 2=Ult)
       
       // Set background position based on iconIndex (3x3 grid = 300%)
       if (skillData.iconIndex !== undefined) {
@@ -377,6 +453,7 @@ export class HUD {
     console.log('📊 Skill bar element:', skillBar);
     console.log('📊 Skill bar children:', skillBar.children.length);
     console.log('📊 Skill bar computed style:', window.getComputedStyle(skillBar));
+    console.log('✅ Skill bar initialization complete - Tooltip and click interactions ready');
   }
 
   /**

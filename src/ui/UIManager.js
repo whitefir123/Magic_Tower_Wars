@@ -723,21 +723,26 @@ export class UIManager {
    */
   initSkillBar(player) {
     const skillBar = document.getElementById('skill-bar');
-    console.log('🎯 initSkillBar called', { skillBar, player });
+    console.log('🎯 [UIManager] initSkillBar called', { skillBar, player, game: window.game });
     
     if (!skillBar) {
-      console.error('❌ Skill bar element not found');
+      console.error('❌ [UIManager] Skill bar element not found');
       return;
     }
     
-    if (!player || !player.skills) {
-      console.error('❌ Player or skills not initialized', player);
+    if (!player) {
+      console.error('❌ [UIManager] Player object is null');
       return;
     }
     
-    // 清空现有槽位
+    if (!player.skills) {
+      console.error('❌ [UIManager] Player skills not initialized', player);
+      return;
+    }
+    
+    // 清空现有槽位（防止重复绑定）
     skillBar.innerHTML = '';
-    console.log('✅ Skill bar cleared');
+    console.log('✅ [UIManager] Skill bar cleared');
     
     // 创建 3 个技能槽：被动、主动、大招
     const skillTypes = ['PASSIVE', 'ACTIVE', 'ULT'];
@@ -746,20 +751,156 @@ export class UIManager {
     skillTypes.forEach((skillType, index) => {
       const skillData = player.skills[skillType];
       if (!skillData) {
-        console.warn(`⚠️ Skill data not found for ${skillType}`);
+        console.warn(`⚠️ [UIManager] Skill data not found for ${skillType}`);
         return;
       }
       
-      console.log(`📝 Creating skill slot for ${skillType}`, skillData);
+      console.log(`📝 [UIManager] Creating skill slot for ${skillType}`, skillData);
       
       const slot = document.createElement('div');
       slot.className = 'skill-slot';
       slot.dataset.skillType = skillType;
-      slot.title = skillData.name || skillType;
+      slot.id = `skill-slot-${skillType.toLowerCase()}`;
+      
+      // ✅ 强制开启交互，防止 CSS 层级遮挡
+      slot.style.pointerEvents = 'all';
+      slot.style.cursor = skillType === 'PASSIVE' ? 'default' : 'pointer';
+      slot.style.position = 'relative';
+      slot.style.zIndex = '1001'; // 确保在 canvas 之上
+      
+      console.log(`🔧 [UIManager] Skill slot style set for ${skillType}:`, {
+        pointerEvents: slot.style.pointerEvents,
+        cursor: slot.style.cursor,
+        zIndex: slot.style.zIndex
+      });
+      
+      // ✅ 1. 绑定 Tooltip
+      try {
+        globalTooltipManager.bind(slot, {
+          type: 'SKILL',
+          category: skillType,
+          data: skillData
+        });
+        console.log(`✅ [UIManager] Tooltip bound for ${skillType}`, skillData);
+      } catch (error) {
+        console.error(`❌ [UIManager] Failed to bind tooltip for ${skillType}:`, error);
+      }
+      
+      // ✅ 2. 绑定点击事件（被动技能除外）
+      if (skillType !== 'PASSIVE') {
+        // 使用 addEventListener 而不是 onclick，方便调试和清理
+        const clickHandler = (e) => {
+          e.stopPropagation(); // 防止事件穿透到 canvas
+          e.preventDefault();
+          
+          console.log(`🖱️ [UIManager] 点击技能: ${skillType}`, {
+            skillData,
+            player: player ? 'exists' : 'null',
+            game: window.game ? 'exists' : 'null',
+            event: e,
+            cooldowns: player.cooldowns
+          });
+          
+          // ✅ [新增] 1. 冷却检查：如果技能正在冷却，直接拦截
+          let onCooldown = false;
+          if (player.cooldowns) {
+            if (skillType === 'ACTIVE' && player.cooldowns.active > 0) {
+              onCooldown = true;
+              console.log(`⏳ [UIManager] 技能 ${skillType} 冷却中，剩余: ${(player.cooldowns.active / 1000).toFixed(1)}秒`);
+            }
+            if (skillType === 'ULT' && player.cooldowns.ult > 0) {
+              onCooldown = true;
+              console.log(`⏳ [UIManager] 技能 ${skillType} 冷却中，剩余: ${(player.cooldowns.ult / 1000).toFixed(1)}秒`);
+            }
+          }
+
+          if (onCooldown) {
+            console.warn(`⚠️ [UIManager] 技能 ${skillType} 冷却中，无法使用`);
+            // 添加拒绝操作的视觉反馈：抖动动画
+            slot.classList.add('shake');
+            setTimeout(() => slot.classList.remove('shake'), 200);
+            // 可选：显示提示消息
+            if (window.game && window.game.ui) {
+              const remainingTime = skillType === 'ACTIVE' 
+                ? (player.cooldowns.active / 1000).toFixed(1)
+                : (player.cooldowns.ult / 1000).toFixed(1);
+              window.game.ui.logMessage(`技能冷却中，还需 ${remainingTime} 秒`, 'warning');
+            }
+            return; // ⛔️ 阻止后续施法逻辑
+          }
+          
+          // ✅ [新增] 2. 状态检查：如果已经准备了技能（如斩击已就绪），可以继续执行
+          // 注意：这里不阻止重复触发，因为有些技能可能需要连续点击（如某些需要二次确认的技能）
+          
+          // 添加点击视觉反馈
+          slot.classList.add('clicked');
+          setTimeout(() => slot.classList.remove('clicked'), 100);
+          
+          // 执行原有施法逻辑
+          if (skillType === 'ACTIVE') {
+            // 检查是否被冰冻
+            if (player.hasStatus && player.hasStatus('FROZEN')) {
+              console.warn('⚠️ [UIManager] 冰冻状态下无法使用技能！');
+              if (window.game && window.game.ui) {
+                window.game.ui.logMessage('冰冻状态下无法使用技能！', 'warning');
+              }
+              return;
+            }
+            
+            // 调用主动技能
+            if (player.castActiveSkill) {
+              console.log('✅ [UIManager] Calling player.castActiveSkill()');
+              player.castActiveSkill();
+            } else {
+              console.error('❌ [UIManager] player.castActiveSkill is not a function');
+            }
+          } else if (skillType === 'ULT') {
+            // 调用终极技能
+            if (window.game && window.game.activateUltimate) {
+              console.log('✅ [UIManager] Calling window.game.activateUltimate()');
+              window.game.activateUltimate();
+            } else if (player.castUltimateSkill) {
+              console.log('✅ [UIManager] Calling player.castUltimateSkill()');
+              // 如果没有 game.activateUltimate，直接调用 player 方法（需要手动检查）
+              if (player.hasStatus && player.hasStatus('FROZEN')) {
+                console.warn('⚠️ [UIManager] 冰冻状态下无法使用必杀技！');
+                if (window.game && window.game.ui) {
+                  window.game.ui.logMessage('冰冻状态下无法使用必杀技！', 'warning');
+                }
+                return;
+              }
+              
+              if (player.stats.rage < 100) {
+                console.warn('⚠️ [UIManager] 怒气不足！需要100%怒气才能使用终极技能。');
+                if (window.game && window.game.ui) {
+                  window.game.ui.logMessage('怒气不足！需要100%怒气才能使用终极技能。', 'warning');
+                }
+                return;
+              }
+              
+              player.castUltimateSkill();
+              player.stats.rage = 0;
+              if (window.game && window.game.ui) {
+                window.game.ui.updateStats(player);
+              }
+            } else {
+              console.error('❌ [UIManager] Neither game.activateUltimate nor player.castUltimateSkill exists');
+            }
+          }
+        };
+        
+        slot.addEventListener('click', clickHandler);
+        
+        // 保存处理器引用以便后续清理（如果需要）
+        slot._clickHandler = clickHandler;
+        
+        console.log(`✅ [UIManager] Click handler bound for ${skillType}`);
+      }
       
       // 创建技能图标
       const icon = document.createElement('div');
       icon.className = 'skill-icon';
+      icon.id = `skill-icon-${index}`; // ✅ 分配 ID (0=Passive, 1=Active, 2=Ult)
       
       // 根据 iconIndex 设置背景位置（3x3 网格 = 300%）
       if (skillData.iconIndex !== undefined) {
@@ -769,7 +910,7 @@ export class UIManager {
         icon.style.backgroundPosition = `${pos[col]} ${pos[row]}`;
         icon.style.backgroundSize = '300% 300%';
         icon.style.backgroundImage = `url('${ASSETS.ICONS_SKILLS.url}')`;
-        console.log(`  📍 Icon position: ${pos[col]} ${pos[row]} (index: ${skillData.iconIndex})`);
+        console.log(`  📍 [UIManager] Icon position: ${pos[col]} ${pos[row]} (index: ${skillData.iconIndex})`);
       }
       
       // 创建冷却遮罩
@@ -799,10 +940,17 @@ export class UIManager {
       
       skillBar.appendChild(slot);
       slotsCreated++;
-      console.log(`✅ Skill slot created for ${skillType}`);
+      console.log(`✅ [UIManager] Skill slot created for ${skillType}`, slot);
     });
     
-    console.log(`🎉 Skill bar initialized with ${slotsCreated} slots`);
+    console.log(`🎉 [UIManager] Skill bar initialized with ${slotsCreated} slots`);
+    console.log('📊 [UIManager] Skill bar element:', skillBar);
+    console.log('📊 [UIManager] Skill bar children:', skillBar.children.length);
+    if (skillBar.children.length > 0) {
+      console.log('📊 [UIManager] First slot computed style:', window.getComputedStyle(skillBar.children[0]));
+      console.log('📊 [UIManager] First slot pointer-events:', window.getComputedStyle(skillBar.children[0]).pointerEvents);
+    }
+    console.log('✅ [UIManager] Skill bar initialization complete - Tooltip and click interactions ready');
   }
 
   /**
@@ -819,33 +967,56 @@ export class UIManager {
       const skillType = skillTypes[index];
       if (!skillType) return;
       
+      // ✅ 被动技能不需要更新冷却
+      if (skillType === 'PASSIVE') return;
+      
       const skillData = player.skills[skillType];
       if (!skillData) return;
       
-      // 获取冷却信息
+      // 获取冷却数据
       let currentCd = 0;
       let maxCd = 0;
       
       if (skillType === 'ACTIVE') {
-        currentCd = Math.max(0, player.cooldowns.active);
-        maxCd = player.cooldowns.maxActive || 5000;
+        currentCd = Math.max(0, player.cooldowns.active || 0);
+        maxCd = player.cooldowns.maxActive || player.skills.ACTIVE?.cd || 5000;
       } else if (skillType === 'ULT') {
-        currentCd = Math.max(0, player.cooldowns.ult);
-        maxCd = player.cooldowns.maxUlt || 20000;
+        currentCd = Math.max(0, player.cooldowns.ult || 0);
+        maxCd = player.cooldowns.maxUlt || player.skills.ULT?.cd || 20000;
       }
       
-      // 更新冷却遮罩高度（百分比）
+      // ✅ 更新遮罩高度（从底部向上填充）
+      // 计算百分比 (0% = 冷却完毕, 100% = 刚开始冷却)
       const cooldownPercent = maxCd > 0 ? (currentCd / maxCd) * 100 : 0;
       const overlay = slot.querySelector('.cooldown-overlay');
-      if (overlay) {
-        overlay.style.height = `${cooldownPercent}%`;
-      }
       
-      // 更新冷却中的样式类
+      if (overlay) {
+        // 确保遮罩从底部开始
+        overlay.style.bottom = '0';
+        overlay.style.top = 'auto';
+        overlay.style.height = `${cooldownPercent}%`;
+        
+        // ✅ 调试日志（如果发现遮罩不动，可以解开这行注释）
+        // if (currentCd > 0 && index === 1) { // 只打印主动技能
+        //   console.log(`[UIManager] ${skillType} CD: ${currentCd.toFixed(0)}ms / ${maxCd}ms = ${cooldownPercent.toFixed(1)}%`);
+        // }
+      } else {
+        console.warn(`⚠️ [UIManager] updateSkillBar: 找不到 ${skillType} 的冷却遮罩元素`);
+      }
+
+      // ✅ 更新冷却状态样式类和鼠标样式
       if (currentCd > 0) {
         slot.classList.add('on-cooldown');
+        // 冷却中时，鼠标变成禁止符号（但被动技能保持默认）
+        if (skillType !== 'PASSIVE') {
+          slot.style.cursor = 'not-allowed';
+        }
       } else {
         slot.classList.remove('on-cooldown');
+        // 冷却完毕时，恢复手指指针（但被动技能保持默认）
+        if (skillType !== 'PASSIVE') {
+          slot.style.cursor = 'pointer';
+        }
       }
     });
   }

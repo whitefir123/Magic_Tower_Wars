@@ -210,6 +210,88 @@
   color:#e74c3c; 
 }
 
+/* Skill Tooltip Styles - 英雄联盟风格 */
+.tt-skill-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.tt-skill-name {
+  color: #ffd700;
+  font-size: 1.1rem;
+  font-weight: bold;
+  font-family: var(--font-header);
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
+.tt-skill-key {
+  color: #aaa;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.tt-skill-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #88ccff;
+  margin-bottom: 12px;
+}
+
+.tt-skill-type {
+  font-weight: 500;
+}
+
+.tt-skill-type-row {
+  color: #4a9eff;
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.tt-skill-cd {
+  color: #ffaa88;
+}
+
+.tt-skill-cd-row {
+  color: #ffaa88;
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+}
+
+.tt-skill-desc {
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.tt-skill-hint {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  font-size: 0.8rem;
+  color: #888;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tt-mouse-icon {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
 /* 错误提示 Toast 样式 */
 .error-toast {
   position: fixed;

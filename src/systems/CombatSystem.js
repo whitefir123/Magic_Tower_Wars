@@ -1124,18 +1124,31 @@ export class CombatSystem {
         }
         if (game.audio) game.audio.playHit(); // 播放金属音效
         
-        // ✅ FIX: 检查并清除玩家的技能状态（增强策略性）
-        let skillBlocked = false;
-        if (player.states) {
-          if (player.states.slashPrimed || player.states.scorchPrimed || player.states.freezePrimed) {
-            player.states.slashPrimed = false;
-            player.states.scorchPrimed = false;
-            player.states.freezePrimed = false;
-            player.states.activeElement = null;
-            player.states.ultElement = null;
-            skillBlocked = true;
+          // ✅ FIX: 检查并清除玩家的技能状态（增强策略性）- 通用清除
+          let skillBlocked = false;
+          if (player.states) {
+            // ✅ FIX: 通用清除所有技能状态
+            if (player.skills && player.skills.ACTIVE) {
+              const activeSkillId = player.skills.ACTIVE.id;
+              if (activeSkillId) {
+                const stateKey = `${activeSkillId}Primed`;
+                if (player.states[stateKey] || player.states.activeSkillPrimed) {
+                  player.states[stateKey] = false;
+                  player.states.activeSkillPrimed = false;
+                  skillBlocked = true;
+                }
+              }
+            }
+            // 兼容旧的特定标记（向后兼容）
+            if (player.states.slashPrimed || player.states.scorchPrimed || player.states.freezePrimed) {
+              player.states.slashPrimed = false;
+              player.states.scorchPrimed = false;
+              player.states.freezePrimed = false;
+              player.states.activeElement = null;
+              player.states.ultElement = null;
+              skillBlocked = true;
+            }
           }
-        }
         
         // 标记为进入战斗状态，但不造成伤害
         monster.inCombat = true;
@@ -1182,19 +1195,46 @@ export class CombatSystem {
       }
       
       // ✅ v2.0: Hook - onBeforeAttack（攻击前）
+      // ✅ FIX: 通用检查是否有技能就绪状态
+      let hasSkillPrimed = false;
+      if (player.states) {
+        if (player.states.activeSkillPrimed) {
+          hasSkillPrimed = true;
+        } else if (player.skills && player.skills.ACTIVE && player.skills.ACTIVE.id) {
+          const activeStateKey = `${player.skills.ACTIVE.id}Primed`;
+          hasSkillPrimed = !!player.states[activeStateKey];
+        }
+        // 兼容旧的特定标记（向后兼容）
+        if (!hasSkillPrimed && (player.states.slashPrimed || player.states.scorchPrimed || player.states.freezePrimed)) {
+          hasSkillPrimed = true;
+        }
+      }
+      
       this.processHooks(player, monster, 'onBeforeAttack', {
         damageType: null, // 此时还未确定伤害类型
-        isSkill: player.states && (player.states.slashPrimed || player.states.scorchPrimed || player.states.freezePrimed)
+        isSkill: hasSkillPrimed
       });
       
       // ========== STEP A0: 宝石注灵系统 (Gem Infusion) - 必须在属性共鸣计算之前 ==========
       // ✅ 检查武器第一个孔位的宝石注灵（仅在普通攻击时生效，不覆盖技能元素）
+      // ✅ FIX: 通用检查是否有技能就绪状态
       let gemInfusionElement = null;
-      const hasActiveSkill = player.states && (
-        player.states.slashPrimed || 
-        player.states.scorchPrimed || 
-        player.states.freezePrimed
-      );
+      let hasActiveSkill = false;
+      if (player.states) {
+        if (player.states.activeSkillPrimed) {
+          hasActiveSkill = true;
+        } else if (player.skills && player.skills.ACTIVE && player.skills.ACTIVE.id) {
+          const activeStateKey = `${player.skills.ACTIVE.id}Primed`;
+          hasActiveSkill = !!player.states[activeStateKey];
+        } else if (player.skills && player.skills.ULT && player.skills.ULT.id) {
+          const ultStateKey = `${player.skills.ULT.id}Primed`;
+          hasActiveSkill = !!player.states[ultStateKey];
+        }
+        // 兼容旧的特定标记（向后兼容）
+        if (!hasActiveSkill && (player.states.slashPrimed || player.states.scorchPrimed || player.states.freezePrimed)) {
+          hasActiveSkill = true;
+        }
+      }
       
       // 只有在没有使用主动技能时，才检查宝石注灵
       if (!hasActiveSkill) {
@@ -1447,36 +1487,84 @@ export class CombatSystem {
       // ✅ v2.1: Execute 的处理移到 onBeforeAttack hook 中，通过 damageMultiplier 修改伤害
       // 这里不再直接处理，由 processRuneHooks 在 onBeforeAttack 中处理
       
-      // ========== STEP B: 技能状态 (Active Skills) ==========
+      // ========== STEP B: 技能状态 (Active Skills) - 重构为通用处理 ==========
       // ✅ FIX: 统一元素反应流程 - 先汇总所有伤害源和元素源，只调用一次applyElementalReaction
-      let slashApplied = false;
-      let scorchApplied = false;
-      let freezeApplied = false;
+      // ✅ FIX: 重构为通用处理，支持所有职业的技能（不再硬编码特定技能名）
       let incomingElement = null;
       let skillDamageMultiplier = 1.0; // 技能伤害倍率
       let skillUsed = false; // 标记是否使用了技能
+      let activeSkillId = null; // 当前使用的主动技能 ID
+      let ultSkillId = null; // 当前使用的大招技能 ID
       let gemInfusionApplied = false; // 标记是否应用了宝石注灵
       
-      // 先汇总所有技能状态，确定最终的元素和伤害倍率
-      // 注意：技能元素优先于宝石注灵（如果同时存在，使用技能元素）
-      if (player.states && player.states.slashPrimed) {
-        // Slash: 纯物理伤害，无元素（清除宝石注灵的元素）
-        incomingElement = null; // 确保 Slash 是纯物理，不应用元素
-        skillDamageMultiplier = 1.5;
-        slashApplied = true;
-        skillUsed = true;
-      } else if (player.states && player.states.scorchPrimed) {
-        // Scorch: 火元素
-        incomingElement = ELEMENTS.PYRO;
-        scorchApplied = true;
-        skillUsed = true;
+      // ✅ FIX: 通用技能状态检查 - 根据 player.skills 动态判断
+      // 先检查大招（优先级高于主动技能）
+      if (player.states && player.skills && player.skills.ULT) {
+        const ultSkill = player.skills.ULT;
+        const ultStateKey = ultSkill.id ? `${ultSkill.id}Primed` : 'freezePrimed'; // 兼容旧的 freezePrimed
+        
+        // 检查是否有大招预备状态
+        if (player.states[ultStateKey] || player.states.freezePrimed) { // 兼容旧代码
+          ultSkillId = ultSkill.id || 'glacial';
+          incomingElement = player.states.ultElement || ELEMENTS.CRYO;
+          skillUsed = true;
+          // 大招的元素会覆盖主动技能的元素（如果同时存在）
+        }
       }
       
-      // 必杀技元素优先于主动技能元素（如果同时存在）
-      if (player.states && player.states.freezePrimed) {
-        incomingElement = player.states.ultElement || ELEMENTS.CRYO;
-        freezeApplied = true;
-        skillUsed = true;
+      // 检查主动技能（优先级低于大招）
+      if (player.states && player.skills && player.skills.ACTIVE && !skillUsed) {
+        const activeSkill = player.skills.ACTIVE;
+        const activeStateKey = activeSkill.id ? `${activeSkill.id}Primed` : null;
+        
+        // ✅ FIX: 通用检查 - 支持所有职业的技能状态
+        // 检查是否使用了通用标记 activeSkillPrimed，或者根据技能 ID 生成的标记
+        let isActiveSkillPrimed = false;
+        
+        // 方法1: 检查通用标记（如果实现了）
+        if (player.states.activeSkillPrimed) {
+          isActiveSkillPrimed = true;
+          activeSkillId = activeSkill.id;
+        }
+        // 方法2: 检查技能 ID 对应的状态标记（兼容旧代码和新职业）
+        else if (activeStateKey && player.states[activeStateKey]) {
+          isActiveSkillPrimed = true;
+          activeSkillId = activeSkill.id;
+        }
+        // 方法3: 兼容旧的特定技能标记（向后兼容）
+        else if (player.states.slashPrimed || player.states.scorchPrimed) {
+          isActiveSkillPrimed = true;
+          // 根据状态推断技能 ID
+          if (player.states.slashPrimed) activeSkillId = 'slash';
+          else if (player.states.scorchPrimed) activeSkillId = 'scorch';
+        }
+        
+        if (isActiveSkillPrimed) {
+          skillUsed = true;
+          
+          // ✅ FIX: 根据技能 ID 设置元素和伤害倍率（从技能数据中读取）
+          // 如果没有大招，主动技能的元素才会生效
+          if (!ultSkillId) {
+            if (activeSkillId === 'slash') {
+              // Slash: 纯物理伤害，无元素
+              incomingElement = null;
+              skillDamageMultiplier = 1.5; // 从技能描述中读取：150%伤害
+            } else if (activeSkillId === 'scorch') {
+              // Scorch: 火元素
+              incomingElement = ELEMENTS.PYRO;
+            } else if (activeSkillId === 'backstab') {
+              // Backstab: 纯物理伤害，200%伤害
+              incomingElement = null;
+              skillDamageMultiplier = 2.0;
+            }
+            // 其他职业的主动技能可以在这里扩展
+            // 如果技能数据中包含元素信息，可以从 player.skills.ACTIVE.element 读取
+            // 如果技能数据中包含伤害倍率，可以从 player.skills.ACTIVE.damageMultiplier 读取
+            if (player.states.activeElement) {
+              incomingElement = player.states.activeElement;
+            }
+          }
+        }
       }
       
       // ========== STEP B0: 宝石注灵系统 (Gem Infusion) - 在技能检查之后应用 ==========
@@ -1499,8 +1587,8 @@ export class CombatSystem {
         }
       }
       
-      // 应用技能伤害倍率
-      if (slashApplied) {
+      // 应用技能伤害倍率（如果设置了倍率）
+      if (skillUsed && skillDamageMultiplier > 1.0) {
         dmgToMon = Math.floor(dmgToMon * skillDamageMultiplier);
       }
       
@@ -1517,17 +1605,8 @@ export class CombatSystem {
           dmgToMon = reaction.finalDamage;
         } else {
           // 如果没有触发反应，应用基础状态效果
-          // ✅ 技能元素状态效果
-          if (scorchApplied && !monsterTraits.includes('MOLTEN_CORE')) {
-            monster.applyStatus('BURN', player);
-          }
-          if (freezeApplied && !monsterTraits.includes('MOLTEN_CORE')) {
-            monster.applyStatus('FREEZE', player);
-            monster.applyStatus('FREEZE_DOT', player);
-          }
-          
-          // ✅ 宝石注灵状态效果（如果没有触发反应）
-          if (gemInfusionApplied && !monsterTraits.includes('MOLTEN_CORE')) {
+          // ✅ FIX: 通用技能元素状态效果（根据元素类型，而非特定技能）
+          if (!monsterTraits.includes('MOLTEN_CORE')) {
             if (incomingElement === ELEMENTS.PYRO) {
               monster.applyStatus('BURN', player);
             } else if (incomingElement === ELEMENTS.CRYO) {
@@ -1541,20 +1620,53 @@ export class CombatSystem {
         }
       }
       
-      // ✅ FIX: 清除技能状态并触发CD（在造成伤害后）
-      if (skillUsed && player.startSkillCooldown) {
-        if (slashApplied) {
-          player.states.slashPrimed = false;
-          player.startSkillCooldown('active', 5000);
-        } else if (scorchApplied) {
-          player.states.scorchPrimed = false;
-          player.states.activeElement = null;
-          player.startSkillCooldown('active', 8000);
+      // ✅ FIX: 清除技能状态并触发CD（在造成伤害后）- 重构为通用处理
+      if (skillUsed && player.startSkillCooldown && player.skills) {
+        // 处理主动技能
+        if (activeSkillId && player.skills.ACTIVE) {
+          // ✅ FIX: 动态读取冷却时间，而不是硬编码
+          const activeCd = player.skills.ACTIVE.cd || 5000; // 默认 5 秒
+          
+          // ✅ FIX: 清除所有可能的主动技能状态标记（通用清除）
+          if (player.states) {
+            // 清除通用标记
+            player.states.activeSkillPrimed = false;
+            // 清除技能 ID 对应的标记
+            if (activeSkillId) {
+              const stateKey = `${activeSkillId}Primed`;
+              player.states[stateKey] = false;
+            }
+            // 兼容旧的特定标记（向后兼容）
+            player.states.slashPrimed = false;
+            player.states.scorchPrimed = false;
+            player.states.activeElement = null;
+          }
+          
+          // ✅ FIX: 使用动态 CD 值
+          player.startSkillCooldown('active', activeCd);
+          console.log(`[CombatSystem] 主动技能 ${activeSkillId} 已使用，冷却时间: ${activeCd}ms`);
         }
-        if (freezeApplied) {
-          player.states.freezePrimed = false;
-          player.states.ultElement = null;
-          player.startSkillCooldown('ult', 25000);
+        
+        // 处理大招（如果使用了）
+        if (ultSkillId && player.skills.ULT) {
+          // ✅ FIX: 动态读取冷却时间，而不是硬编码
+          const ultCd = player.skills.ULT.cd || 20000; // 默认 20 秒
+          
+          // ✅ FIX: 清除所有可能的大招状态标记（通用清除）
+          if (player.states) {
+            // 清除技能 ID 对应的标记
+            if (ultSkillId) {
+              const stateKey = `${ultSkillId}Primed`;
+              player.states[stateKey] = false;
+            }
+            // 兼容旧的 freezePrimed 标记（向后兼容）
+            player.states.freezePrimed = false;
+            player.states.ultElement = null;
+          }
+          
+          // ✅ FIX: 使用动态 CD 值
+          player.startSkillCooldown('ult', ultCd);
+          console.log(`[CombatSystem] 大招 ${ultSkillId} 已使用，冷却时间: ${ultCd}ms`);
         }
       }
       
@@ -1768,11 +1880,21 @@ export class CombatSystem {
       let damageColor = '#ff0000'; // 玩家攻击怪物的伤害飘字为红色
       let floatingTextType = 'NORMAL';
       
-      if (slashApplied && isCrit) { damageText = `斩击暴击！-${dmgToMon}`; damageColor = '#ff00ff'; }
-      else if (slashApplied) { damageText = `斩击！-${dmgToMon}`; damageColor = '#ff6b6b'; }
-      else if (scorchApplied) { damageText = `灼烧! -${dmgToMon}`; damageColor = '#ff6b6b'; }
-      else if (freezeApplied) { damageText = `冰封! -${dmgToMon}`; damageColor = '#00bfff'; }
-      else if (isCrit) { 
+      // ✅ FIX: 通用技能名称显示（根据技能 ID 显示技能名）
+      if (skillUsed && activeSkillId) {
+        const skillName = player.skills?.ACTIVE?.name || activeSkillId;
+        if (isCrit) {
+          damageText = `${skillName}暴击！-${dmgToMon}`;
+          damageColor = '#ff00ff';
+        } else {
+          damageText = `${skillName}！-${dmgToMon}`;
+          damageColor = '#ff6b6b';
+        }
+      } else if (skillUsed && ultSkillId) {
+        const ultName = player.skills?.ULT?.name || ultSkillId;
+        damageText = `${ultName}! -${dmgToMon}`;
+        damageColor = incomingElement === ELEMENTS.CRYO ? '#00bfff' : '#ff6b6b';
+      } else if (isCrit) { 
         damageText = `暴击！-${dmgToMon}`; 
         damageColor = '#FF2424'; // 深红色
         floatingTextType = 'CRIT'; // 使用暴击类型
@@ -1829,9 +1951,14 @@ export class CombatSystem {
       
       // 日志
       const logDetails = [];
-      if (slashApplied) logDetails.push('SLASH');
-      if (scorchApplied) logDetails.push('灼烧');
-      if (freezeApplied) logDetails.push('冰封');
+      if (skillUsed && activeSkillId) {
+        const skillName = player.skills?.ACTIVE?.name || activeSkillId;
+        logDetails.push(skillName);
+      }
+      if (skillUsed && ultSkillId) {
+        const ultName = player.skills?.ULT?.name || ultSkillId;
+        logDetails.push(ultName);
+      }
       if (isCrit) logDetails.push('CRIT');
       if (resonance.penetrationRate > 0) logDetails.push(`穿透${Math.round(resonance.penetrationRate*100)}%`);
       
