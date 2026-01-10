@@ -34,6 +34,7 @@ body {
   font-size: 18px;
   -webkit-font-smoothing: none;
   image-rendering: pixelated;
+  cursor: url('../../assets/ui/cursor.png') 0 0, auto;
 }
 
 /* 通用工具类 */
@@ -49,3 +50,27 @@ body {
   max-width: 620px;
 }
 
+/* ========================================================================
+   自定义鼠标指针 - 交互元素手型光标
+   ======================================================================== */
+button,
+.btn-core,
+.btn-menu,
+.btn-sidebar,
+.btn-transaction,
+.btn-system,
+.btn-modal-close,
+.btn-retry,
+.btn-return-to-menu,
+.inv-slot,        /* 修正：背包格子 */
+.equip-socket,    /* 装备格子 */
+.skill-slot,      /* 技能格子 */
+.relic-slot,      /* 遗物格子 */
+.backpack-icon,   /* 背包图标 */
+.clickable,
+.action-menu-item,
+.quality-btn,     /* 设置界面按钮 */
+.settings-checkbox,
+.settings-slider {
+  cursor: url('../../assets/ui/cursor_hand.png') 6 0, pointer !important;
+}
