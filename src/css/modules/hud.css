@@ -574,7 +574,7 @@
 /* 重点：针对图标本身添加金色电流/脉冲效果 */
 .skill-slot.skill-active .skill-icon {
   border: 1px solid #ffd700 !important;
-  /* 移除 box-shadow 的 !important 以便动画生效 */
+  /* 移除这里的 !important 以允许动画覆盖 */
   box-shadow: 0 0 8px #ffd700, inset 0 0 10px rgba(255, 215, 0, 0.8);
   animation: skill-icon-pulse 0.8s ease-in-out infinite alternate;
   z-index: 2; /* 确保图标在冷却遮罩之上 */
@@ -582,19 +582,19 @@
 
 @keyframes skill-icon-pulse {
   0% {
-    border-color: rgba(255, 215, 0, 0.5);
+    /* 移除所有 !important */
     box-shadow: 
       0 0 5px #ffd700, 
       inset 0 0 5px rgba(255, 215, 0, 0.5);
-    filter: brightness(1.1);
+    filter: brightness(1.2);
   }
   100% {
-    border-color: #ffd700;
+    /* 移除所有 !important */
     box-shadow: 
       0 0 15px #ffd700, 
-      0 0 5px #ffaa00, 
+      0 0 5px #ffaa00,
       inset 0 0 15px rgba(255, 215, 0, 1);
-    filter: brightness(1.4);
+    filter: brightness(1.5);
   }
 }
 
