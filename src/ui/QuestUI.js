@@ -207,8 +207,8 @@ export class QuestUI {
 
       .quest-ui-container {
         position: relative;
-        width: 600px;
-        height: 400px;
+        width: 983px;
+        height: 632px;
         background-image: url('https://i.postimg.cc/MK8vhJt4/renwupanel1.png');
         background-size: 100% 100%;
         background-repeat: no-repeat;
@@ -226,13 +226,19 @@ export class QuestUI {
         position: absolute;
         left: 30px;
         top: 50px;
-        width: 200px;
-        height: 280px;
+        width: 255px;
+        height: 487px;
         overflow-y: auto;
+        padding-left: 0px;
+        padding-right: 0px;
+        margin-left: 47px;
+        margin-right: 47px;
+        margin-top: 22px;
+        margin-bottom: 22px;
       }
 
       .quest-list-title {
-        font-size: 16px;
+        font-size: 19px;
         font-weight: bold;
         color: #fff;
         margin-bottom: 10px;
@@ -250,7 +256,7 @@ export class QuestUI {
         background: rgba(0, 0, 0, 0.5);
         border: 2px solid rgba(255, 255, 255, 0.3);
         cursor: pointer;
-        font-size: 14px;
+        font-size: 17px;
         color: #fff;
         text-shadow: 1px 1px 0px #000;
         transition: all 0.2s;
@@ -276,12 +282,20 @@ export class QuestUI {
         position: absolute;
         right: 30px;
         top: 50px;
-        width: 300px;
-        height: 280px;
+        width: 431px;
+        height: 327px;
+        padding-left: 0px;
+        padding-right: 0px;
+        padding-top: 0px;
+        padding-bottom: 0px;
+        margin-left: 84px;
+        margin-right: 84px;
+        margin-top: 90px;
+        margin-bottom: 90px;
       }
 
       .quest-details-title {
-        font-size: 16px;
+        font-size: 19px;
         font-weight: bold;
         color: #fff;
         margin-bottom: 15px;
@@ -295,14 +309,14 @@ export class QuestUI {
       }
 
       .quest-title {
-        font-size: 18px;
+        font-size: 26px;
         font-weight: bold;
-        color: #ffd700;
+        color: #8B4513;
         text-shadow: 2px 2px 0px #000;
       }
 
       .quest-description {
-        font-size: 14px;
+        font-size: 17px;
         color: #fff;
         line-height: 1.5;
         text-shadow: 1px 1px 0px #000;
@@ -315,7 +329,7 @@ export class QuestUI {
       }
 
       .quest-progress-label {
-        font-size: 12px;
+        font-size: 14px;
         color: #fff;
         text-shadow: 1px 1px 0px #000;
       }
@@ -337,7 +351,7 @@ export class QuestUI {
       }
 
       .quest-progress-text {
-        font-size: 12px;
+        font-size: 14px;
         color: #fff;
         text-align: right;
         text-shadow: 1px 1px 0px #000;
@@ -348,7 +362,7 @@ export class QuestUI {
       }
 
       .quest-reward-title {
-        font-size: 14px;
+        font-size: 17px;
         font-weight: bold;
         color: #ffd700;
         margin-bottom: 5px;
@@ -356,7 +370,7 @@ export class QuestUI {
       }
 
       .quest-reward-list {
-        font-size: 14px;
+        font-size: 17px;
         color: #fff;
         text-shadow: 1px 1px 0px #000;
       }
@@ -369,10 +383,14 @@ export class QuestUI {
         flex-direction: column;
         gap: 10px;
         align-items: flex-end;
+        margin-top: 64px;
+        margin-bottom: 64px;
+        margin-left: 89px;
+        margin-right: 89px;
       }
 
       .quest-auto-submit-label {
-        font-size: 12px;
+        font-size: 14px;
         color: #fff;
         cursor: pointer;
         text-shadow: 1px 1px 0px #000;
@@ -385,7 +403,7 @@ export class QuestUI {
 
       .quest-action-button {
         padding: 8px 16px;
-        font-size: 14px;
+        font-size: 17px;
         font-weight: bold;
         border: 2px solid rgba(255, 255, 255, 0.5);
         background: rgba(0, 0, 0, 0.7);
@@ -407,13 +425,14 @@ export class QuestUI {
       }
 
       .quest-action-button.claimable {
-        background: rgba(76, 175, 80, 0.7);
-        border-color: #4CAF50;
-        color: #fff;
+        background: #ffd700;
+        border-color: #ffd700;
+        color: #000;
       }
 
       .quest-action-button.claimable:hover {
-        background: rgba(76, 175, 80, 0.9);
+        background: #ffed4e;
+        border-color: #ffed4e;
       }
 
       .quest-close-button {
@@ -422,7 +441,7 @@ export class QuestUI {
         right: 10px;
         width: 30px;
         height: 30px;
-        font-size: 24px;
+        font-size: 28px;
         line-height: 1;
         border: none;
         background: rgba(0, 0, 0, 0.5);
@@ -430,6 +449,10 @@ export class QuestUI {
         cursor: pointer;
         border-radius: 4px;
         transition: all 0.2s;
+        margin-left: 65px;
+        margin-right: 65px;
+        margin-top: 22px;
+        margin-bottom: 22px;
       }
 
       .quest-close-button:hover {

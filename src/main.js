@@ -4135,8 +4135,8 @@ class Game {
       questIcon.alt = '任务';
       questIcon.className = 'quest-icon';
       questIcon.style.cssText = `
-        width: 48px;
-        height: 48px;
+        width: 80px;
+        height: 80px;
         cursor: pointer;
         margin-top: 10px;
         display: block;
