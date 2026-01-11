@@ -106,6 +106,20 @@ export class QuestUI {
     objectivesList.className = 'quest-objectives-list';
     progressContainer.appendChild(objectivesList);
 
+    // 限制条件区域
+    const conditionsSection = document.createElement('div');
+    conditionsSection.className = 'quest-conditions-section';
+    detailsContent.appendChild(conditionsSection);
+
+    const conditionsTitle = document.createElement('div');
+    conditionsTitle.className = 'quest-conditions-title';
+    conditionsTitle.textContent = '限制条件:';
+    conditionsSection.appendChild(conditionsTitle);
+
+    const conditionsList = document.createElement('div');
+    conditionsList.className = 'quest-conditions-list';
+    conditionsSection.appendChild(conditionsList);
+
     // 奖励区域
     const rewardSection = document.createElement('div');
     rewardSection.className = 'quest-reward-section';
@@ -176,6 +190,8 @@ export class QuestUI {
       progressText,
       progressBar,
       objectivesList,
+      conditionsSection,
+      conditionsList,
       rewardList,
       actionButton,
       autoSubmitCheckbox
@@ -465,6 +481,44 @@ export class QuestUI {
       .quest-objective-item.completed .quest-objective-progress {
         color: #8BC34A;
         font-weight: bold;
+      }
+
+      .quest-conditions-section {
+        margin-top: 10px;
+        display: none;
+      }
+
+      .quest-conditions-section.visible {
+        display: block;
+      }
+
+      .quest-conditions-title {
+        font-size: 17px;
+        font-weight: bold;
+        color: #ff9800;
+        margin-bottom: 5px;
+        text-shadow: 1px 1px 0px #000;
+      }
+
+      .quest-conditions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .quest-condition-item {
+        font-size: 15px;
+        color: #fff;
+        text-shadow: 1px 1px 0px #000;
+        padding: 4px 0;
+      }
+
+      .quest-condition-item.satisfied {
+        color: #8BC34A;
+      }
+
+      .quest-condition-item.unsatisfied {
+        color: #F44336;
       }
 
       /* Toast 通知样式 */
@@ -884,7 +938,7 @@ export class QuestUI {
         return;
       }
 
-      const { questTitleEl, questDescEl, progressLabel, progressFill, progressText, progressBar, objectivesList, rewardList, actionButton } = this.elements;
+      const { questTitleEl, questDescEl, progressLabel, progressFill, progressText, progressBar, objectivesList, conditionsSection, conditionsList, rewardList, actionButton } = this.elements;
 
       // 更新标题和描述
       questTitleEl.textContent = quest.title;
@@ -987,6 +1041,46 @@ export class QuestUI {
           actionButton.classList.remove('claimable');
           actionButton.onclick = null;
         }
+      }
+
+      // 更新限制条件显示
+      if (quest.conditions && this.questSystem) {
+        conditionsSection.classList.add('visible');
+        conditionsList.innerHTML = '';
+
+        // 检查条件是否满足
+        const conditionCheck = this.questSystem.checkConditions(normalizedQuest);
+        const conditions = quest.conditions;
+
+        // 显示生命值百分比条件
+        if (conditions.minHpPercent !== undefined) {
+          const player = this.game && this.game.player;
+          const currentHp = player && player.stats ? (player.stats.hp || 0) : 0;
+          const maxHp = player && player.stats ? (player.stats.maxHp || 1) : 1;
+          const hpPercent = (currentHp / maxHp) * 100;
+          const isSatisfied = hpPercent >= conditions.minHpPercent;
+
+          const conditionItem = document.createElement('div');
+          conditionItem.className = `quest-condition-item ${isSatisfied ? 'satisfied' : 'unsatisfied'}`;
+          conditionItem.textContent = `生命值保持 ${conditions.minHpPercent}% 以上 (当前: ${Math.floor(hpPercent)}%)`;
+          conditionsList.appendChild(conditionItem);
+        }
+
+        // 显示金币条件
+        if (conditions.minGold !== undefined && conditions.minGold > 0) {
+          const player = this.game && this.game.player;
+          const currentGold = player && player.stats ? (player.stats.gold || 0) : 0;
+          const isSatisfied = currentGold >= conditions.minGold;
+
+          const conditionItem = document.createElement('div');
+          conditionItem.className = `quest-condition-item ${isSatisfied ? 'satisfied' : 'unsatisfied'}`;
+          conditionItem.textContent = `金币达到 ${conditions.minGold} (当前: ${currentGold})`;
+          conditionsList.appendChild(conditionItem);
+        }
+      } else {
+        // 没有条件，隐藏条件区域
+        conditionsSection.classList.remove('visible');
+        conditionsList.innerHTML = '';
       }
 
       // 更新奖励

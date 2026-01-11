@@ -87,6 +87,48 @@ export const QUEST_DATABASE = {
       xp: 200
     },
     autoComplete: false
+  },
+  // 示例：带限制条件的任务
+  "quest_condition_demo": {
+    id: "quest_condition_demo",
+    title: "生存挑战",
+    description: "在保持生命值不低于50%的情况下，击杀5个怪物",
+    category: "SIDE",
+    objectives: [
+      { id: 1, type: "KILL", target: "ANY", count: 5, current: 0, description: "击杀任意怪物" }
+    ],
+    prerequisites: [],
+    nextQuest: null,
+    conditions: {
+      minHpPercent: 50, // 生命值必须保持在50%以上
+      minGold: 0 // 金币无要求（示例）
+    },
+    reward: {
+      gold: 200,
+      xp: 150
+    },
+    autoComplete: false
+  },
+  // 示例：带限制条件的任务
+  "quest_condition_demo": {
+    id: "quest_condition_demo",
+    title: "生存挑战",
+    description: "在保持生命值不低于50%的情况下，击杀5个怪物",
+    category: "SIDE",
+    objectives: [
+      { id: 1, type: "KILL", target: "ANY", count: 5, current: 0, description: "击杀任意怪物" }
+    ],
+    prerequisites: [],
+    nextQuest: null,
+    conditions: {
+      minHpPercent: 50, // 生命值必须保持在50%以上
+      minGold: 0 // 金币无要求（示例）
+    },
+    reward: {
+      gold: 200,
+      xp: 150
+    },
+    autoComplete: false
   }
 };
 
@@ -251,6 +293,55 @@ export class QuestSystem {
   }
 
   /**
+   * 检查任务限制条件是否满足
+   * @param {object} questData - 任务数据
+   * @returns {object} { satisfied: boolean, failedConditions: Array<string> }
+   */
+  checkConditions(questData) {
+    if (!questData || !questData.conditions) {
+      // 没有限制条件，直接返回满足
+      return { satisfied: true, failedConditions: [] };
+    }
+
+    const player = this.game && this.game.player;
+    if (!player || !player.stats) {
+      console.warn('[QuestSystem] 玩家对象不存在，无法检查条件');
+      return { satisfied: false, failedConditions: ['玩家状态不可用'] };
+    }
+
+    const conditions = questData.conditions;
+    const failedConditions = [];
+
+    // 检查生命值百分比
+    if (conditions.minHpPercent !== undefined) {
+      const currentHp = player.stats.hp || 0;
+      const maxHp = player.stats.maxHp || 1;
+      const hpPercent = (currentHp / maxHp) * 100;
+      
+      if (hpPercent < conditions.minHpPercent) {
+        failedConditions.push(`生命值保持 ${conditions.minHpPercent}% 以上 (当前: ${Math.floor(hpPercent)}%)`);
+      }
+    }
+
+    // 检查金币
+    if (conditions.minGold !== undefined) {
+      const currentGold = player.stats.gold || 0;
+      
+      if (currentGold < conditions.minGold) {
+        failedConditions.push(`金币达到 ${conditions.minGold} (当前: ${currentGold})`);
+      }
+    }
+
+    // 可扩展其他条件...
+    // 例如：minLevel, minFloor, hasItem, etc.
+
+    return {
+      satisfied: failedConditions.length === 0,
+      failedConditions: failedConditions
+    };
+  }
+
+  /**
    * 检查并更新任务进度
    * @param {string} eventType - 事件类型 ('onKill', 'onLoot', 'onReachFloor', 'onInteract')
    * @param {object} data - 事件数据
@@ -306,7 +397,17 @@ export class QuestSystem {
         const allCompleted = questData.objectives.every(obj => obj.current >= obj.count);
         
         if (allCompleted) {
-          this.completeQuest(questId);
+          // 目标已完成，检查限制条件
+          const conditionCheck = this.checkConditions(questData);
+          
+          if (conditionCheck.satisfied) {
+            // 条件满足，完成任务
+            this.completeQuest(questId);
+          } else {
+            // 目标完成但条件未满足，显示提示
+            const conditionText = conditionCheck.failedConditions.join('、');
+            this.showToast(`目标已达成，但未满足完成条件: ${conditionText}`, 'warning');
+          }
         } else {
           // 显示进度更新 Toast
           const completedCount = questData.objectives.filter(obj => obj.current >= obj.count).length;
@@ -727,6 +828,9 @@ export class QuestSystem {
    * 生成楼层随机任务
    * @param {number} floorIndex - 楼层索引
    * @returns {string|null} 生成的任务ID，如果生成失败返回 null
+   * 
+   * Note: Call questSystem.generateFloorQuest(floorIndex) in MapSystem.onFloorLoaded() or similar event.
+   * Currently called in main.js when player reaches a new floor.
    */
   generateFloorQuest(floorIndex) {
     // 如果该层已经有任务，不重复生成
