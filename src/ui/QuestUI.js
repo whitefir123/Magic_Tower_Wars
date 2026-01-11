@@ -684,9 +684,6 @@ export class QuestUI {
     }).catch(err => {
       console.error('[QuestUI] Failed to load QUEST_DATABASE:', err);
     });
-  }).catch(err => {
-      console.error('[QuestUI] Failed to load QUEST_DATABASE:', err);
-    });
   }
 
   /**
