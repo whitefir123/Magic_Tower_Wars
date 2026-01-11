@@ -186,25 +186,70 @@ export class QuestTracker {
       title.textContent = quest.title;
       item.appendChild(title);
 
-      // 任务进度
-      const progress = document.createElement('div');
-      progress.className = 'quest-tracker-item-progress';
-      
-      // 格式化进度显示
-      const objective = quest.objective || {};
-      let progressText = '';
-      
-      if (objective.type === 'REACH_FLOOR') {
-        // 到达层数任务：显示当前层数/目标层数
-        const currentFloor = this.game && this.game.player ? this.game.player.stats.floor : 0;
-        progressText = `当前: ${currentFloor} / 目标: ${objective.target}`;
+      // 获取 objectives（支持新格式）
+      const objectives = quest.objectives || [];
+      const hasMultipleObjectives = objectives.length > 1;
+
+      if (hasMultipleObjectives) {
+        // 多目标：显示每个子目标的进度
+        objectives.forEach((obj, index) => {
+          const progress = document.createElement('div');
+          progress.className = 'quest-tracker-item-progress';
+          
+          let progressText = '';
+          if (obj.type === 'REACH_FLOOR') {
+            const currentFloor = this.game && this.game.player ? this.game.player.stats.floor : 0;
+            progressText = `${obj.description || '到达层数'}: ${currentFloor}/${obj.target}`;
+          } else {
+            const status = obj.current >= obj.count ? '[已完成]' : '';
+            progressText = `${obj.description || `目标 ${obj.id}`}: ${obj.current}/${obj.count} ${status}`;
+          }
+          
+          progress.textContent = progressText;
+          if (obj.current >= obj.count) {
+            progress.style.color = '#8BC34A';
+            progress.style.fontWeight = 'bold';
+          }
+          item.appendChild(progress);
+        });
+
+        // 显示总进度
+        const completedCount = objectives.filter(obj => obj.current >= obj.count).length;
+        const totalProgress = document.createElement('div');
+        totalProgress.className = 'quest-tracker-item-progress';
+        totalProgress.style.marginTop = '4px';
+        totalProgress.style.borderTop = '1px solid rgba(255, 255, 255, 0.2)';
+        totalProgress.style.paddingTop = '4px';
+        totalProgress.textContent = `总进度: ${completedCount}/${objectives.length} 目标完成`;
+        item.appendChild(totalProgress);
       } else {
-        // 其他任务：显示进度/目标
-        progressText = `${quest.progress || 0} / ${quest.target || objective.count || 0}`;
+        // 单目标：显示简单进度
+        const progress = document.createElement('div');
+        progress.className = 'quest-tracker-item-progress';
+        
+        let progressText = '';
+        if (objectives.length > 0) {
+          const obj = objectives[0];
+          if (obj.type === 'REACH_FLOOR') {
+            const currentFloor = this.game && this.game.player ? this.game.player.stats.floor : 0;
+            progressText = `当前: ${currentFloor} / 目标: ${obj.target}`;
+          } else {
+            progressText = `${obj.current || 0} / ${obj.count || 0}`;
+          }
+        } else {
+          // 向后兼容：使用旧的 objective 和 progress
+          const objective = quest.objective || {};
+          if (objective.type === 'REACH_FLOOR') {
+            const currentFloor = this.game && this.game.player ? this.game.player.stats.floor : 0;
+            progressText = `当前: ${currentFloor} / 目标: ${objective.target}`;
+          } else {
+            progressText = `${quest.progress || 0} / ${quest.target || objective.count || 0}`;
+          }
+        }
+        
+        progress.textContent = progressText;
+        item.appendChild(progress);
       }
-      
-      progress.textContent = progressText;
-      item.appendChild(progress);
 
       content.appendChild(item);
     });

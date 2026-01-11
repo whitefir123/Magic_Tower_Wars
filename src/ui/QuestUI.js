@@ -79,7 +79,7 @@ export class QuestUI {
     questDescEl.className = 'quest-description';
     detailsContent.appendChild(questDescEl);
 
-    // 进度条
+    // 进度容器（支持多目标）
     const progressContainer = document.createElement('div');
     progressContainer.className = 'quest-progress-container';
     detailsContent.appendChild(progressContainer);
@@ -88,6 +88,7 @@ export class QuestUI {
     progressLabel.className = 'quest-progress-label';
     progressContainer.appendChild(progressLabel);
 
+    // 单目标进度条（向后兼容）
     const progressBar = document.createElement('div');
     progressBar.className = 'quest-progress-bar';
     progressContainer.appendChild(progressBar);
@@ -99,6 +100,11 @@ export class QuestUI {
     const progressText = document.createElement('div');
     progressText.className = 'quest-progress-text';
     progressContainer.appendChild(progressText);
+
+    // 多目标列表容器
+    const objectivesList = document.createElement('div');
+    objectivesList.className = 'quest-objectives-list';
+    progressContainer.appendChild(objectivesList);
 
     // 奖励区域
     const rewardSection = document.createElement('div');
@@ -168,6 +174,8 @@ export class QuestUI {
       progressLabel,
       progressFill,
       progressText,
+      progressBar,
+      objectivesList,
       rewardList,
       actionButton,
       autoSubmitCheckbox
@@ -416,6 +424,94 @@ export class QuestUI {
         color: #fff;
         text-align: right;
         text-shadow: 1px 1px 0px #000;
+      }
+
+      .quest-objectives-list {
+        display: none;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .quest-objectives-list.visible {
+        display: flex;
+      }
+
+      .quest-objective-item {
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+      }
+
+      .quest-objective-item.completed {
+        background: rgba(76, 175, 80, 0.3);
+        border-color: rgba(76, 175, 80, 0.5);
+      }
+
+      .quest-objective-description {
+        font-size: 15px;
+        color: #fff;
+        margin-bottom: 4px;
+        text-shadow: 1px 1px 0px #000;
+      }
+
+      .quest-objective-progress {
+        font-size: 13px;
+        color: #aaa;
+        text-shadow: 1px 1px 0px #000;
+      }
+
+      .quest-objective-item.completed .quest-objective-progress {
+        color: #8BC34A;
+        font-weight: bold;
+      }
+
+      /* Toast 通知样式 */
+      .quest-toast {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.9);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        border-radius: 8px;
+        padding: 12px 24px;
+        color: #fff;
+        font-size: 16px;
+        font-weight: bold;
+        text-shadow: 2px 2px 0px #000;
+        z-index: 20000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+        max-width: 80%;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      }
+
+      .quest-toast.visible {
+        opacity: 1;
+      }
+
+      .quest-toast.success {
+        border-color: #4CAF50;
+        background: rgba(76, 175, 80, 0.2);
+      }
+
+      .quest-toast.info {
+        border-color: #2196F3;
+        background: rgba(33, 150, 243, 0.2);
+      }
+
+      .quest-toast.warning {
+        border-color: #FF9800;
+        background: rgba(255, 152, 0, 0.2);
+      }
+
+      .quest-toast.error {
+        border-color: #F44336;
+        background: rgba(244, 67, 54, 0.2);
       }
 
       .quest-reward-section {
@@ -788,59 +884,109 @@ export class QuestUI {
         return;
       }
 
-      const { questTitleEl, questDescEl, progressLabel, progressFill, progressText, rewardList, actionButton } = this.elements;
+      const { questTitleEl, questDescEl, progressLabel, progressFill, progressText, progressBar, objectivesList, rewardList, actionButton } = this.elements;
 
       // 更新标题和描述
       questTitleEl.textContent = quest.title;
       questDescEl.textContent = quest.description;
 
-      // 更新进度
+      // 获取任务进度（包含 objectives）
       const isCompleted = this.questSystem.completedQuests.has(questId);
       const isClaimed = this.questSystem.claimedQuests.has(questId);
       const progress = this.questSystem.getQuestProgress(questId);
 
-      if (isClaimed) {
-        // 已领取奖励
-        progressLabel.textContent = '任务状态:';
-        progressText.textContent = '已完成';
-        progressFill.style.width = '100%';
-        actionButton.textContent = '已完成';
-        actionButton.disabled = true;
-        actionButton.classList.remove('claimable');
-      } else if (isCompleted) {
-        // 已完成，待领取
-        progressLabel.textContent = '任务状态:';
-        progressText.textContent = `已完成 (${quest.objective.count}/${quest.objective.count})`;
-        progressFill.style.width = '100%';
-        actionButton.textContent = '领取奖励';
-        actionButton.disabled = false;
-        actionButton.classList.add('claimable');
-        
-        // 绑定领取奖励事件
-        actionButton.onclick = () => {
-          if (this.questSystem.claimReward(questId)) {
-            this.update();
+      // 规范化任务数据以获取 objectives
+      const normalizedQuest = this.questSystem.normalizeQuest(JSON.parse(JSON.stringify(quest)));
+      const objectives = progress && progress.objectives ? progress.objectives : normalizedQuest.objectives;
+
+      // 判断是否有多个目标
+      const hasMultipleObjectives = objectives && objectives.length > 1;
+
+      // 显示/隐藏相应的UI元素
+      if (hasMultipleObjectives) {
+        // 多目标：隐藏单目标进度条，显示目标列表
+        progressBar.style.display = 'none';
+        objectivesList.classList.add('visible');
+        objectivesList.innerHTML = '';
+
+        // 渲染每个子目标
+        objectives.forEach(obj => {
+          const item = document.createElement('div');
+          item.className = 'quest-objective-item';
+          if (obj.current >= obj.count) {
+            item.classList.add('completed');
           }
-        };
-      } else if (progress) {
-        // 进行中
-        const percent = (progress.progress / progress.target) * 100;
-        progressLabel.textContent = '任务进度:';
-        progressText.textContent = `${progress.progress} / ${progress.target}`;
-        progressFill.style.width = `${percent}%`;
-        actionButton.textContent = '进行中';
-        actionButton.disabled = true;
-        actionButton.classList.remove('claimable');
-        actionButton.onclick = null;
+
+          const desc = document.createElement('div');
+          desc.className = 'quest-objective-description';
+          desc.textContent = obj.description || `目标 ${obj.id}`;
+          item.appendChild(desc);
+
+          const prog = document.createElement('div');
+          prog.className = 'quest-objective-progress';
+          if (obj.current >= obj.count) {
+            prog.textContent = `${obj.count}/${obj.count} [已完成]`;
+          } else {
+            prog.textContent = `${obj.current}/${obj.count}`;
+          }
+          item.appendChild(prog);
+
+          objectivesList.appendChild(item);
+        });
+
+        // 更新总进度标签
+        const completedCount = objectives.filter(obj => obj.current >= obj.count).length;
+        progressLabel.textContent = `任务进度: ${completedCount}/${objectives.length} 目标完成`;
       } else {
-        // 未知状态
-        progressLabel.textContent = '任务状态:';
-        progressText.textContent = '未知';
-        progressFill.style.width = '0%';
-        actionButton.textContent = '进行中';
-        actionButton.disabled = true;
-        actionButton.classList.remove('claimable');
-        actionButton.onclick = null;
+        // 单目标：显示进度条，隐藏目标列表
+        progressBar.style.display = 'block';
+        objectivesList.classList.remove('visible');
+        objectivesList.innerHTML = '';
+
+        if (isClaimed) {
+          // 已领取奖励
+          progressLabel.textContent = '任务状态:';
+          progressText.textContent = '已完成';
+          progressFill.style.width = '100%';
+          actionButton.textContent = '已完成';
+          actionButton.disabled = true;
+          actionButton.classList.remove('claimable');
+        } else if (isCompleted) {
+          // 已完成，待领取
+          const targetCount = objectives && objectives.length > 0 ? objectives[0].count : (quest.objective?.count || 1);
+          progressLabel.textContent = '任务状态:';
+          progressText.textContent = `已完成 (${targetCount}/${targetCount})`;
+          progressFill.style.width = '100%';
+          actionButton.textContent = '领取奖励';
+          actionButton.disabled = false;
+          actionButton.classList.add('claimable');
+          
+          // 绑定领取奖励事件
+          actionButton.onclick = () => {
+            if (this.questSystem.claimReward(questId)) {
+              this.update();
+            }
+          };
+        } else if (progress) {
+          // 进行中
+          const percent = progress.target > 0 ? (progress.progress / progress.target) * 100 : 0;
+          progressLabel.textContent = '任务进度:';
+          progressText.textContent = `${progress.progress} / ${progress.target}`;
+          progressFill.style.width = `${percent}%`;
+          actionButton.textContent = '进行中';
+          actionButton.disabled = true;
+          actionButton.classList.remove('claimable');
+          actionButton.onclick = null;
+        } else {
+          // 未知状态
+          progressLabel.textContent = '任务状态:';
+          progressText.textContent = '未知';
+          progressFill.style.width = '0%';
+          actionButton.textContent = '进行中';
+          actionButton.disabled = true;
+          actionButton.classList.remove('claimable');
+          actionButton.onclick = null;
+        }
       }
 
       // 更新奖励
@@ -868,6 +1014,40 @@ export class QuestUI {
     }).catch(err => {
       console.error('[QuestUI] Failed to load QUEST_DATABASE:', err);
     });
+  }
+
+  /**
+   * 显示 Toast 通知
+   * @param {string} message - 消息内容
+   * @param {string} type - 类型 ('info', 'success', 'warning', 'error')
+   */
+  showToast(message, type = 'info') {
+    // 创建 Toast 元素
+    let toast = document.getElementById('quest-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'quest-toast';
+      toast.className = 'quest-toast';
+      document.body.appendChild(toast);
+    }
+
+    // 设置内容和类型
+    toast.textContent = message;
+    toast.className = `quest-toast ${type}`;
+
+    // 显示
+    toast.classList.add('visible');
+
+    // 2秒后隐藏
+    setTimeout(() => {
+      toast.classList.remove('visible');
+      // 延迟移除元素（等待动画完成）
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 2000);
   }
 
   /**

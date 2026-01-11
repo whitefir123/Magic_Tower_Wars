@@ -17,11 +17,17 @@ export const QUEST_DATABASE = {
     title: "初入迷宫",
     description: "击杀3个任意怪物，证明你的勇气",
     category: "MAIN", // 主线任务
+    // 向后兼容：如果存在 objective，转换为 objectives 数组
     objective: {
       type: "KILL",
       target: "ANY",
       count: 3
     },
+    objectives: [
+      { id: 1, type: "KILL", target: "ANY", count: 3, current: 0, description: "击杀任意怪物" }
+    ],
+    prerequisites: [], // 无前置任务
+    nextQuest: "quest_chain_01", // 完成后自动接取任务链
     reward: {
       gold: 50
     },
@@ -37,21 +43,63 @@ export const QUEST_DATABASE = {
       target: "POTION",
       count: 1
     },
+    objectives: [
+      { id: 1, type: "COLLECT", target: "POTION", count: 1, current: 0, description: "收集药水" }
+    ],
+    prerequisites: [],
+    nextQuest: null,
     reward: {
       xp: 100
     },
     autoComplete: false // 手动领取奖励
+  },
+  // 示例任务链
+  "quest_chain_01": {
+    id: "quest_chain_01",
+    title: "深入探索",
+    description: "完成初步训练后，你需要同时完成两个挑战：击杀史莱姆并收集药水",
+    category: "MAIN",
+    objectives: [
+      { id: 1, type: "KILL", target: "SLIME", count: 5, current: 0, description: "击杀史莱姆" },
+      { id: 2, type: "COLLECT", target: "POTION_HP_S", count: 1, current: 0, description: "收集小型药水" }
+    ],
+    prerequisites: ["quest_001"], // 需要先完成 quest_001
+    nextQuest: "quest_chain_02",
+    reward: {
+      gold: 100,
+      xp: 150
+    },
+    autoComplete: false
+  },
+  "quest_chain_02": {
+    id: "quest_chain_02",
+    title: "进阶挑战",
+    description: "继续你的冒险，击败更强的敌人",
+    category: "MAIN",
+    objectives: [
+      { id: 1, type: "KILL", target: "BAT", count: 3, current: 0, description: "击杀蝙蝠" },
+      { id: 2, type: "KILL", target: "SKELETON", count: 2, current: 0, description: "击杀骷髅战士" }
+    ],
+    prerequisites: ["quest_chain_01"],
+    nextQuest: null,
+    reward: {
+      gold: 150,
+      xp: 200
+    },
+    autoComplete: false
   }
 };
 
 export class QuestSystem {
   constructor(game) {
     this.game = game;
-    this.activeQuests = new Map(); // Map<questId, questProgress>
+    // activeQuests 现在存储完整的任务副本（包含实时的 objectives 状态）
+    this.activeQuests = new Map(); // Map<questId, questData>
     this.completedQuests = new Set(); // Set<questId> - 已完成但未领取奖励的任务
     this.claimedQuests = new Set(); // Set<questId> - 已领取奖励的任务
     this.dailyQuestsGenerated = false; // 标记是否已生成今日每日任务
     this.autoSubmit = false; // 自动提交奖励
+    this.floorQuests = new Map(); // Map<floorIndex, questId> - 每层随机任务
     
     console.log('[QuestSystem] 任务系统已初始化');
   }
@@ -82,15 +130,93 @@ export class QuestSystem {
   }
 
   /**
+   * 检查任务的前置条件是否满足
+   * @param {string} questId - 任务ID
+   * @returns {boolean} 是否满足前置条件
+   */
+  checkPrerequisites(questId) {
+    const quest = QUEST_DATABASE[questId];
+    if (!quest) return false;
+
+    // 如果没有前置任务，直接返回 true
+    if (!quest.prerequisites || quest.prerequisites.length === 0) {
+      return true;
+    }
+
+    // 检查所有前置任务是否都已完成并已领取奖励
+    return quest.prerequisites.every(prereqId => {
+      return this.claimedQuests.has(prereqId);
+    });
+  }
+
+  /**
+   * 规范化任务数据（将旧格式转换为新格式）
+   * @param {object} quest - 任务数据
+   * @returns {object} 规范化后的任务数据
+   */
+  normalizeQuest(quest) {
+    // 如果已经有 objectives 数组，直接返回
+    if (quest.objectives && Array.isArray(quest.objectives)) {
+      return quest;
+    }
+
+    // 向后兼容：将旧的 objective 转换为 objectives 数组
+    if (quest.objective) {
+      const objective = quest.objective;
+      quest.objectives = [{
+        id: 1,
+        type: objective.type,
+        target: objective.target,
+        count: objective.count || 1,
+        current: 0,
+        description: this.getObjectiveDescription(objective)
+      }];
+    }
+
+    // 确保 prerequisites 和 nextQuest 存在
+    if (!quest.prerequisites) quest.prerequisites = [];
+    if (!quest.nextQuest) quest.nextQuest = null;
+
+    return quest;
+  }
+
+  /**
+   * 获取目标描述
+   * @param {object} objective - 目标对象
+   * @returns {string} 描述文本
+   */
+  getObjectiveDescription(objective) {
+    if (objective.type === 'KILL') {
+      if (objective.target === 'ANY') {
+        return `击杀${objective.count}个任意怪物`;
+      }
+      const monster = MONSTER_STATS[objective.target];
+      const monsterName = monster ? (monster.cnName || monster.name) : objective.target;
+      return `击杀${objective.count}个${monsterName}`;
+    } else if (objective.type === 'COLLECT') {
+      return `收集${objective.count}个${objective.target}`;
+    } else if (objective.type === 'REACH_FLOOR') {
+      return `到达第${objective.target}层`;
+    } else if (objective.type === 'INTERACT') {
+      return `与${objective.target}交互${objective.count}次`;
+    }
+    return `完成目标: ${objective.type}`;
+  }
+
+  /**
    * 接取任务
    * @param {string} questId - 任务ID
+   * @param {boolean} skipPrerequisites - 是否跳过前置检查（用于自动接取）
    */
-  acceptQuest(questId) {
+  acceptQuest(questId, skipPrerequisites = false) {
     const quest = QUEST_DATABASE[questId];
     if (!quest) {
       console.warn(`[QuestSystem] 任务不存在: ${questId}`);
       return false;
     }
+
+    // 规范化任务数据
+    const normalizedQuest = this.normalizeQuest(JSON.parse(JSON.stringify(quest)));
 
     // 检查是否已经接取或已完成
     if (this.activeQuests.has(questId) || this.completedQuests.has(questId) || this.claimedQuests.has(questId)) {
@@ -98,14 +224,29 @@ export class QuestSystem {
       return false;
     }
 
+    // 检查前置条件（除非跳过检查）
+    if (!skipPrerequisites && !this.checkPrerequisites(questId)) {
+      console.warn(`[QuestSystem] 任务前置条件未满足: ${questId}`);
+      return false;
+    }
+
+    // 初始化 objectives 的 current 值
+    const questData = {
+      ...normalizedQuest,
+      objectives: normalizedQuest.objectives.map(obj => ({
+        ...obj,
+        current: 0
+      }))
+    };
+
     // 添加到活跃任务
-    this.activeQuests.set(questId, {
-      questId: questId,
-      progress: 0,
-      target: quest.objective.count
-    });
+    this.activeQuests.set(questId, questData);
 
     console.log(`[QuestSystem] 已接取任务: ${quest.title}`);
+    
+    // 显示 Toast 通知
+    this.showToast(`已接取任务: ${quest.title}`);
+
     return true;
   }
 
@@ -116,52 +257,63 @@ export class QuestSystem {
    */
   check(eventType, data = {}) {
     // 遍历所有活跃任务
-    for (const [questId, questProgress] of this.activeQuests.entries()) {
-      const quest = QUEST_DATABASE[questId];
-      if (!quest) continue;
+    for (const [questId, questData] of this.activeQuests.entries()) {
+      if (!questData || !questData.objectives) continue;
 
-      const objective = quest.objective;
-      
-      // 检查任务目标类型是否匹配
-      let shouldUpdate = false;
-      
-      if (eventType === 'onKill' && objective.type === 'KILL') {
-        // 击杀任务
-        if (objective.target === 'ANY' || data.monsterType === objective.target) {
-          shouldUpdate = true;
-        }
-      } else if (eventType === 'onLoot' && objective.type === 'COLLECT') {
-        // 收集任务
-        if (data.itemType === objective.target || data.itemId === objective.target) {
-          shouldUpdate = true;
-        }
-      } else if (eventType === 'onReachFloor' && objective.type === 'REACH_FLOOR') {
-        // 到达层数任务（一次性完成，不累积进度）
-        const currentFloor = data.floor || (this.game && this.game.player ? this.game.player.stats.floor : 0);
-        if (currentFloor >= objective.target && questProgress.progress < questProgress.target) {
-          // 到达目标层数，直接完成
-          questProgress.progress = questProgress.target;
-          shouldUpdate = true;
-        }
-      } else if (eventType === 'onInteract' && objective.type === 'INTERACT') {
-        // 交互任务
-        if (objective.target === 'ANY' || data.interactType === objective.target) {
-          shouldUpdate = true;
-        }
-      }
+      let hasUpdate = false;
 
-      // 更新进度
-      if (shouldUpdate) {
-        // REACH_FLOOR 任务已经在上面直接设置了进度，不需要再增加
-        if (objective.type !== 'REACH_FLOOR') {
-          questProgress.progress = Math.min(questProgress.progress + 1, questProgress.target);
+      // 遍历任务的所有子目标
+      questData.objectives.forEach(objective => {
+        let shouldUpdate = false;
+
+        if (eventType === 'onKill' && objective.type === 'KILL') {
+          // 击杀任务
+          if (objective.target === 'ANY' || data.monsterType === objective.target) {
+            shouldUpdate = true;
+          }
+        } else if (eventType === 'onLoot' && objective.type === 'COLLECT') {
+          // 收集任务
+          if (data.itemType === objective.target || data.itemId === objective.target) {
+            shouldUpdate = true;
+          }
+        } else if (eventType === 'onReachFloor' && objective.type === 'REACH_FLOOR') {
+          // 到达层数任务（一次性完成，不累积进度）
+          const currentFloor = data.floor || (this.game && this.game.player ? this.game.player.stats.floor : 0);
+          if (currentFloor >= objective.target && objective.current < objective.count) {
+            objective.current = objective.count;
+            shouldUpdate = true;
+          }
+        } else if (eventType === 'onInteract' && objective.type === 'INTERACT') {
+          // 交互任务
+          if (objective.target === 'ANY' || data.interactType === objective.target) {
+            shouldUpdate = true;
+          }
         }
+
+        // 更新进度
+        if (shouldUpdate) {
+          // REACH_FLOOR 任务已经在上面直接设置了进度，不需要再增加
+          if (objective.type !== 'REACH_FLOOR') {
+            objective.current = Math.min(objective.current + 1, objective.count);
+          }
+          hasUpdate = true;
+        }
+      });
+
+      // 如果有更新，检查任务是否完成
+      if (hasUpdate) {
+        // 检查所有子目标是否都完成
+        const allCompleted = questData.objectives.every(obj => obj.current >= obj.count);
         
-        console.log(`[QuestSystem] 任务进度更新: ${quest.title} (${questProgress.progress}/${questProgress.target})`);
-        
-        // 检查是否完成
-        if (questProgress.progress >= questProgress.target) {
+        if (allCompleted) {
           this.completeQuest(questId);
+        } else {
+          // 显示进度更新 Toast
+          const completedCount = questData.objectives.filter(obj => obj.current >= obj.count).length;
+          const totalCount = questData.objectives.length;
+          if (completedCount > 0) {
+            this.showToast(`${questData.title}: ${completedCount}/${totalCount} 目标完成`);
+          }
         }
       }
     }
@@ -182,8 +334,14 @@ export class QuestSystem {
    * @param {string} questId - 任务ID
    */
   completeQuest(questId) {
-    const quest = QUEST_DATABASE[questId];
-    if (!quest) return;
+    let questData = this.activeQuests.get(questId);
+    if (!questData) {
+      // 尝试从数据库获取
+      const quest = QUEST_DATABASE[questId];
+      if (!quest) return;
+      // 规范化任务数据
+      questData = this.normalizeQuest(JSON.parse(JSON.stringify(quest)));
+    }
 
     // 从活跃任务移除
     if (this.activeQuests.has(questId)) {
@@ -193,16 +351,57 @@ export class QuestSystem {
     // 添加到已完成列表（待领取奖励）
     this.completedQuests.add(questId);
 
-    console.log(`[QuestSystem] 任务完成: ${quest.title}`);
+    console.log(`[QuestSystem] 任务完成: ${questData.title}`);
+    
+    // 显示完成 Toast
+    this.showToast(`任务完成: ${questData.title}`, 'success');
 
     // 自动提交：如果开启了自动提交，立即领取奖励
     if (this.autoSubmit) {
       this.claimReward(questId);
+      // 领取奖励后，检查是否有后续任务
+      if (questData.nextQuest) {
+        setTimeout(() => {
+          if (this.acceptQuest(questData.nextQuest, true)) {
+            this.showToast(`自动接取后续任务: ${QUEST_DATABASE[questData.nextQuest]?.title || questData.nextQuest}`, 'info');
+          }
+        }, 500);
+      }
+    } else {
+      // 检查是否有后续任务，如果有则自动接取
+      if (questData.nextQuest) {
+        // 延迟一下，让玩家看到完成提示
+        setTimeout(() => {
+          if (this.acceptQuest(questData.nextQuest, true)) {
+            this.showToast(`自动接取后续任务: ${QUEST_DATABASE[questData.nextQuest]?.title || questData.nextQuest}`, 'info');
+          }
+        }, 1000);
+      }
     }
 
     // 通知UI更新
-    if (this.game && this.game.ui && this.game.ui.questUI) {
-      this.game.ui.questUI.update();
+    if (this.game && this.game.ui && this.game.ui) {
+      if (this.game.ui.questUI) {
+        this.game.ui.questUI.update();
+      }
+    }
+  }
+
+  /**
+   * 显示 Toast 通知
+   * @param {string} message - 消息内容
+   * @param {string} type - 类型 ('info', 'success', 'warning', 'error')
+   */
+  showToast(message, type = 'info') {
+    // 如果 UI 有 showToast 方法，使用它
+    if (this.game && this.game.ui && this.game.ui.questUI && this.game.ui.questUI.showToast) {
+      this.game.ui.questUI.showToast(message, type);
+      return;
+    }
+
+    // 否则使用 logMessage（如果存在）
+    if (this.game && this.game.ui && this.game.ui.logMessage) {
+      this.game.ui.logMessage(message, type === 'success' ? 'gain' : 'info');
     }
   }
 
@@ -334,14 +533,24 @@ export class QuestSystem {
    */
   getQuestData() {
     return {
-      activeQuests: Array.from(this.activeQuests.entries()).map(([questId, progress]) => ({
+      activeQuests: Array.from(this.activeQuests.entries()).map(([questId, questData]) => ({
         questId,
-        progress: progress.progress,
-        target: progress.target
+        objectives: questData.objectives ? questData.objectives.map(obj => ({
+          id: obj.id,
+          type: obj.type,
+          target: obj.target,
+          count: obj.count,
+          current: obj.current,
+          description: obj.description
+        })) : [],
+        // 向后兼容：保留 progress 和 target
+        progress: questData.objectives ? questData.objectives.reduce((sum, obj) => sum + obj.current, 0) : 0,
+        target: questData.objectives ? questData.objectives.reduce((sum, obj) => sum + obj.count, 0) : 0
       })),
       completedQuests: Array.from(this.completedQuests),
       claimedQuests: Array.from(this.claimedQuests),
-      autoSubmit: this.autoSubmit
+      autoSubmit: this.autoSubmit,
+      floorQuests: Array.from(this.floorQuests.entries())
     };
   }
 
@@ -356,6 +565,7 @@ export class QuestSystem {
     this.activeQuests.clear();
     this.completedQuests.clear();
     this.claimedQuests.clear();
+    this.floorQuests.clear();
 
     // 恢复自动提交设置
     this.autoSubmit = data.autoSubmit || false;
@@ -363,13 +573,60 @@ export class QuestSystem {
     // 恢复活跃任务
     if (data.activeQuests && Array.isArray(data.activeQuests)) {
       data.activeQuests.forEach(item => {
-        if (item.questId && QUEST_DATABASE[item.questId]) {
-          this.activeQuests.set(item.questId, {
-            questId: item.questId,
-            progress: item.progress || 0,
-            target: item.target || QUEST_DATABASE[item.questId].objective.count
-          });
+        if (!item.questId) return;
+
+        // 尝试从数据库获取任务
+        let quest = QUEST_DATABASE[item.questId];
+        if (!quest) {
+          console.warn(`[QuestSystem] 存档中的任务不存在于数据库: ${item.questId}`);
+          return;
         }
+
+        // 规范化任务数据
+        const normalizedQuest = this.normalizeQuest(JSON.parse(JSON.stringify(quest)));
+
+        // 恢复 objectives 状态
+        if (item.objectives && Array.isArray(item.objectives)) {
+          // 新格式：使用 objectives 数组
+          normalizedQuest.objectives = item.objectives.map(savedObj => {
+            // 找到对应的目标
+            const originalObj = normalizedQuest.objectives.find(obj => obj.id === savedObj.id);
+            if (originalObj) {
+              return {
+                ...originalObj,
+                current: savedObj.current || 0
+              };
+            }
+            // 如果找不到，使用保存的数据
+            return {
+              id: savedObj.id,
+              type: savedObj.type,
+              target: savedObj.target,
+              count: savedObj.count || 1,
+              current: savedObj.current || 0,
+              description: savedObj.description || this.getObjectiveDescription(savedObj)
+            };
+          });
+        } else {
+          // 向后兼容：使用旧的 progress 和 target
+          if (normalizedQuest.objectives && normalizedQuest.objectives.length > 0) {
+            // 如果有多个目标，平均分配进度（简化处理）
+            const totalProgress = item.progress || 0;
+            const totalTarget = item.target || normalizedQuest.objectives.reduce((sum, obj) => sum + obj.count, 0);
+            const progressPerObjective = Math.floor(totalProgress / normalizedQuest.objectives.length);
+            
+            normalizedQuest.objectives.forEach((obj, index) => {
+              if (index < normalizedQuest.objectives.length - 1) {
+                obj.current = Math.min(progressPerObjective, obj.count);
+              } else {
+                // 最后一个目标分配剩余进度
+                obj.current = Math.min(totalProgress - (progressPerObjective * (normalizedQuest.objectives.length - 1)), obj.count);
+              }
+            });
+          }
+        }
+
+        this.activeQuests.set(item.questId, normalizedQuest);
       });
     }
 
@@ -391,10 +648,18 @@ export class QuestSystem {
       });
     }
 
+    // 恢复楼层任务记录
+    if (data.floorQuests && Array.isArray(data.floorQuests)) {
+      data.floorQuests.forEach(([floorIndex, questId]) => {
+        this.floorQuests.set(floorIndex, questId);
+      });
+    }
+
     console.log('[QuestSystem] 任务数据已加载', {
       active: this.activeQuests.size,
       completed: this.completedQuests.size,
-      claimed: this.claimedQuests.size
+      claimed: this.claimedQuests.size,
+      floorQuests: this.floorQuests.size
     });
 
     // 更新UI
@@ -408,13 +673,21 @@ export class QuestSystem {
    * @returns {Array} 活跃任务列表
    */
   getActiveQuests() {
-    return Array.from(this.activeQuests.keys()).map(questId => {
-      const quest = QUEST_DATABASE[questId];
-      const progress = this.activeQuests.get(questId);
+    return Array.from(this.activeQuests.entries()).map(([questId, questData]) => {
+      // 规范化任务数据
+      const normalizedQuest = this.normalizeQuest(JSON.parse(JSON.stringify(questData)));
+      
+      // 计算总进度（向后兼容）
+      const totalProgress = normalizedQuest.objectives.reduce((sum, obj) => sum + obj.current, 0);
+      const totalTarget = normalizedQuest.objectives.reduce((sum, obj) => sum + obj.count, 0);
+      
       return {
-        ...quest,
-        progress: progress.progress,
-        target: progress.target
+        ...normalizedQuest,
+        // 向后兼容：保留 progress 和 target
+        progress: totalProgress,
+        target: totalTarget,
+        // 确保 objectives 存在
+        objectives: normalizedQuest.objectives
       };
     });
   }
@@ -430,17 +703,206 @@ export class QuestSystem {
   /**
    * 获取任务进度
    * @param {string} questId - 任务ID
-   * @returns {object|null} 任务进度对象 {progress, target}
+   * @returns {object|null} 任务进度对象 {progress, target, objectives}
    */
   getQuestProgress(questId) {
     if (this.activeQuests.has(questId)) {
-      const progress = this.activeQuests.get(questId);
+      const questData = this.activeQuests.get(questId);
+      const normalizedQuest = this.normalizeQuest(JSON.parse(JSON.stringify(questData)));
+      
+      // 计算总进度（向后兼容）
+      const totalProgress = normalizedQuest.objectives.reduce((sum, obj) => sum + obj.current, 0);
+      const totalTarget = normalizedQuest.objectives.reduce((sum, obj) => sum + obj.count, 0);
+      
       return {
-        progress: progress.progress,
-        target: progress.target
+        progress: totalProgress,
+        target: totalTarget,
+        objectives: normalizedQuest.objectives
       };
     }
     return null;
+  }
+
+  /**
+   * 生成楼层随机任务
+   * @param {number} floorIndex - 楼层索引
+   * @returns {string|null} 生成的任务ID，如果生成失败返回 null
+   */
+  generateFloorQuest(floorIndex) {
+    // 如果该层已经有任务，不重复生成
+    if (this.floorQuests.has(floorIndex)) {
+      const existingQuestId = this.floorQuests.get(floorIndex);
+      // 检查任务是否还存在
+      if (this.activeQuests.has(existingQuestId) || this.completedQuests.has(existingQuestId)) {
+        return existingQuestId;
+      }
+      // 如果任务已不存在，清除记录
+      this.floorQuests.delete(floorIndex);
+    }
+
+    try {
+      // 使用楼层索引作为种子的一部分，确保每层任务固定
+      const floorSeed = `floor_${floorIndex}_${Date.now()}`;
+      const rng = new SeededRandom(floorSeed);
+
+      // 获取当前楼层可用的怪物类型（根据楼层难度筛选）
+      const monsterTypes = Object.keys(MONSTER_STATS).filter(type => {
+        if (type === 'BOSS') return false;
+        // 可以根据楼层筛选怪物，这里简化处理，使用所有非BOSS怪物
+        return true;
+      });
+
+      if (monsterTypes.length === 0) {
+        console.warn(`[QuestSystem] 楼层 ${floorIndex} 没有可用怪物类型`);
+        return null;
+      }
+
+      // 可用消耗品列表
+      const consumableIds = CONSUMABLE_IDS || ['POTION_HP_S', 'POTION_RAGE'];
+
+      // 任务模板池
+      const questTemplates = [
+        // 击杀特定怪物任务
+        {
+          type: 'KILL',
+          generate: () => {
+            const monsterType = rng.choice(monsterTypes);
+            const monster = MONSTER_STATS[monsterType];
+            const count = rng.nextInt(3, 8); // 3-8只
+            const goldReward = count * rng.nextInt(5, 12);
+            
+            return {
+              id: `floor_quest_${floorIndex}_kill_${Date.now()}`,
+              title: `楼层挑战：${monster.cnName || monster.name}`,
+              description: `在第${floorIndex}层击杀${count}只${monster.cnName || monster.name}`,
+              category: 'FLOOR',
+              objectives: [
+                {
+                  id: 1,
+                  type: 'KILL',
+                  target: monsterType,
+                  count: count,
+                  current: 0,
+                  description: `击杀${count}只${monster.cnName || monster.name}`
+                }
+              ],
+              prerequisites: [],
+              nextQuest: null,
+              reward: {
+                gold: goldReward,
+                xp: count * 10
+              },
+              autoComplete: false
+            };
+          }
+        },
+        // 收集药水任务
+        {
+          type: 'COLLECT',
+          generate: () => {
+            const itemId = rng.choice(consumableIds);
+            const count = rng.nextInt(1, 3); // 1-3个
+            const goldReward = count * rng.nextInt(8, 18);
+            
+            let itemName = '药水';
+            if (itemId.includes('POTION_HP')) itemName = '小型药水';
+            else if (itemId.includes('POTION_RAGE')) itemName = '怒气药水';
+            else if (itemId.includes('SCROLL_XP')) itemName = '知识卷轴';
+            else if (itemId.includes('SCROLL_FIRE')) itemName = '火焰卷轴';
+            
+            return {
+              id: `floor_quest_${floorIndex}_collect_${Date.now()}`,
+              title: `楼层收集：${itemName}`,
+              description: `在第${floorIndex}层收集${count}个${itemName}`,
+              category: 'FLOOR',
+              objectives: [
+                {
+                  id: 1,
+                  type: 'COLLECT',
+                  target: itemId,
+                  count: count,
+                  current: 0,
+                  description: `收集${count}个${itemName}`
+                }
+              ],
+              prerequisites: [],
+              nextQuest: null,
+              reward: {
+                gold: goldReward
+              },
+              autoComplete: false
+            };
+          }
+        },
+        // 复合任务：击杀+收集
+        {
+          type: 'COMPLEX',
+          generate: () => {
+            const monsterType = rng.choice(monsterTypes);
+            const monster = MONSTER_STATS[monsterType];
+            const killCount = rng.nextInt(2, 5);
+            const itemId = rng.choice(consumableIds);
+            const collectCount = 1;
+            
+            let itemName = '药水';
+            if (itemId.includes('POTION_HP')) itemName = '小型药水';
+            else if (itemId.includes('POTION_RAGE')) itemName = '怒气药水';
+            
+            return {
+              id: `floor_quest_${floorIndex}_complex_${Date.now()}`,
+              title: `楼层挑战：双重目标`,
+              description: `在第${floorIndex}层完成双重挑战：击杀${killCount}只${monster.cnName || monster.name}并收集${collectCount}个${itemName}`,
+              category: 'FLOOR',
+              objectives: [
+                {
+                  id: 1,
+                  type: 'KILL',
+                  target: monsterType,
+                  count: killCount,
+                  current: 0,
+                  description: `击杀${killCount}只${monster.cnName || monster.name}`
+                },
+                {
+                  id: 2,
+                  type: 'COLLECT',
+                  target: itemId,
+                  count: collectCount,
+                  current: 0,
+                  description: `收集${collectCount}个${itemName}`
+                }
+              ],
+              prerequisites: [],
+              nextQuest: null,
+              reward: {
+                gold: (killCount * 8) + (collectCount * 15),
+                xp: killCount * 12
+              },
+              autoComplete: false
+            };
+          }
+        }
+      ];
+
+      // 随机选择一个模板
+      const template = rng.choice(questTemplates);
+      const quest = template.generate();
+
+      // 添加到任务数据库
+      QUEST_DATABASE[quest.id] = quest;
+
+      // 自动接取任务
+      if (this.acceptQuest(quest.id, true)) {
+        // 记录该层的任务
+        this.floorQuests.set(floorIndex, quest.id);
+        console.log(`[QuestSystem] 已生成并接取楼层 ${floorIndex} 的随机任务: ${quest.title}`);
+        return quest.id;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`[QuestSystem] 生成楼层 ${floorIndex} 任务失败:`, error);
+      return null;
+    }
   }
 
   /**

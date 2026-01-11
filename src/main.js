@@ -951,6 +951,8 @@ class Game {
         // 任务系统：检查到达层数事件
         if (this.questSystem) {
           this.questSystem.check('onReachFloor', { floor: this.player.stats.floor });
+          // 生成该层的随机挑战任务
+          this.questSystem.generateFloorQuest(this.player.stats.floor);
         }
         
         // FIX: 清除浮动文字池，防止残留文字在错误的坐标显示
