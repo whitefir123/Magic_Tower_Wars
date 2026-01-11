@@ -51,6 +51,7 @@ export class QuestSystem {
     this.completedQuests = new Set(); // Set<questId> - 已完成但未领取奖励的任务
     this.claimedQuests = new Set(); // Set<questId> - 已领取奖励的任务
     this.dailyQuestsGenerated = false; // 标记是否已生成今日每日任务
+    this.autoSubmit = false; // 自动提交奖励
     
     console.log('[QuestSystem] 任务系统已初始化');
   }
@@ -194,6 +195,11 @@ export class QuestSystem {
 
     console.log(`[QuestSystem] 任务完成: ${quest.title}`);
 
+    // 自动提交：如果开启了自动提交，立即领取奖励
+    if (this.autoSubmit) {
+      this.claimReward(questId);
+    }
+
     // 通知UI更新
     if (this.game && this.game.ui && this.game.ui.questUI) {
       this.game.ui.questUI.update();
@@ -306,6 +312,23 @@ export class QuestSystem {
   }
 
   /**
+   * 设置自动提交状态
+   * @param {boolean} enabled - 是否启用自动提交
+   */
+  setAutoSubmit(enabled) {
+    this.autoSubmit = enabled;
+    
+    // 如果启用自动提交，立即处理已完成的任务
+    if (enabled) {
+      // 创建副本以避免迭代时修改集合
+      const completedQuestsArray = Array.from(this.completedQuests);
+      completedQuestsArray.forEach(questId => {
+        this.claimReward(questId);
+      });
+    }
+  }
+
+  /**
    * 获取任务数据（用于存档）
    * @returns {object} 任务数据
    */
@@ -317,7 +340,8 @@ export class QuestSystem {
         target: progress.target
       })),
       completedQuests: Array.from(this.completedQuests),
-      claimedQuests: Array.from(this.claimedQuests)
+      claimedQuests: Array.from(this.claimedQuests),
+      autoSubmit: this.autoSubmit
     };
   }
 
@@ -332,6 +356,9 @@ export class QuestSystem {
     this.activeQuests.clear();
     this.completedQuests.clear();
     this.claimedQuests.clear();
+
+    // 恢复自动提交设置
+    this.autoSubmit = data.autoSubmit || false;
 
     // 恢复活跃任务
     if (data.activeQuests && Array.isArray(data.activeQuests)) {

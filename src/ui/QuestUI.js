@@ -134,7 +134,12 @@ export class QuestUI {
     autoSubmitLabel.appendChild(autoSubmitText);
 
     autoSubmitCheckbox.addEventListener('change', (e) => {
-      this.autoSubmit = e.target.checked;
+      const checked = e.target.checked;
+      this.autoSubmit = checked;
+      // 同步状态到 QuestSystem
+      if (this.game && this.game.questSystem) {
+        this.game.questSystem.setAutoSubmit(checked);
+      }
     });
 
     // 按钮：领取奖励/进行中/已完成
@@ -164,7 +169,8 @@ export class QuestUI {
       progressFill,
       progressText,
       rewardList,
-      actionButton
+      actionButton,
+      autoSubmitCheckbox
     };
 
     // 插入样式
@@ -589,6 +595,12 @@ export class QuestUI {
     if (!this.questSystem) {
       console.warn('[QuestUI] QuestSystem not found');
       return;
+    }
+
+    // 更新自动提交复选框状态（从系统读取）
+    if (this.elements.autoSubmitCheckbox) {
+      this.elements.autoSubmitCheckbox.checked = this.questSystem.autoSubmit || false;
+      this.autoSubmit = this.questSystem.autoSubmit || false;
     }
 
     // 更新任务列表
