@@ -15,6 +15,13 @@ export class QuestUI {
     // questSystem 引用将在 update() 中获取
     this.questSystem = null;
     
+    // 手风琴菜单状态：记录每个分类的展开/收起状态
+    this.categoryStates = {
+      'MAIN': false,
+      'SIDE': false,
+      'DAILY': false
+    };
+    
     this.init();
   }
 
@@ -140,7 +147,7 @@ export class QuestUI {
     // 关闭按钮（右上角）
     const closeButton = document.createElement('button');
     closeButton.className = 'quest-close-button';
-    closeButton.textContent = '×';
+    closeButton.setAttribute('aria-label', '关闭');
     closeButton.addEventListener('click', () => {
       this.close();
     });
@@ -248,7 +255,55 @@ export class QuestUI {
       .quest-list-content {
         display: flex;
         flex-direction: column;
+        gap: 8px;
+      }
+
+      .quest-category {
+        display: flex;
+        flex-direction: column;
         gap: 5px;
+      }
+
+      .quest-category-header {
+        padding: 10px 8px;
+        background: rgba(100, 100, 100, 0.6);
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
+        color: #fff;
+        text-shadow: 2px 2px 0px #000;
+        transition: all 0.2s;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .quest-category-header:hover {
+        background: rgba(150, 150, 150, 0.7);
+        border-color: rgba(255, 255, 255, 0.6);
+      }
+
+      .quest-category-header::after {
+        content: '▶';
+        font-size: 14px;
+        transition: transform 0.2s;
+      }
+
+      .quest-category-header.expanded::after {
+        transform: rotate(90deg);
+      }
+
+      .quest-category-content {
+        display: none;
+        flex-direction: column;
+        gap: 5px;
+        padding-left: 10px;
+      }
+
+      .quest-category-content.expanded {
+        display: flex;
       }
 
       .quest-list-item {
@@ -439,16 +494,19 @@ export class QuestUI {
         position: absolute;
         top: 10px;
         right: 10px;
-        width: 30px;
-        height: 30px;
-        font-size: 28px;
-        line-height: 1;
+        width: 40px;
+        height: 40px;
+        background: url('https://i.postimg.cc/Hkg88mzY/chacha.png') no-repeat center/contain;
+        background-color: transparent;
         border: none;
-        background: rgba(0, 0, 0, 0.5);
-        color: #fff;
         cursor: pointer;
-        border-radius: 4px;
-        transition: all 0.2s;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0;
+        text-indent: -9999px;
+        overflow: hidden;
         margin-left: 65px;
         margin-right: 65px;
         margin-top: 22px;
@@ -456,7 +514,12 @@ export class QuestUI {
       }
 
       .quest-close-button:hover {
-        background: rgba(255, 0, 0, 0.7);
+        transform: scale(1.1);
+        filter: brightness(1.2);
+      }
+
+      .quest-close-button:active {
+        transform: scale(0.95);
       }
 
       /* 滚动条样式 */
@@ -548,40 +611,126 @@ export class QuestUI {
   }
 
   /**
-   * 更新任务列表
+   * 更新任务列表（手风琴菜单）
    */
   updateQuestList() {
     const listContent = this.elements.listContent;
     if (!listContent || !this.questSystem) return;
 
-    // 清空列表
-    listContent.innerHTML = '';
+    // 导入 QUEST_DATABASE
+    import('../systems/QuestSystem.js').then(({ QUEST_DATABASE }) => {
+      // 清空列表
+      listContent.innerHTML = '';
 
-    // 获取所有任务（活跃 + 已完成）
-    const activeQuests = this.questSystem.getActiveQuests();
-    const completedQuests = this.questSystem.getCompletedQuests();
+      // 获取所有任务（活跃 + 已完成）
+      const activeQuests = this.questSystem.getActiveQuests();
+      const completedQuests = this.questSystem.getCompletedQuests();
 
-    // 显示活跃任务
-    activeQuests.forEach(quest => {
-      const item = this.createQuestListItem(quest, 'active');
-      listContent.appendChild(item);
+      // 按分类组织任务
+      const questsByCategory = {
+        'MAIN': { active: [], completed: [] },
+        'SIDE': { active: [], completed: [] },
+        'DAILY': { active: [], completed: [] }
+      };
+
+      // 分类活跃任务
+      activeQuests.forEach(quest => {
+        const category = quest.category || 'SIDE'; // 默认为支线
+        if (questsByCategory[category]) {
+          questsByCategory[category].active.push(quest);
+        }
+      });
+
+      // 分类已完成任务
+      completedQuests.forEach(quest => {
+        const category = quest.category || 'SIDE'; // 默认为支线
+        if (questsByCategory[category]) {
+          questsByCategory[category].completed.push(quest);
+        }
+      });
+
+      // 定义分类显示名称
+      const categoryNames = {
+        'MAIN': '主线任务',
+        'SIDE': '支线任务',
+        'DAILY': '每日任务'
+      };
+
+      // 确定默认展开的分类（有进行中任务的分类）
+      let hasExpandedCategory = false;
+      Object.keys(questsByCategory).forEach(category => {
+        if (questsByCategory[category].active.length > 0 && !hasExpandedCategory) {
+          this.categoryStates[category] = true;
+          hasExpandedCategory = true;
+        }
+      });
+
+      // 为每个分类创建容器
+      Object.keys(questsByCategory).forEach(category => {
+        const categoryData = questsByCategory[category];
+        const totalQuests = categoryData.active.length + categoryData.completed.length;
+
+        // 如果没有任务，跳过该分类
+        if (totalQuests === 0) {
+          return;
+        }
+
+        // 创建分类容器
+        const categoryContainer = document.createElement('div');
+        categoryContainer.className = 'quest-category';
+
+        // 创建分类标题
+        const categoryHeader = document.createElement('div');
+        categoryHeader.className = 'quest-category-header';
+        if (this.categoryStates[category]) {
+          categoryHeader.classList.add('expanded');
+        }
+        categoryHeader.textContent = categoryNames[category];
+        
+        // 添加点击事件：切换展开/收起
+        categoryHeader.addEventListener('click', () => {
+          this.categoryStates[category] = !this.categoryStates[category];
+          categoryHeader.classList.toggle('expanded');
+          categoryContent.classList.toggle('expanded');
+        });
+
+        // 创建分类内容容器
+        const categoryContent = document.createElement('div');
+        categoryContent.className = 'quest-category-content';
+        if (this.categoryStates[category]) {
+          categoryContent.classList.add('expanded');
+        }
+
+        // 添加活跃任务
+        categoryData.active.forEach(quest => {
+          const item = this.createQuestListItem(quest, 'active');
+          categoryContent.appendChild(item);
+        });
+
+        // 添加已完成任务
+        categoryData.completed.forEach(quest => {
+          const item = this.createQuestListItem(quest, 'completed');
+          categoryContent.appendChild(item);
+        });
+
+        categoryContainer.appendChild(categoryHeader);
+        categoryContainer.appendChild(categoryContent);
+        listContent.appendChild(categoryContainer);
+      });
+
+      // 如果没有任何任务，显示提示
+      const totalTasks = activeQuests.length + completedQuests.length;
+      if (totalTasks === 0) {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.className = 'quest-list-item';
+        emptyMsg.textContent = '暂无任务';
+        emptyMsg.style.opacity = '0.5';
+        emptyMsg.style.cursor = 'default';
+        listContent.appendChild(emptyMsg);
+      }
+    }).catch(err => {
+      console.error('[QuestUI] Failed to load QUEST_DATABASE:', err);
     });
-
-    // 显示已完成任务
-    completedQuests.forEach(quest => {
-      const item = this.createQuestListItem(quest, 'completed');
-      listContent.appendChild(item);
-    });
-
-    // 如果没有任务，显示提示
-    if (activeQuests.length === 0 && completedQuests.length === 0) {
-      const emptyMsg = document.createElement('div');
-      emptyMsg.className = 'quest-list-item';
-      emptyMsg.textContent = '暂无任务';
-      emptyMsg.style.opacity = '0.5';
-      emptyMsg.style.cursor = 'default';
-      listContent.appendChild(emptyMsg);
-    }
   }
 
   /**

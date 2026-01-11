@@ -21,6 +21,7 @@ import { AchievementSystem } from './systems/AchievementSystem.js';
 import { AchievementUI } from './ui/AchievementUI.js';
 import { QuestSystem } from './systems/QuestSystem.js';
 import { QuestUI } from './ui/QuestUI.js';
+import { QuestTracker } from './ui/QuestTracker.js';
 import { getDevModeManager } from './utils/DevModeManager.js';
 import { lootGenerator } from './systems/LootGenerationSystem.js';
 import { SeededRandom } from './utils/SeededRandom.js';
@@ -76,6 +77,7 @@ class Game {
     // 初始化任务系统
     this.questSystem = new QuestSystem(this);
     this.questUI = new QuestUI(this);
+    this.questTracker = new QuestTracker(this);
     if (this.ui) {
       this.ui.setQuestUI(this.questUI);
     }
@@ -946,6 +948,11 @@ class Game {
         // 每日挑战模式：传入 RNG 以确保确定性生成
         this.map.generateLevel(this.player.stats.floor, ascensionLevel, this.isDailyMode ? this.rng : null);
         
+        // 任务系统：检查到达层数事件
+        if (this.questSystem) {
+          this.questSystem.check('onReachFloor', { floor: this.player.stats.floor });
+        }
+        
         // FIX: 清除浮动文字池，防止残留文字在错误的坐标显示
         // OPTIMIZATION: 直接清空数组即可，对象会在 loop 中被 releaseDeadObjects 自动回收
         // 不需要先 release 再 clear，这样更高效且避免竞争条件
@@ -1276,8 +1283,16 @@ class Game {
     if (npc) { 
       if (npc.type === 'GAMBLER') {
         this.openGambler();
+        // 任务系统：检查交互事件
+        if (this.questSystem) {
+          this.questSystem.check('onInteract', { interactType: 'GAMBLER' });
+        }
       } else {
         this.ui.openShop();
+        // 任务系统：检查交互事件
+        if (this.questSystem) {
+          this.questSystem.check('onInteract', { interactType: 'SHOP' });
+        }
       }
       return true; // 处理了NPC交互
     }
@@ -1287,6 +1302,10 @@ class Game {
     
     if (obj && obj.type === 'INTERACTIVE_FORGE') {
       this.openForge();
+      // 任务系统：检查交互事件
+      if (this.questSystem) {
+        this.questSystem.check('onInteract', { interactType: 'FORGE' });
+      }
       return true; // 处理了铁匠交互
     }
     
@@ -4119,62 +4138,26 @@ class Game {
   }
 
   setupQuestIcon() {
-    const gameIconsContainer = document.getElementById('game-icons-container');
-    if (!gameIconsContainer) {
-      console.warn('Game icons container not found!');
-      return;
+    // QuestTracker 现在负责管理任务图标和悬停面板
+    // 这里只设置点击事件（如果需要）
+    // QuestTracker 在初始化时已经创建了图标和悬停面板
+    
+    // 如果需要点击打开任务界面，可以在这里添加
+    // 但注意不要与 QuestTracker 的悬停逻辑冲突
+    const questTrackerIcon = document.getElementById('quest-tracker-icon');
+    if (questTrackerIcon && this.questTracker) {
+      // 添加点击事件打开任务界面
+      questTrackerIcon.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('📋 Quest icon clicked!');
+        if (this.ui && this.ui.questUI) {
+          this.ui.questUI.open();
+        }
+      });
     }
-
-    // 检查任务图标是否已存在
-    let questIcon = document.getElementById('quest-icon');
-    if (!questIcon) {
-      // 创建任务图标
-      questIcon = document.createElement('img');
-      questIcon.id = 'quest-icon';
-      questIcon.src = 'https://i.postimg.cc/RhBDz0W5/renwutubiao1.png';
-      questIcon.alt = '任务';
-      questIcon.className = 'quest-icon';
-      questIcon.style.cssText = `
-        width: 80px;
-        height: 80px;
-        cursor: pointer;
-        margin-top: 10px;
-        display: block;
-        image-rendering: pixelated;
-        image-rendering: -moz-crisp-edges;
-        image-rendering: crisp-edges;
-      `;
-      
-      // 添加到容器（在背包图标下方）
-      gameIconsContainer.appendChild(questIcon);
-    }
-
-    // 移除可能存在的旧监听器
-    const newQuestIcon = questIcon.cloneNode(true);
-    questIcon.parentNode.replaceChild(newQuestIcon, questIcon);
     
-    // 添加悬停效果
-    newQuestIcon.addEventListener('mouseenter', () => {
-      newQuestIcon.style.opacity = '0.8';
-      newQuestIcon.style.transform = 'scale(1.1)';
-    });
-    
-    newQuestIcon.addEventListener('mouseleave', () => {
-      newQuestIcon.style.opacity = '1';
-      newQuestIcon.style.transform = 'scale(1)';
-    });
-    
-    // 添加点击监听器
-    newQuestIcon.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      console.log('📋 Quest icon clicked!');
-      if (this.ui && this.ui.toggleQuestLog) {
-        this.ui.toggleQuestLog();
-      }
-    });
-    
-    console.log('✓ Quest icon event listeners attached');
+    console.log('✓ Quest icon setup complete (managed by QuestTracker)');
   }
 
   /**
