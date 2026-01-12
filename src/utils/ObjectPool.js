@@ -74,17 +74,16 @@ export class ObjectPool {
    * @returns {Array} 存活的对象数组
    */
   releaseDeadObjects(objects, isDeadFn) {
-    const alive = [];
-    
-    for (const obj of objects) {
+    // 从后向前遍历，原地移除死亡对象，避免创建新数组
+    for (let i = objects.length - 1; i >= 0; i--) {
+      const obj = objects[i];
       if (isDeadFn(obj)) {
         this.release(obj);
-      } else {
-        alive.push(obj);
+        objects.splice(i, 1);
       }
     }
     
-    return alive;
+    return objects;
   }
   
   /**
