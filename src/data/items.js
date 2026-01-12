@@ -111,6 +111,7 @@ export function createStandardizedItem(itemDef, options = {}) {
 // 品质倍率与名称映射（用于消耗品动态生成）
 const CONSUMABLE_QUALITY_MULTIPLIERS = {
   COMMON: 1.0,
+  UNCOMMON: 1.2,
   RARE: 1.5,
   EPIC: 2.5,
   LEGENDARY: 5.0,
@@ -118,8 +119,9 @@ const CONSUMABLE_QUALITY_MULTIPLIERS = {
 };
 
 const CONSUMABLE_QUALITY_LABELS = {
-  COMMON: { en: 'Common', zh: '粗糙' },
-  RARE: { en: 'Rare', zh: '优秀' },
+  COMMON: { en: 'Common', zh: '普通' },
+  UNCOMMON: { en: 'Uncommon', zh: '优秀' },
+  RARE: { en: 'Rare', zh: '稀有' },
   EPIC: { en: 'Epic', zh: '史诗' },
   LEGENDARY: { en: 'Legendary', zh: '传说' },
   MYTHIC: { en: 'Mythic', zh: '神话' }
