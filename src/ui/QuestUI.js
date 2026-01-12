@@ -602,7 +602,8 @@ export class QuestUI {
       /* 停留阶段：轻微上下浮动营造呼吸感 */
       .quest-toast.toast-stay {
         opacity: 1 !important;
-        animation: floatUp 2.5s ease-in-out infinite;
+        transform: translateY(0) scale(1.0);
+        animation: none;
       }
 
       /* 离场阶段：上浮并淡出 */
