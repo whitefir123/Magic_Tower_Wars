@@ -852,9 +852,61 @@ export class MapSystem {
     });
   }
   
-  addConsumableAt(consumableId, x, y) {
-    const def = EQUIPMENT_DB[consumableId]; if (!def || def.type !== 'CONSUMABLE') return; let dropX = x, dropY = y; if (this.getItemAt(dropX, dropY)) { const offsets = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]]; for (let o of offsets) { const nx = x + o[0], ny = y + o[1]; if (nx > 0 && nx < this.width - 1 && ny > 0 && ny < this.height - 1 && this.grid[ny][nx] === TILE.FLOOR && !this.getItemAt(nx, ny)) { dropX = nx; dropY = ny; break; } } }
-    this.items.push({ type: 'ITEM_CONSUMABLE', itemId: consumableId, x: dropX, y: dropY, visualX: dropX*TILE_SIZE, visualY: dropY*TILE_SIZE, sprite: new Sprite({ assetKey: 'ICONS_CONSUMABLES', loader: this.loader, isStatic: true, iconIndex: def.iconIndex }) });
+  addConsumableAt(itemOrId, x, y) {
+    // 支持字符串ID（静态消耗品）和对象（动态消耗品）
+    let def;
+    let itemId;
+
+    if (typeof itemOrId === 'string') {
+      // 旧系统：字符串ID
+      itemId = itemOrId;
+      def = EQUIPMENT_DB[itemId];
+      if (!def || def.type !== 'CONSUMABLE') return;
+    } else if (typeof itemOrId === 'object' && itemOrId !== null) {
+      // 新系统：动态消耗品对象
+      def = itemOrId;
+      // 使用 uid 作为唯一实例ID（堆叠实例），否则退回到 itemId/id
+      itemId = def.uid || def.itemId || def.id;
+      if (!itemId) return;
+
+      // 将动态消耗品存入全局池，供拾取和背包使用
+      if (!window.__dynamicItems) {
+        window.__dynamicItems = new Map();
+      }
+      window.__dynamicItems.set(itemId, def);
+    } else {
+      return;
+    }
+
+    // 寻找空闲位置（与 addEquipAt 相同的偏移策略）
+    let dropX = x, dropY = y;
+    if (this.getItemAt(dropX, dropY)) {
+      const offsets = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]];
+      for (let o of offsets) {
+        const nx = x + o[0], ny = y + o[1];
+        if (nx > 0 && nx < this.width - 1 && ny > 0 && ny < this.height - 1 &&
+            this.grid[ny][nx] === TILE.FLOOR && !this.getItemAt(nx, ny)) {
+          dropX = nx;
+          dropY = ny;
+          break;
+        }
+      }
+    }
+
+    this.items.push({
+      type: 'ITEM_CONSUMABLE',
+      itemId,
+      x: dropX,
+      y: dropY,
+      visualX: dropX * TILE_SIZE,
+      visualY: dropY * TILE_SIZE,
+      sprite: new Sprite({
+        assetKey: 'ICONS_CONSUMABLES',
+        loader: this.loader,
+        isStatic: true,
+        iconIndex: def.iconIndex
+      })
+    });
   }
   
   // BFS 寻路：返回从 (sx,sy) 到 (ex,ey) 的路径数组 [{x,y},...], 若不可达返回 null

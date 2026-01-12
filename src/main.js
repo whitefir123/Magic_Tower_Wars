@@ -1,5 +1,5 @@
 // main.js
-import { TILE_SIZE, MAP_WIDTH, MAP_HEIGHT, TILE, EQUIPMENT_DB, BUFF_POOL, DRAFT_TIER_CONFIG, OBJ_TRAP, OBJ_SHRINE_HEAL, OBJ_SHRINE_POWER, LOOT_TABLE_DESTRUCTIBLE, CHARACTERS, DIFFICULTY_LEVELS, ASSETS, CRITICAL_ASSETS, GAMEPLAY_ASSETS, RARITY, LOOT_TABLE, CONSUMABLE_IDS, getRandomConsumable, getAscensionLevel, getAscensionLevelTooltip, getAscensionLevelNewEffect, getDifficultyString, getItemDefinition, RUNE_RARITY_MULTIPLIERS, getEquipmentDropForFloor } from './constants.js';
+import { TILE_SIZE, MAP_WIDTH, MAP_HEIGHT, TILE, EQUIPMENT_DB, BUFF_POOL, DRAFT_TIER_CONFIG, OBJ_TRAP, OBJ_SHRINE_HEAL, OBJ_SHRINE_POWER, LOOT_TABLE_DESTRUCTIBLE, CHARACTERS, DIFFICULTY_LEVELS, ASSETS, CRITICAL_ASSETS, GAMEPLAY_ASSETS, RARITY, LOOT_TABLE, CONSUMABLE_IDS, getAscensionLevel, getAscensionLevelTooltip, getAscensionLevelNewEffect, getDifficultyString, getItemDefinition, RUNE_RARITY_MULTIPLIERS, getEquipmentDropForFloor } from './constants.js';
 import { Camera, FloatingText } from './utils.js';
 import { ResourceManager } from './utils/ResourceManager.js';
 import { FloatingTextPool, FogParticlePool } from './utils/ObjectPool.js';
@@ -23,7 +23,7 @@ import { QuestSystem } from './systems/QuestSystem.js';
 import { QuestUI } from './ui/QuestUI.js';
 import { QuestTracker } from './ui/QuestTracker.js';
 import { getDevModeManager } from './utils/DevModeManager.js';
-import { lootGenerator } from './systems/LootGenerationSystem.js';
+import { lootGenerator, generateConsumableLoot } from './systems/LootGenerationSystem.js';
 import { SeededRandom } from './utils/SeededRandom.js';
 import { DailyChallengeSystem } from './systems/DailyChallengeSystem.js';
 import { SettingsUI } from './ui/SettingsUI.js';
@@ -1385,26 +1385,48 @@ class Game {
         
         this.ui.updateStats(this.player);
       } else if (it.type === 'ITEM_CONSUMABLE') {
-        const def = EQUIPMENT_DB[it.itemId];
-        const added = this.player.addToInventory(it.itemId);
+        // 优先从动态物品池中获取完整数据（用于动态品质/堆叠消耗品）
+        let dynamicItem = null;
+        if (window.__dynamicItems && window.__dynamicItems instanceof Map && it.itemId) {
+          dynamicItem = window.__dynamicItems.get(it.itemId) || null;
+        }
+
+        let pickedDef = null;
+        let added = false;
+        let questItemId = it.itemId;
+
+        if (dynamicItem) {
+          // 动态消耗品：将完整对象交给背包，由 addToInventory 处理堆叠
+          added = this.player.addToInventory(dynamicItem);
+          pickedDef = dynamicItem;
+          questItemId = dynamicItem.itemId || dynamicItem.id || it.itemId;
+          // 从动态池中清理
+          window.__dynamicItems.delete(it.itemId);
+        } else {
+          // 静态消耗品：回退到旧逻辑
+          const def = EQUIPMENT_DB[it.itemId];
+          pickedDef = def;
+          added = this.player.addToInventory(it.itemId);
+        }
+
         if (added) {
           this.map.removeItem(it);
-          if (def) {
-            const itemName = def.nameZh || def.name;
+          if (pickedDef) {
+            const itemName = pickedDef.nameZh || pickedDef.name;
             this.ui.logMessage(`发现了 ${itemName}！`, 'gain');
           }
           if (this.audio) this.audio.playCloth();
           
           // 任务系统：检查物品拾取事件
           if (this.questSystem) {
-            this.questSystem.check('onLoot', { itemId: it.itemId, itemType: it.type });
+            this.questSystem.check('onLoot', { itemId: questItemId, itemType: 'POTION' });
           }
         } else {
           this.ui.logMessage('背包已满！', 'info');
         }
         
         if (this.vfx) {
-          const iconIndex = def ? (def.iconIndex !== undefined ? def.iconIndex : 0) : 0;
+          const iconIndex = pickedDef ? (pickedDef.iconIndex !== undefined ? pickedDef.iconIndex : 0) : 0;
           this.vfx.flyLoot(lootWorldX, lootWorldY, 'ICONS_CONSUMABLES', 'backpack-icon', iconIndex);
         }
         
@@ -1975,28 +1997,38 @@ class Game {
       }
       
       case 'POTION': {
-        // Small potion (HP or Rage)
-        const potionType = Math.random() < 0.7 ? 'POTION_HP_S' : 'POTION_RAGE';
-        const added = this.player.addToInventory(potionType);
-        if (added) {
-          const def = EQUIPMENT_DB[potionType];
-          const itemName = def ? (def.nameZh || def.name) : '药水';
+        // 使用 LootGenerationSystem 生成带品质的动态消耗品，并掉落在地图上
+        const rng = (this.isDailyMode && this.rng) ? this.rng : null;
+        const magicFind = this.player.stats.magicFind || 0;
+        const lootItem = generateConsumableLoot(this.player.stats.floor || 1, { magicFind, rng });
+
+        if (lootItem) {
+          this.map.addConsumableAt(lootItem, x, y);
+
+          const rarityKey = (lootItem.quality || lootItem.rarity || 'COMMON').toUpperCase();
+          const rarity = RARITY[rarityKey] || RARITY.COMMON;
+          const itemName = lootItem.nameZh || lootItem.name || '药水';
           this.ui.logMessage(`发现了 ${itemName}！`, 'gain');
-          
-          // 任务系统：检查物品拾取事件
-          if (this.questSystem) {
-            this.questSystem.check('onLoot', { itemId: potionType, itemType: 'POTION' });
-          }
-          
+
           if (this.settings && this.settings.showDamageNumbers !== false) {
-            const floatingText = this.floatingTextPool.create(x * TILE_SIZE, y * TILE_SIZE - 10, itemName, '#00ff88');
+            const floatingText = this.floatingTextPool.create(
+              x * TILE_SIZE,
+              y * TILE_SIZE - 10,
+              itemName,
+              rarity.color
+            );
             this.floatingTexts.push(floatingText);
           }
-          
-          // Play cloth sound
+
           if (this.audio) this.audio.playCloth();
+
+          // 任务系统：检查物品掉落事件（沿用原有 'POTION' 类型）
+          if (this.questSystem) {
+            const questItemId = lootItem.itemId || lootItem.id || 'POTION_DYNAMIC';
+            this.questSystem.check('onLoot', { itemId: questItemId, itemType: 'POTION' });
+          }
         } else {
-          this.ui.logMessage('背包已满！', 'info');
+          this.ui.logMessage('什么也没掉出来……', 'info');
         }
         break;
       }
@@ -3215,28 +3247,31 @@ class Game {
       }
       
       case 'POTION': {
-        // FIX: 使用 RNG（如果存在，每日挑战模式需要确定性）
+        // 使用 LootGenerationSystem 生成带品质的动态消耗品，并掉落在地图上
         const rng = (this.isDailyMode && this.rng) ? this.rng : null;
-        const consumable = getRandomConsumable(rng);
-        if (consumable) {
-          const added = this.player.addToInventory(consumable.id);
-          if (added) {
-            // 任务系统：检查物品拾取事件
-            if (this.questSystem) {
-              this.questSystem.check('onLoot', { itemId: consumable.id, itemType: 'POTION' });
-            }
-            
-            const rarity = RARITY[consumable.rarity] || RARITY.COMMON;
-            this.ui.logMessage(`宝箱打开！获得 ${consumable.nameZh || consumable.name} [${rarity.name}]`, 'gain');
-            
-            // Show floating text with rarity color
-            if (this.settings && this.settings.showDamageNumbers !== false) {
-              const floatingText = this.floatingTextPool.create(chestX * TILE_SIZE, chestY * TILE_SIZE - 10, consumable.nameZh || consumable.name, rarity.color);
-              this.floatingTexts.push(floatingText);
-            }
-          } else {
-            this.ui.logMessage('宝箱打开，但背包已满！', 'info');
+        const magicFind = this.player.stats.magicFind || 0;
+        const lootItem = generateConsumableLoot(this.player.stats.floor || 1, { magicFind, rng });
+
+        if (lootItem) {
+          this.map.addConsumableAt(lootItem, chestX, chestY);
+
+          const rarityKey = (lootItem.quality || lootItem.rarity || 'COMMON').toUpperCase();
+          const rarity = RARITY[rarityKey] || RARITY.COMMON;
+          const itemName = lootItem.nameZh || lootItem.name || '消耗品';
+          this.ui.logMessage(`宝箱打开！掉落 ${itemName} [${rarity.name}]`, 'gain');
+
+          // Show floating text with rarity color
+          if (this.settings && this.settings.showDamageNumbers !== false) {
+            const floatingText = this.floatingTextPool.create(
+              chestX * TILE_SIZE,
+              chestY * TILE_SIZE - 10,
+              itemName,
+              rarity.color
+            );
+            this.floatingTexts.push(floatingText);
           }
+        } else {
+          this.ui.logMessage('宝箱是空的……', 'info');
         }
         break;
       }
