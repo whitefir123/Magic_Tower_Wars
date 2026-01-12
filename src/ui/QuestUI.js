@@ -522,51 +522,56 @@ export class QuestUI {
         color: #F44336;
       }
 
-      /* Toast 通知样式 */
+      /* Toast 通知样式（统一使用成就框背景） */
       .quest-toast {
         position: fixed;
         top: 20px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.9);
-        border: 2px solid rgba(255, 255, 255, 0.5);
-        border-radius: 8px;
-        padding: 12px 24px;
+        min-width: 360px;
+        max-width: 70%;
+        min-height: 90px;
+        padding: 16px 36px; /* 让文字避开背景边缘装饰 */
+        background-image: url('https://i.postimg.cc/263YdzcK/achievementkuang1.png');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+        background-position: center;
+        border: none;
+        border-radius: 0;
         color: #fff;
         font-size: 16px;
         font-weight: bold;
-        text-shadow: 2px 2px 0px #000;
+        text-shadow: 0 0 4px #000, 0 0 10px #000; /* 加强文字可读性 */
         z-index: 20000;
         opacity: 0;
         transition: opacity 0.3s ease;
         pointer-events: none;
-        max-width: 80%;
         text-align: center;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        box-shadow: none;
+        display: flex;
+        align-items: center;
+        justify-content: center; /* 垂直水平居中文本 */
       }
 
       .quest-toast.visible {
         opacity: 1;
       }
 
+      /* 通过文字颜色区分不同类型，而不是改变背景框 */
       .quest-toast.success {
-        border-color: #4CAF50;
-        background: rgba(76, 175, 80, 0.2);
+        color: #ffe066;
       }
 
       .quest-toast.info {
-        border-color: #2196F3;
-        background: rgba(33, 150, 243, 0.2);
+        color: #ffffff;
       }
 
       .quest-toast.warning {
-        border-color: #FF9800;
-        background: rgba(255, 152, 0, 0.2);
+        color: #ffeb3b;
       }
 
       .quest-toast.error {
-        border-color: #F44336;
-        background: rgba(244, 67, 54, 0.2);
+        color: #ff8a80;
       }
 
       .quest-reward-section {
