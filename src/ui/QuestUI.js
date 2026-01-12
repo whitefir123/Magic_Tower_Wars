@@ -11,6 +11,9 @@ export class QuestUI {
     this.elements = {};
     this.selectedQuestId = null;
     this.autoSubmit = false; // 自动提交（预留功能）
+    // 任务通知队列与播放状态
+    this.notificationQueue = []; // 存储待显示的通知数据
+    this.isProcessingQueue = false; // 标记当前是否正在播放动画
     
     // questSystem 引用将在 update() 中获取
     this.questSystem = null;
@@ -533,12 +536,22 @@ export class QuestUI {
         color: #F44336;
       }
 
+      /* Toast 通知容器：固定在屏幕上方居中 */
+      .quest-notification-container {
+        position: fixed;
+        top: 15%;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 20000;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+
       /* Toast 通知样式（统一使用成就框背景） */
       .quest-toast {
-        position: absolute; /* 相对于父容器（优先 canvas-wrapper）定位 */
-        top: 20%; /* 中上方位置，避免遮挡地图中心 */
-        left: 50%;
-        transform: translate(-50%, -50%); /* 垂直+水平居中 */
         min-width: 360px;
         max-width: 70%;
         min-height: 90px;
@@ -553,19 +566,14 @@ export class QuestUI {
         font-size: 16px;
         font-weight: bold;
         text-shadow: 0 0 4px #000, 0 0 10px #000; /* 加强文字可读性 */
-        z-index: 20000;
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transform: translateY(0) scale(1);
         pointer-events: none;
         text-align: center;
         box-shadow: none;
         display: flex;
         align-items: center;
         justify-content: center; /* 垂直水平居中文本 */
-      }
-
-      .quest-toast.visible {
-        opacity: 1;
       }
 
       /* 通过文字颜色区分不同类型，而不是改变背景框 */
@@ -583,6 +591,56 @@ export class QuestUI {
 
       .quest-toast.error {
         color: #ff8a80;
+      }
+
+      /* 进场动画阶段 */
+      .quest-toast.toast-enter {
+        animation: slideInBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+
+      /* 停留阶段：轻微上下浮动营造呼吸感 */
+      .quest-toast.toast-stay {
+        animation: floatUp 2s ease-in-out infinite alternate;
+      }
+
+      /* 离场阶段：上浮并淡出 */
+      .quest-toast.toast-exit {
+        animation: floatUpFadeOut 0.5s ease-out forwards;
+      }
+
+      @keyframes slideInBounce {
+        0% {
+          opacity: 0;
+          transform: translateY(-50px) scale(0.8);
+        }
+        60% {
+          opacity: 1;
+          transform: translateY(0) scale(1.1);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0) scale(1.0);
+        }
+      }
+
+      @keyframes floatUp {
+        0% {
+          transform: translateY(0);
+        }
+        100% {
+          transform: translateY(-10px);
+        }
+      }
+
+      @keyframes floatUpFadeOut {
+        0% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-30px);
+        }
       }
 
       .quest-reward-section {
@@ -1140,34 +1198,94 @@ export class QuestUI {
    * @param {string} type - 类型 ('info', 'success', 'warning', 'error')
    */
   showToast(message, type = 'info') {
-    // 创建 Toast 元素
-    const container = document.getElementById('canvas-wrapper') || document.body;
+    // 将通知加入队列并启动处理
+    this.notificationQueue.push({ message, type });
+    this.processQueue();
+  }
 
-    let toast = document.getElementById('quest-toast');
-    if (!toast) {
-      toast = document.createElement('div');
-      toast.id = 'quest-toast';
-      toast.className = 'quest-toast';
-      container.appendChild(toast);
+  /**
+   * 处理通知队列，串行播放 Toast 动画
+   */
+  processQueue() {
+    // 若正在播放或队列为空，则直接返回
+    if (this.isProcessingQueue || this.notificationQueue.length === 0) {
+      return;
     }
 
-    // 设置内容和类型
-    toast.textContent = message;
-    toast.className = `quest-toast ${type}`;
+    this.isProcessingQueue = true;
 
-    // 显示
-    toast.classList.add('visible');
+    const next = this.notificationQueue.shift();
+    const { message, type } = next || {};
 
-    // 2秒后隐藏
-    setTimeout(() => {
-      toast.classList.remove('visible');
-      // 延迟移除元素（等待动画完成）
-      setTimeout(() => {
-        if (toast.parentNode) {
-          toast.parentNode.removeChild(toast);
-        }
-      }, 300);
-    }, 2000);
+    // 安全兜底：如果数据异常，重置状态并继续后续队列
+    if (!message) {
+      console.warn('[QuestUI] 空的通知消息被忽略');
+      this.isProcessingQueue = false;
+      this.processQueue();
+      return;
+    }
+
+    const runNext = () => {
+      this.isProcessingQueue = false;
+      // 递归检查下一条消息
+      this.processQueue();
+    };
+
+    try {
+      // 1. 获取/创建通知容器
+      let container = document.querySelector('.quest-notification-container');
+      if (!container) {
+        const parent = document.getElementById('canvas-wrapper') || document.body;
+        container = document.createElement('div');
+        container.className = 'quest-notification-container';
+        parent.appendChild(container);
+      }
+
+      // 2. 创建通知元素
+      const toast = document.createElement('div');
+      toast.className = `quest-toast ${type || 'info'}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      // 3. 进场阶段
+      const handleEnterEnd = (event) => {
+        // 仅响应 slideInBounce 动画结束
+        if (event.animationName !== 'slideInBounce') return;
+
+        toast.removeEventListener('animationend', handleEnterEnd);
+
+        // 切换为停留阶段
+        toast.classList.remove('toast-enter');
+        toast.classList.add('toast-stay');
+
+        // 4. 停留 2000ms 后进入离场阶段
+        const stayDuration = 2000;
+        setTimeout(() => {
+          toast.classList.remove('toast-stay');
+          toast.classList.add('toast-exit');
+
+          const handleExitEnd = (e) => {
+            if (e.animationName !== 'floatUpFadeOut') return;
+            toast.removeEventListener('animationend', handleExitEnd);
+
+            // 5. 离场结束后，移除元素并处理下一条
+            if (toast.parentNode) {
+              toast.parentNode.removeChild(toast);
+            }
+            runNext();
+          };
+
+          toast.addEventListener('animationend', handleExitEnd);
+        }, stayDuration);
+      };
+
+      toast.classList.add('toast-enter');
+      toast.addEventListener('animationend', handleEnterEnd);
+    } catch (err) {
+      console.error('[QuestUI] 处理 Toast 通知时出错:', err);
+      // 出错也要确保不会卡死队列
+      runNext();
+    }
   }
 
   /**
