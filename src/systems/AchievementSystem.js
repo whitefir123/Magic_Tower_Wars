@@ -163,7 +163,8 @@ export class AchievementSystem {
     checkSpeedRun() {
         const elapsed = this.sessionStats.levelPlayTime || 0;
         
-        if (elapsed <= 30) {
+        // 增加最小时间检查，避免楼层初始化时的 0 秒误判
+        if (elapsed > 1 && elapsed <= 30) {
             this.unlockAchievement(ACH_SPEED_RUN);
         }
     }
