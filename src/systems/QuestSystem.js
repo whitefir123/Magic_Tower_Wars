@@ -984,6 +984,115 @@ export class QuestSystem {
               autoComplete: false
             };
           }
+        },
+        // 区域清理：任意怪物，数量较多，高经验
+        {
+          type: 'ZONE_CLEAR',
+          generate: () => {
+            const count = rng.nextInt(10, 15); // 10-15只
+            const xpReward = count * rng.nextInt(15, 25); // 较高经验奖励
+            const goldReward = count * rng.nextInt(3, 7);
+
+            return {
+              id: `floor_quest_${floorIndex}_zone_${Date.now()}`,
+              title: `楼层清理：第${floorIndex}层`,
+              description: `清理第${floorIndex}层的怪物潮（击败${count}个任意敌人）`,
+              category: 'FLOOR',
+              objectives: [
+                {
+                  id: 1,
+                  type: 'KILL',
+                  target: 'ANY',
+                  count: count,
+                  current: 0,
+                  description: `在本层击败${count}个任意敌人`
+                }
+              ],
+              prerequisites: [],
+              nextQuest: null,
+              reward: {
+                gold: goldReward,
+                xp: xpReward
+              },
+              autoComplete: false
+            };
+          }
+        },
+        // 战术考核：保持高生命值击杀指定怪物，高金币+随机药水
+        {
+          type: 'TACTICAL',
+          generate: () => {
+            const monsterType = rng.choice(monsterTypes);
+            const monster = MONSTER_STATS[monsterType];
+            const count = 5;
+            const minHpPercentOptions = [80, 90];
+            const minHpPercent = rng.choice(minHpPercentOptions);
+            const goldReward = count * rng.nextInt(15, 30);
+            const potionId = rng.choice(consumableIds);
+
+            return {
+              id: `floor_quest_${floorIndex}_tactical_${Date.now()}`,
+              title: `战术考核：${monster.cnName || monster.name}`,
+              description: `在保持${minHpPercent}%以上生命值的情况下，击杀${count}只${monster.cnName || monster.name}`,
+              category: 'FLOOR',
+              objectives: [
+                {
+                  id: 1,
+                  type: 'KILL',
+                  target: monsterType,
+                  count: count,
+                  current: 0,
+                  description: `保持高生命值击杀${count}只${monster.cnName || monster.name}`
+                }
+              ],
+              prerequisites: [],
+              nextQuest: null,
+              conditions: {
+                minHpPercent
+              },
+              reward: {
+                gold: goldReward,
+                items: [potionId]
+              },
+              autoComplete: false
+            };
+          }
+        },
+        // 生存试炼：在较低血线限制下击杀任意怪物，金币+经验
+        {
+          type: 'SURVIVAL',
+          generate: () => {
+            const count = rng.nextInt(6, 10); // 6-10只
+            const goldReward = count * rng.nextInt(8, 15);
+            const xpReward = count * rng.nextInt(10, 18);
+
+            return {
+              id: `floor_quest_${floorIndex}_survival_${Date.now()}`,
+              title: `生存试炼：第${floorIndex}层`,
+              description: `在生命值不低于50%的情况下，击败${count}个敌人`,
+              category: 'FLOOR',
+              objectives: [
+                {
+                  id: 1,
+                  type: 'KILL',
+                  target: 'ANY',
+                  count: count,
+                  current: 0,
+                  description: `在保持生命值不低于50%时击败${count}个敌人`
+                }
+              ],
+              prerequisites: [],
+              nextQuest: null,
+              conditions: {
+                minHpPercent: 50
+              },
+              reward: {
+                gold: goldReward,
+                xp: xpReward
+              },
+              autoComplete: false
+            };
+          }
         }
       ];
 

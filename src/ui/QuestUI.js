@@ -19,7 +19,8 @@ export class QuestUI {
     this.categoryStates = {
       'MAIN': false,
       'SIDE': false,
-      'DAILY': false
+      'DAILY': false,
+      'FLOOR': false
     };
     
     this.init();
@@ -792,7 +793,8 @@ export class QuestUI {
       const questsByCategory = {
         'MAIN': { active: [], completed: [] },
         'SIDE': { active: [], completed: [] },
-        'DAILY': { active: [], completed: [] }
+        'DAILY': { active: [], completed: [] },
+        'FLOOR': { active: [], completed: [] }
       };
 
       // 分类活跃任务
@@ -815,7 +817,8 @@ export class QuestUI {
       const categoryNames = {
         'MAIN': '主线任务',
         'SIDE': '支线任务',
-        'DAILY': '每日任务'
+        'DAILY': '每日任务',
+        'FLOOR': '楼层挑战'
       };
 
       // 确定默认展开的分类（有进行中任务的分类）
