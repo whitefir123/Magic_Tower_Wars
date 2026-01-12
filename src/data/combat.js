@@ -81,15 +81,21 @@ export const STATUS_TYPES = {
 };
 
 // Status Icon Sprite Sheet Mapping - 状态图标精灵图坐标映射
+// 精灵图布局假设:
+// Row 0: BURN(火), WET(水), FROZEN(冰)
+// Row 1: SHOCK(雷), POISON(毒), STUN(晕/其他)
+// Row 2: CRIT(暴击), SLOW(减速), DEFUP(防御)
 // 精灵图为 3x3 网格，每个图标尺寸为 32x32 像素
 export const STATUS_ICON_MAP = {
-  BURN: { col: 0, row: 0 },        // 第1行第1列 - 灼烧 [火]
-  WET: { col: 1, row: 0 },         // 第1行第2列 - 潮湿 [水]
-  FROZEN: { col: 2, row: 0 },      // 第1行第3列 - 冰冻 [冰]
-  FREEZE_DOT: { col: 2, row: 0 },  // 第1行第3列 - 冰封伤害 [冰] (与 FROZEN 共用)
-  SHOCK: { col: 0, row: 1 },       // 第2行第1列 - 感电 [雷]
-  POISON: { col: 1, row: 1 },      // 第2行第2列 - 中毒 [毒]
-  SLOW: { col: 1, row: 2 }         // 第3行第2列 - 减速
+  'BURN': { col: 0, row: 0 },
+  'WET': { col: 1, row: 0 },
+  'FROZEN': { col: 2, row: 0 },
+  'FREEZE_DOT': { col: 2, row: 0 }, // 复用冰冻图标
+  'SHOCK': { col: 0, row: 1 },
+  'ELECTRO_CHARGED': { col: 0, row: 1 }, // 复用感电图标
+  'POISON': { col: 1, row: 1 },
+  'SLOW': { col: 1, row: 2 },     // 假设减速在第3行中间
+  'STUN': { col: 2, row: 1 }      // 假设晕眩在第2行右侧
 };
 
 // Elemental Reactions Configuration - 元素反应配置
