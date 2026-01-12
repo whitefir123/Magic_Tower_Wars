@@ -23,7 +23,7 @@ export const ITEM_QUALITY = {
     name: '优秀',
     nameEn: 'Uncommon',
     color: '#1eff00',
-    multiplier: 1.2,
+    multiplier: 1.0,
     weight: 30  // 30% 概率
   },
   RARE: {
@@ -31,7 +31,7 @@ export const ITEM_QUALITY = {
     name: '稀有',
     nameEn: 'Rare',
     color: '#0070dd',
-    multiplier: 1.5,
+    multiplier: 1.0,
     weight: 15  // 15% 概率
   },
   EPIC: {
@@ -39,7 +39,7 @@ export const ITEM_QUALITY = {
     name: '史诗',
     nameEn: 'Epic',
     color: '#a335ee',
-    multiplier: 2.0,
+    multiplier: 1.2,
     weight: 10  // 10% 概率
   },
   LEGENDARY: {
@@ -47,7 +47,7 @@ export const ITEM_QUALITY = {
     name: '传说',
     nameEn: 'Legendary',
     color: '#ff8000',
-    multiplier: 3.0,
+    multiplier: 1.5,
     weight: 4   // 4% 概率
   },
   MYTHIC: {
@@ -55,7 +55,7 @@ export const ITEM_QUALITY = {
     name: '神话',
     nameEn: 'Mythic',
     color: '#e6cc80',
-    multiplier: 5.0,
+    multiplier: 2.0,
     weight: 1   // 1% 概率
   }
 };

@@ -22,15 +22,22 @@ export class LootGenerator {
       MYTHIC: 300     // iPwr 300+ (极难达到)
     };
 
-    // 词缀配置
+    // 词缀配置（基础槽位与最大Tier，不在此处硬编码数值倍率）
     this.affixRules = {
       COMMON: { prefix: 0, suffix: 0, maxTier: 1 },
       UNCOMMON: { prefix: 1, suffix: 0, maxTier: 2 },
       RARE: { prefix: 1, suffix: 1, maxTier: 3 },
-      EPIC: { prefix: 1, suffix: 1, maxTier: 4, statMulti: 1.2 },
-      LEGENDARY: { prefix: 1, suffix: 1, maxTier: 5, statMulti: 1.5 },
-      MYTHIC: { prefix: 1, suffix: 1, maxTier: 5, statMulti: 2.0 }
+      EPIC: { prefix: 1, suffix: 1, maxTier: 4 },
+      LEGENDARY: { prefix: 1, suffix: 1, maxTier: 5 },
+      MYTHIC: { prefix: 1, suffix: 1, maxTier: 5 }
     };
+
+    // 根据 ITEM_QUALITY 动态注入 statMulti，确保数值来源唯一
+    Object.keys(this.affixRules).forEach(quality => {
+      const qualityCfg = ITEM_QUALITY[quality];
+      const multiplier = qualityCfg?.multiplier ?? 1.0;
+      this.affixRules[quality].statMulti = multiplier;
+    });
   }
 
   /**
