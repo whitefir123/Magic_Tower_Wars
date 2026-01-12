@@ -211,14 +211,14 @@ export class Entity {
     const drawX = this.visualX;
     const drawY = this.visualY;
     
-    const iconSize = 16; // 图标大小
+    const iconSize = 16; // 图标大小（从12调整为16，适配精灵图）
     const iconSpacing = 2; // 图标间距
     const yOffset = -20; // 在实体上方20像素
     
     // 计算图标起始位置（居中显示）
-    const totalWidth = this.statuses.length * (iconSize + iconSpacing) - iconSpacing;
     // 居中于实体水平中心: drawX + TILE_SIZE/2 - totalWidth/2
-    let startX = drawX + (TILE_SIZE / 2) - (totalWidth / 2);
+    const totalWidth = this.statuses.length * (iconSize + iconSpacing) - iconSpacing;
+    const startX = drawX + (TILE_SIZE / 2) - (totalWidth / 2);
     
     // 尝试获取状态图标精灵图
     const spriteSheet = window.ResourceManager?.getImage?.('SPRITE_STATUS_ICONS');
@@ -258,10 +258,11 @@ export class Entity {
       if (statusDef.stackable && status.config && status.config.stacks > 1) {
         ctx.save();
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 8px Arial';
+        ctx.font = 'bold 10px Arial'; // 稍微调大一点字体
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(status.config.stacks, iconX + iconSize / 2, iconY + iconSize / 2);
+        // 数字显示在图标右下角
+        ctx.fillText(status.config.stacks, iconX + iconSize - 2, iconY + iconSize - 2);
         ctx.restore();
       }
     }
