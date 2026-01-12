@@ -64,7 +64,7 @@ export class LootGenerator {
     const archetype = this.rollArchetype(playerClass, fateRoll.isJackpot, rng);
 
     // === 第四步：确定品质与词缀槽 ===
-    const quality = this.determineQuality(fateRoll.iPwr, magicFind, fateRoll.isJackpot);
+    const quality = this.determineQuality(fateRoll.iPwr, magicFind, fateRoll.isJackpot, rng);
     const affixConfig = this.affixRules[quality];
 
     // === 第五步：Roll词缀 ===
@@ -191,24 +191,78 @@ export class LootGenerator {
    * 确定品质
    * 根据iPwr和MagicFind
    */
-  determineQuality(iPwr, magicFind, isJackpot) {
-    // 应用MF加成
-    const adjustediPwr = iPwr * (1 + magicFind * 0.5);
-    
-    // Jackpot强制至少EPIC
-    if (isJackpot && adjustediPwr < this.qualityThresholds.EPIC) {
-      return 'EPIC';
-    }
-    
-    // 从高到低检查阈值
-    const qualities = ['MYTHIC', 'LEGENDARY', 'EPIC', 'RARE', 'UNCOMMON', 'COMMON'];
-    for (const quality of qualities) {
-      if (adjustediPwr >= this.qualityThresholds[quality]) {
-        return quality;
+  determineQuality(iPwr, magicFind, isJackpot, rng = null) {
+    // 1) 规范化 Magic Find（0-1 区间）
+    const mf = Math.max(0, Math.min(1, magicFind || 0));
+
+    // 2) 获取满足阈值的已解锁品质
+    const unlockedQualities = [];
+    const qualityKeys = Object.keys(ITEM_QUALITY); // ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC']
+
+    for (const quality of qualityKeys) {
+      const threshold = this.qualityThresholds[quality];
+      if (threshold === undefined) continue;
+      if (iPwr >= threshold) {
+        unlockedQualities.push(quality);
       }
     }
-    
-    return 'COMMON';
+
+    // 理论上不会为空（COMMON 阈值为 0），但做一次兜底
+    if (unlockedQualities.length === 0) {
+      unlockedQualities.push('COMMON');
+    }
+
+    // 3) Jackpot 强制 EPIC+：过滤掉 EPIC 以下品质
+    let candidateQualities = unlockedQualities;
+    if (isJackpot) {
+      const highTier = ['EPIC', 'LEGENDARY', 'MYTHIC'];
+      const filtered = unlockedQualities.filter(q => highTier.includes(q));
+
+      // 如果当前 iPwr 还未解锁 EPIC+，仍然强制提供 EPIC 作为候选
+      candidateQualities = filtered.length > 0 ? filtered : ['EPIC'];
+    }
+
+    // 4) 基于 ITEM_QUALITY 和 Magic Find 构建权重池
+    const pool = [];
+    const rarityFactor = {
+      COMMON: 0,
+      UNCOMMON: 1,
+      RARE: 1.5,
+      EPIC: 2,
+      LEGENDARY: 3,
+      MYTHIC: 4
+    };
+
+    for (const quality of candidateQualities) {
+      const cfg = ITEM_QUALITY[quality];
+      if (!cfg) continue;
+
+      const baseWeight = cfg.weight ?? 0;
+      if (baseWeight <= 0) continue;
+
+      let weight = baseWeight;
+
+      // 对 UNCOMMON 及以上品质应用 MF 提升概率（高稀有度放大系数更大）
+      if (quality !== 'COMMON') {
+        const factor = rarityFactor[quality] ?? 1;
+        weight = baseWeight * (1 + mf * 2 * factor);
+      }
+
+      pool.push({
+        id: quality,
+        quality,
+        weight
+      });
+    }
+
+    // 如果权重池为空，兜底返回 COMMON
+    if (pool.length === 0) {
+      return 'COMMON';
+    }
+
+    // 5) 执行加权随机
+    const selected = weightedRandom(pool, rng);
+    return selected?.id || selected?.quality || 'COMMON';
   }
 
   /**
@@ -235,7 +289,7 @@ export class LootGenerator {
     // 2. 判定品质：构造一个虚拟 iPwr 用于品质计算
     const baseiPwr = Math.max(1, floor) * 5;
     const fate = this.rollFate(baseiPwr, rng);
-    const quality = this.determineQuality(fate.iPwr, magicFind || 0, fate.isJackpot);
+    const quality = this.determineQuality(fate.iPwr, magicFind || 0, fate.isJackpot, rng);
 
     // 3. 生成实例
     return createDynamicConsumable(def, quality);
