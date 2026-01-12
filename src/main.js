@@ -364,8 +364,16 @@ class Game {
    * 设置输入处理（键盘和鼠标）
    */
   setupInputs() {
-    const normalizeKey = (key) => {
-      const k = (key || '').toLowerCase();
+    const normalizeKey = (e) => {
+      // 优先使用 code (物理按键，不受输入法/大小写影响)
+      const code = e.code;
+      if (code === 'KeyW' || code === 'ArrowUp') return 'ArrowUp';
+      if (code === 'KeyS' || code === 'ArrowDown') return 'ArrowDown';
+      if (code === 'KeyA' || code === 'ArrowLeft') return 'ArrowLeft';
+      if (code === 'KeyD' || code === 'ArrowRight') return 'ArrowRight';
+      
+      // 回退到 key (兼容性)
+      const k = (e.key || '').toLowerCase();
       if (k === 'w' || k === 'arrowup') return 'ArrowUp';
       if (k === 's' || k === 'arrowdown') return 'ArrowDown';
       if (k === 'a' || k === 'arrowleft') return 'ArrowLeft';
@@ -394,7 +402,8 @@ class Game {
       }
       // Active Skill (Q key)
       // FIX: 冰冻状态下禁止使用技能
-      if (e.key.toLowerCase() === 'q') {
+      // 优化：同时检查 code 和 key，支持任意输入法和大小写
+      if (e.code === 'KeyQ' || e.key.toLowerCase() === 'q') {
         if (this.player && this.player.hasStatus && this.player.hasStatus('FROZEN')) {
           if (this.ui) this.ui.logMessage('冰冻状态下无法使用技能！', 'warning');
           return;
@@ -407,7 +416,7 @@ class Game {
       }
       
       // ✅ 性能优化：统一处理所有按键（包括空格键）
-      let key = normalizeKey(e.key);
+      let key = normalizeKey(e);
       if (e.key === ' ') key = ' '; // 空格键统一处理
       
       if (key) {
@@ -424,7 +433,7 @@ class Game {
     
     window.addEventListener('keyup', (e) => {
       // ✅ 性能优化：统一处理所有按键（包括空格键）
-      let key = normalizeKey(e.key);
+      let key = normalizeKey(e);
       if (e.key === ' ') key = ' ';
       
       if (key) {
