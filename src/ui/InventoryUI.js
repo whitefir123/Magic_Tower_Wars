@@ -805,6 +805,13 @@ export class InventoryUI {
       const cellW = img ? (natW / cols) : 0;
       const cellH = img ? (natH / ICON_GRID_ROWS) : 0;
 
+      const qualityColors = Object.keys(ITEM_QUALITY || {}).reduce((acc, key) => {
+        const color = ITEM_QUALITY[key]?.color;
+        if (color) acc[key] = color;
+        return acc;
+      }, {});
+      const defaultQualityColor = '#444';
+
       const setDragOver = (el, on) => {
         if (!el) return;
         if (on) el.classList.add('drag-over');
@@ -846,6 +853,7 @@ export class InventoryUI {
             this.tooltipManager.unbind(socket);
             socket.removeAttribute('draggable');
             socket.onclick = null;
+            socket.style.borderColor = defaultQualityColor;
             socket.ondragover = (ev) => { ev.preventDefault(); setDragOver(socket, true); };
             socket.ondragleave = () => setDragOver(socket, false);
             socket.ondrop = (ev) => {
@@ -891,6 +899,7 @@ export class InventoryUI {
             this.tooltipManager.unbind(socket);
             socket.removeAttribute('draggable');
             socket.onclick = null;
+            socket.style.borderColor = defaultQualityColor;
           });
           return;
         }
@@ -927,6 +936,10 @@ export class InventoryUI {
             .map(([k, v]) => `${statName[k] || k}+${v}`)
             .join(', ');
           socket.title = `${itemName} | ${statsText}`;
+
+          // 根据品质设置边框颜色（支持 quality 和 rarity 字段，默认 COMMON）
+          const qualityKey = (item.quality || item.rarity || 'COMMON').toUpperCase();
+          socket.style.borderColor = qualityColors[qualityKey] || defaultQualityColor;
           
           if (img) {
             const canvas = this.createItemIcon(img, item, cellW, cellH, this.style.equipmentIconSize, cols);
