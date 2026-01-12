@@ -298,7 +298,7 @@
 /* 确保前景内容高亮显示 */
 .loader, 
 .loading-bar-container, 
-.loading-percent,
+#loading-percent,
 .loading-tips-container,
 .loading-chase-container {
   position: relative;
