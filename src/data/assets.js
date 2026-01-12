@@ -84,7 +84,10 @@ export const GAMEPLAY_ASSETS = {
   ICONS_GEMS: { url: "https://i.postimg.cc/B6V9Cf24/baoshi1.png" }, // 宝石图集，5列x4行
   UI_SOCKET: { url: "https://i.postimg.cc/DwCyWHmG/baoshicao1.png" }, // 镶嵌槽背景
   UI_BTN_SOCKET: { url: "https://i.postimg.cc/yYp8x2Ds/xiangqian1.png" }, // 镶嵌按钮
-  UI_BTN_UNSOCKET: { url: "https://i.postimg.cc/QM17pj7n/chaichu1.png" } // 拆除按钮
+  UI_BTN_UNSOCKET: { url: "https://i.postimg.cc/QM17pj7n/chaichu1.png" }, // 拆除按钮
+  
+  // 状态图标精灵图
+  SPRITE_STATUS_ICONS: { url: "https://i.postimg.cc/jqB3BxsY/smalltubiao1.png" } // 3x3 状态图标精灵图
 };
 
 // 合并所有资源（向后兼容）

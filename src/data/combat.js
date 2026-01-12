@@ -80,6 +80,18 @@ export const STATUS_TYPES = {
   }
 };
 
+// Status Icon Sprite Sheet Mapping - 状态图标精灵图坐标映射
+// 精灵图为 3x3 网格，每个图标尺寸为 32x32 像素
+export const STATUS_ICON_MAP = {
+  BURN: { col: 0, row: 0 },        // 第1行第1列 - 灼烧 [火]
+  WET: { col: 1, row: 0 },         // 第1行第2列 - 潮湿 [水]
+  FROZEN: { col: 2, row: 0 },      // 第1行第3列 - 冰冻 [冰]
+  FREEZE_DOT: { col: 2, row: 0 },  // 第1行第3列 - 冰封伤害 [冰] (与 FROZEN 共用)
+  SHOCK: { col: 0, row: 1 },       // 第2行第1列 - 感电 [雷]
+  POISON: { col: 1, row: 1 },      // 第2行第2列 - 中毒 [毒]
+  SLOW: { col: 1, row: 2 }         // 第3行第2列 - 减速
+};
+
 // Elemental Reactions Configuration - 元素反应配置
 export const ELEMENT_REACTIONS = {
   // BURN + HYDRO/CRYO -> Vaporize/Melt (蒸发/融化)

@@ -1,5 +1,5 @@
 // entities.js
-import { TILE_SIZE, MONSTER_STATS, EQUIPMENT_DB, COMBAT_CONFIG, STATUS_TYPES, ELITE_AFFIXES, ELITE_SPAWN_CONFIG, ASSETS, getAscensionLevel, FATIGUE_CONFIG, getItemDefinition, CHARACTERS } from './constants.js';
+import { TILE_SIZE, MONSTER_STATS, EQUIPMENT_DB, COMBAT_CONFIG, STATUS_TYPES, STATUS_ICON_MAP, ELITE_AFFIXES, ELITE_SPAWN_CONFIG, ASSETS, getAscensionLevel, FATIGUE_CONFIG, getItemDefinition, CHARACTERS } from './constants.js';
 import { createStandardizedItem } from './data/items.js';
 import { getSetConfig } from './data/sets.js';
 import { Sprite, FloatingText } from './utils.js';
@@ -208,13 +208,19 @@ export class Entity {
     
     const screenX = this.visualX;
     const screenY = this.visualY;
-    const iconSize = 12; // 图标大小
+    const iconSize = 16; // 图标大小（从12调整为16，适配精灵图）
     const iconSpacing = 2; // 图标间距
     const yOffset = -20; // 在实体上方20像素
     
     // 计算图标起始位置（居中显示）
     const totalWidth = this.statuses.length * (iconSize + iconSpacing) - iconSpacing;
     let startX = screenX - totalWidth / 2;
+    
+    // 尝试获取状态图标精灵图
+    const spriteSheet = window.ResourceManager?.getImage?.('SPRITE_STATUS_ICONS');
+    const spriteSheetSize = 32; // 精灵图中每个图标的尺寸（32x32像素）
+    const spriteSheetCols = 3; // 精灵图列数（3x3网格）
+    const useSpriteSheet = spriteSheet && spriteSheet.complete && spriteSheet.naturalWidth > 0;
     
     // 渲染每个状态图标
     for (let i = 0; i < this.statuses.length; i++) {
@@ -225,17 +231,22 @@ export class Entity {
       const iconX = startX + i * (iconSize + iconSpacing);
       const iconY = screenY + yOffset;
       
-      // 获取状态图标资源
-      const iconKey = `ICON_STATUS_${status.type}`;
-      const iconAsset = ASSETS[iconKey];
-      
-      if (iconAsset && iconAsset.url && iconAsset.url !== '') {
-        // 如果有图标URL，绘制图标（TODO: 需要加载图片资源）
-        // 这里暂时使用彩色圆圈代替
-        this.drawStatusCircle(ctx, iconX, iconY, iconSize, iconAsset.color || '#ffffff');
+      // 尝试使用精灵图
+      if (useSpriteSheet && STATUS_ICON_MAP && STATUS_ICON_MAP[status.type]) {
+        const iconCoord = STATUS_ICON_MAP[status.type];
+        const sx = iconCoord.col * spriteSheetSize;
+        const sy = iconCoord.row * spriteSheetSize;
+        
+        ctx.save();
+        ctx.drawImage(
+          spriteSheet,
+          sx, sy, spriteSheetSize, spriteSheetSize, // 源区域
+          iconX, iconY, iconSize, iconSize // 目标区域
+        );
+        ctx.restore();
       } else {
-        // 使用通用彩色圆圈
-        const color = iconAsset?.color || this.getStatusColor(status.type);
+        // Fallback: 使用彩色圆圈（如果精灵图未加载）
+        const color = this.getStatusColor(status.type);
         this.drawStatusCircle(ctx, iconX, iconY, iconSize, color);
       }
       
