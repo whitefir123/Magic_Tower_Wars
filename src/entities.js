@@ -200,22 +200,25 @@ export class Entity {
   /**
    * 渲染状态图标（在实体上方显示）
    * @param {CanvasRenderingContext2D} ctx - Canvas 上下文
-   * @param {number} camX - 相机X偏移
-   * @param {number} camY - 相机Y偏移
+   * @param {number} camX - 相机X偏移 (在此上下文中不需要使用，因为ctx已变换)
+   * @param {number} camY - 相机Y偏移 (在此上下文中不需要使用，因为ctx已变换)
    */
   drawStatusIcons(ctx, camX, camY) {
     if (!this.statuses || this.statuses.length === 0) return;
     
-    // 转换为屏幕坐标 (世界坐标 - 相机偏移)
-    const screenX = this.visualX - (camX || 0);
-    const screenY = this.visualY - (camY || 0);
-    const iconSize = 16; // 图标大小（从12调整为16，适配精灵图）
+    // FIX: 直接使用世界坐标，因为 ctx 已经应用了相机变换 (translate)
+    // 不要减去 camX/camY，否则会导致双重偏移
+    const drawX = this.visualX;
+    const drawY = this.visualY;
+    
+    const iconSize = 16; // 图标大小
     const iconSpacing = 2; // 图标间距
     const yOffset = -20; // 在实体上方20像素
     
     // 计算图标起始位置（居中显示）
     const totalWidth = this.statuses.length * (iconSize + iconSpacing) - iconSpacing;
-    let startX = screenX - totalWidth / 2;
+    // 居中于实体水平中心: drawX + TILE_SIZE/2 - totalWidth/2
+    let startX = drawX + (TILE_SIZE / 2) - (totalWidth / 2);
     
     // 尝试获取状态图标精灵图
     const spriteSheet = window.ResourceManager?.getImage?.('SPRITE_STATUS_ICONS');
@@ -230,7 +233,7 @@ export class Entity {
       if (!statusDef) continue;
       
       const iconX = startX + i * (iconSize + iconSpacing);
-      const iconY = screenY + yOffset;
+      const iconY = drawY + yOffset;
       
       // 尝试使用精灵图
       if (useSpriteSheet && STATUS_ICON_MAP && STATUS_ICON_MAP[status.type]) {
