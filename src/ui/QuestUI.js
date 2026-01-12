@@ -525,7 +525,7 @@ export class QuestUI {
       /* Toast 通知样式（统一使用成就框背景） */
       .quest-toast {
         position: absolute; /* 相对于父容器（优先 canvas-wrapper）定位 */
-        top: 35%; /* 中上方位置，避免遮挡地图中心 */
+        top: 20%; /* 中上方位置，避免遮挡地图中心 */
         left: 50%;
         transform: translate(-50%, -50%); /* 垂直+水平居中 */
         min-width: 360px;
