@@ -536,12 +536,13 @@ export class QuestUI {
         color: #F44336;
       }
 
-      /* Toast 通知容器：固定在屏幕上方居中 */
+      /* Toast 通知容器：相对父容器居中 */
       .quest-notification-container {
-        position: fixed;
+        position: absolute;
         top: 15%;
         left: 50%;
         transform: translateX(-50%);
+        width: auto;
         z-index: 20000;
         pointer-events: none;
         display: flex;
@@ -595,17 +596,18 @@ export class QuestUI {
 
       /* 进场动画阶段 */
       .quest-toast.toast-enter {
-        animation: slideInBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        animation: slideInBounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
       }
 
       /* 停留阶段：轻微上下浮动营造呼吸感 */
       .quest-toast.toast-stay {
-        animation: floatUp 2s ease-in-out infinite alternate;
+        opacity: 1 !important;
+        animation: floatUp 2.5s ease-in-out infinite;
       }
 
       /* 离场阶段：上浮并淡出 */
       .quest-toast.toast-exit {
-        animation: floatUpFadeOut 0.5s ease-out forwards;
+        animation: floatUpFadeOut 0.4s ease-in forwards;
       }
 
       @keyframes slideInBounce {
@@ -1232,13 +1234,25 @@ export class QuestUI {
     };
 
     try {
-      // 1. 获取/创建通知容器
+      // 1. 获取/创建通知容器，并挂载到优先的父容器上
       let container = document.querySelector('.quest-notification-container');
+      const targetParent = document.getElementById('canvas-wrapper') || document.body;
+
       if (!container) {
-        const parent = document.getElementById('canvas-wrapper') || document.body;
         container = document.createElement('div');
         container.className = 'quest-notification-container';
-        parent.appendChild(container);
+      }
+
+      if (container.parentNode !== targetParent) {
+        targetParent.appendChild(container);
+      }
+
+      // 确保 canvas 容器可作为定位上下文
+      if (targetParent.id === 'canvas-wrapper') {
+        const parentPosition = window.getComputedStyle(targetParent).position;
+        if (parentPosition === 'static') {
+          targetParent.style.position = 'relative';
+        }
       }
 
       // 2. 创建通知元素
@@ -1257,6 +1271,7 @@ export class QuestUI {
         // 切换为停留阶段
         toast.classList.remove('toast-enter');
         toast.classList.add('toast-stay');
+        toast.style.opacity = '1';
 
         // 4. 停留 2000ms 后进入离场阶段
         const stayDuration = 2000;
