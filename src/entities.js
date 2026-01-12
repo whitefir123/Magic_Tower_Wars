@@ -206,27 +206,119 @@ export class Entity {
   drawStatusIcons(ctx, camX, camY) {
     if (!this.statuses || this.statuses.length === 0) return;
     
-    // FIX: 直接使用世界坐标，因为 ctx 已经应用了相机变换 (translate)
-    // 不要减去 camX/camY，否则会导致双重偏移
-    const drawX = this.visualX;
-    const drawY = this.visualY;
+    // 状态映射：将状态类型映射到图标索引（0-8，对应3x3网格）
+    // 索引计算：index = row * 3 + col
+    const STATUS_MAP = {
+      'PYRO': 0,        // 火 (0,0) - 第0行第0列
+      'BURN': 0,        // 灼烧 - 复用火图标
+      'HYDRO': 1,       // 水 (0,1) - 第0行第1列
+      'WET': 1,         // 潮湿 - 复用水图标
+      'CRYO': 2,        // 冰 (0,2) - 第0行第2列
+      'FROZEN': 2,      // 冰冻 - 复用冰图标
+      'FREEZE_DOT': 2,  // 冰封伤害 - 复用冰图标
+      'ELECTRO': 3,     // 雷 (1,0) - 第1行第0列
+      'SHOCK': 3,       // 感电 - 复用雷图标
+      'ELECTRO_CHARGED': 3, // 感电 - 复用雷图标
+      'POISON': 4,      // 毒 (1,1) - 第1行第1列
+      'STUN': 5,        // 晕眩 (1,2) - 第1行第2列
+      'CRIT': 6,        // 暴击 (2,0) - 第2行第0列
+      'SLOW': 7,        // 减速 (2,1) - 第2行第1列
+      'DEFUP': 8        // 防御/护盾 (2,2) - 第2行第2列
+    };
     
-    const iconSize = 16; // 图标大小（从12调整为16，适配精灵图）
+    // 获取资源管理器（优先使用 this.game.loader，其次 this.loader，最后 window.game.loader）
+    const game = window.game;
+    const loader = (this.game && this.game.loader) || this.loader || (game && game.loader) || window.ResourceManager;
+    
+    // 获取状态图标精灵图
+    const spriteSheet = loader && loader.getImage ? loader.getImage('SPRITE_STATUS_ICONS') : null;
+    
+    // 检查精灵图是否已加载
+    if (!spriteSheet || !spriteSheet.complete || spriteSheet.naturalWidth === 0) {
+      // Fallback: 如果精灵图未加载，使用彩色圆圈
+      this.drawStatusIconsFallback(ctx);
+      return;
+    }
+    
+    // 动态计算单元格大小（基于图片实际尺寸）
+    const gridCols = 3; // 3x3网格
+    const gridRows = 3;
+    const cellW = spriteSheet.naturalWidth / gridCols;
+    const cellH = spriteSheet.naturalHeight / gridRows;
+    
+    // 绘制参数
+    const iconSize = 16; // 绘制尺寸（16x16像素）
     const iconSpacing = 2; // 图标间距
-    const yOffset = -20; // 在实体上方20像素
+    const yOffset = -10; // 在实体上方10像素
     
     // 计算图标起始位置（居中显示）
-    // 居中于实体水平中心: drawX + TILE_SIZE/2 - totalWidth/2
     const totalWidth = this.statuses.length * (iconSize + iconSpacing) - iconSpacing;
+    const drawX = this.visualX;
+    const drawY = this.visualY;
     const startX = drawX + (TILE_SIZE / 2) - (totalWidth / 2);
     
-    // 尝试获取状态图标精灵图
-    const spriteSheet = window.ResourceManager?.getImage?.('SPRITE_STATUS_ICONS');
-    const spriteSheetSize = 32; // 精灵图中每个图标的尺寸（32x32像素）
-    const spriteSheetCols = 3; // 精灵图列数（3x3网格）
-    const useSpriteSheet = spriteSheet && spriteSheet.complete && spriteSheet.naturalWidth > 0;
-    
     // 渲染每个状态图标
+    for (let i = 0; i < this.statuses.length; i++) {
+      const status = this.statuses[i];
+      const statusDef = STATUS_TYPES[status.type];
+      if (!statusDef) continue;
+      
+      // 获取图标索引
+      const iconIndex = STATUS_MAP[status.type];
+      if (iconIndex === undefined) {
+        // 如果状态类型不在映射中，跳过或使用默认图标
+        continue;
+      }
+      
+      // 计算精灵图中的源坐标（从索引转换为行列）
+      const row = Math.floor(iconIndex / gridCols);
+      const col = iconIndex % gridCols;
+      const sx = col * cellW;
+      const sy = row * cellH;
+      
+      // 计算绘制位置
+      const iconX = startX + i * (iconSize + iconSpacing);
+      const iconY = drawY + yOffset;
+      
+      // 绘制图标（使用 drawImage 的切片参数）
+      ctx.save();
+      ctx.drawImage(
+        spriteSheet,
+        sx, sy, cellW, cellH,  // 源区域（从精灵图中切片）
+        iconX, iconY, iconSize, iconSize  // 目标区域（绘制到画布）
+      );
+      ctx.restore();
+      
+      // 绘制堆叠数字（如果是可堆叠状态）
+      if (statusDef.stackable && status.config && status.config.stacks > 1) {
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        // 数字显示在图标右下角
+        ctx.fillText(status.config.stacks, iconX + iconSize - 2, iconY + iconSize - 2);
+        ctx.restore();
+      }
+    }
+  }
+  
+  /**
+   * 后备方案：使用彩色圆圈绘制状态图标（当精灵图未加载时）
+   * @param {CanvasRenderingContext2D} ctx - Canvas 上下文
+   */
+  drawStatusIconsFallback(ctx) {
+    if (!this.statuses || this.statuses.length === 0) return;
+    
+    const iconSize = 16;
+    const iconSpacing = 2;
+    const yOffset = -10;
+    
+    const totalWidth = this.statuses.length * (iconSize + iconSpacing) - iconSpacing;
+    const drawX = this.visualX;
+    const drawY = this.visualY;
+    const startX = drawX + (TILE_SIZE / 2) - (totalWidth / 2);
+    
     for (let i = 0; i < this.statuses.length; i++) {
       const status = this.statuses[i];
       const statusDef = STATUS_TYPES[status.type];
@@ -235,33 +327,17 @@ export class Entity {
       const iconX = startX + i * (iconSize + iconSpacing);
       const iconY = drawY + yOffset;
       
-      // 尝试使用精灵图
-      if (useSpriteSheet && STATUS_ICON_MAP && STATUS_ICON_MAP[status.type]) {
-        const iconCoord = STATUS_ICON_MAP[status.type];
-        const sx = iconCoord.col * spriteSheetSize;
-        const sy = iconCoord.row * spriteSheetSize;
-        
-        ctx.save();
-        ctx.drawImage(
-          spriteSheet,
-          sx, sy, spriteSheetSize, spriteSheetSize, // 源区域
-          iconX, iconY, iconSize, iconSize // 目标区域
-        );
-        ctx.restore();
-      } else {
-        // Fallback: 使用彩色圆圈（如果精灵图未加载）
-        const color = this.getStatusColor(status.type);
-        this.drawStatusCircle(ctx, iconX, iconY, iconSize, color);
-      }
+      // 使用彩色圆圈
+      const color = this.getStatusColor(status.type);
+      this.drawStatusCircle(ctx, iconX, iconY, iconSize, color);
       
-      // 绘制堆叠数字（如果是可堆叠状态）
+      // 绘制堆叠数字
       if (statusDef.stackable && status.config && status.config.stacks > 1) {
         ctx.save();
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 10px Arial'; // 稍微调大一点字体
+        ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        // 数字显示在图标右下角
         ctx.fillText(status.config.stacks, iconX + iconSize - 2, iconY + iconSize - 2);
         ctx.restore();
       }
