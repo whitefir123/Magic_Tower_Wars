@@ -853,38 +853,34 @@ export class MapSystem {
   }
   
   addConsumableAt(itemOrId, x, y) {
-    // 支持字符串ID（静态消耗品）和对象（动态消耗品）
-    let def;
-    let itemId;
+    // ✅ 支持两种模式：字符串ID（旧系统）或物品对象（新生成系统）
+    let def, itemId;
 
-    if (typeof itemOrId === 'string') {
-      // 旧系统：字符串ID
-      itemId = itemOrId;
-      def = EQUIPMENT_DB[itemId];
-      if (!def || def.type !== 'CONSUMABLE') return;
-    } else if (typeof itemOrId === 'object' && itemOrId !== null) {
-      // 新系统：动态消耗品对象
+    if (typeof itemOrId === 'object' && itemOrId !== null) {
+      // 新逻辑：动态物品对象
       def = itemOrId;
-      // 使用 uid 作为唯一实例ID（堆叠实例），否则退回到 itemId/id
-      itemId = def.uid || def.itemId || def.id;
-      if (!itemId) return;
-
-      // 将动态消耗品存入全局池，供拾取和背包使用
+      itemId = def.uid || def.id || def.itemId;
+      
+      // 存入动态物品池，以便拾取时获取完整数据（包含品质、数量等）
       if (!window.__dynamicItems) {
         window.__dynamicItems = new Map();
       }
       window.__dynamicItems.set(itemId, def);
     } else {
-      return;
+      // 旧逻辑：字符串ID
+      itemId = itemOrId;
+      def = EQUIPMENT_DB[itemId];
     }
 
-    // 寻找空闲位置（与 addEquipAt 相同的偏移策略）
+    if (!def || def.type !== 'CONSUMABLE') return;
+
+    // 寻找空位逻辑（保持不变）
     let dropX = x, dropY = y;
     if (this.getItemAt(dropX, dropY)) {
       const offsets = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]];
       for (let o of offsets) {
         const nx = x + o[0], ny = y + o[1];
-        if (nx > 0 && nx < this.width - 1 && ny > 0 && ny < this.height - 1 &&
+        if (nx > 0 && nx < this.width - 1 && ny > 0 && ny < this.height - 1 && 
             this.grid[ny][nx] === TILE.FLOOR && !this.getItemAt(nx, ny)) {
           dropX = nx;
           dropY = ny;
@@ -893,9 +889,10 @@ export class MapSystem {
       }
     }
 
+    // 创建地图物品对象，确保 itemId 字段正确指向动态物品的 ID
     this.items.push({
       type: 'ITEM_CONSUMABLE',
-      itemId,
+      itemId: itemId,
       x: dropX,
       y: dropY,
       visualX: dropX * TILE_SIZE,
@@ -904,7 +901,7 @@ export class MapSystem {
         assetKey: 'ICONS_CONSUMABLES',
         loader: this.loader,
         isStatic: true,
-        iconIndex: def.iconIndex
+        iconIndex: def.iconIndex !== undefined ? def.iconIndex : 0
       })
     });
   }
