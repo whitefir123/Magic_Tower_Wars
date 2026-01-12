@@ -1386,48 +1386,40 @@ class Game {
         this.ui.updateStats(this.player);
       } else if (it.type === 'ITEM_CONSUMABLE') {
         // 1. 尝试从动态池获取完整对象
-        let itemToAdd = it.itemId; // 默认为 ID 字符串
+        let itemToAdd = it.itemId; 
         if (window.__dynamicItems && window.__dynamicItems.has(it.itemId)) {
           itemToAdd = window.__dynamicItems.get(it.itemId);
         }
 
-        // 2. 传入对象进行添加 (addToInventory 现在支持对象并处理堆叠)
+        // 2. 传入对象进行添加 (支持堆叠)
         const added = this.player.addToInventory(itemToAdd);
 
         if (added) {
           this.map.removeItem(it);
 
-          // 3. 清理动态池引用 (如果存在)
+          // 3. 清理动态池引用
           if (window.__dynamicItems && window.__dynamicItems.has(it.itemId)) {
             window.__dynamicItems.delete(it.itemId);
           }
 
-          // 显示日志 (获取正确的名称和品质颜色)
+          // 4. 显示日志
           let itemName = '';
-          let rarityColor = '#ffffff';
           if (typeof itemToAdd === 'object') {
-            itemName = itemToAdd.nameZh || itemToAdd.name;
-            // 根据 itemToAdd.quality 获取颜色
-            const rarityKey = (itemToAdd.quality || itemToAdd.rarity || 'COMMON').toUpperCase();
-            const rarity = RARITY[rarityKey] || RARITY.COMMON;
-            rarityColor = rarity.color || '#ffffff';
+              itemName = itemToAdd.nameZh || itemToAdd.name;
           } else {
-            const def = EQUIPMENT_DB[itemToAdd];
-            itemName = def ? (def.nameZh || def.name) : '消耗品';
+              const def = EQUIPMENT_DB[itemToAdd];
+              itemName = def ? (def.nameZh || def.name) : '消耗品';
           }
           this.ui.logMessage(`获得了 ${itemName}`, 'gain');
-          
           if (this.audio) this.audio.playCloth();
 
-          // 任务系统：检查物品拾取事件
+          // 任务检查
           if (this.questSystem) {
-            const questItemId = typeof itemToAdd === 'object' 
-              ? (itemToAdd.itemId || itemToAdd.id || it.itemId)
-              : it.itemId;
-            this.questSystem.check('onLoot', { itemId: questItemId, itemType: 'POTION' });
+            const qId = (typeof itemToAdd === 'object') ? (itemToAdd.itemId || itemToAdd.id) : itemToAdd;
+            this.questSystem.check('onLoot', { itemId: qId, itemType: 'POTION' });
           }
 
-          // 视觉特效
+          // VFX 逻辑
           if (this.vfx) {
             const iconIndex = typeof itemToAdd === 'object' 
               ? (itemToAdd.iconIndex !== undefined ? itemToAdd.iconIndex : 0)
@@ -2004,9 +1996,9 @@ class Game {
       }
       
       case 'POTION': {
-        // 使用 LootGenerationSystem 生成带品质的动态消耗品，并掉落在地图上
         const rng = (this.isDailyMode && this.rng) ? this.rng : null;
         const magicFind = this.player.stats.magicFind || 0;
+        // 生成动态品质消耗品
         const lootItem = generateConsumableLoot(this.player.stats.floor || 1, { magicFind, rng });
 
         if (lootItem) {
@@ -2026,17 +2018,8 @@ class Game {
             );
             this.floatingTexts.push(floatingText);
           }
-
           if (this.audio) this.audio.playCloth();
-
-          // 任务系统：检查物品掉落事件（沿用原有 'POTION' 类型）
-          if (this.questSystem) {
-            const questItemId = lootItem.itemId || lootItem.id || 'POTION_DYNAMIC';
-            this.questSystem.check('onLoot', { itemId: questItemId, itemType: 'POTION' });
-          }
-        } else {
-          this.ui.logMessage('什么也没掉出来……', 'info');
-        }
+        } 
         break;
       }
       
@@ -3254,20 +3237,20 @@ class Game {
       }
       
       case 'POTION': {
-        // 使用 LootGenerationSystem 生成带品质的动态消耗品，并掉落在地图上
         const rng = (this.isDailyMode && this.rng) ? this.rng : null;
         const magicFind = this.player.stats.magicFind || 0;
+        // 生成动态品质消耗品
         const lootItem = generateConsumableLoot(this.player.stats.floor || 1, { magicFind, rng });
 
         if (lootItem) {
+          // 掉落在宝箱位置
           this.map.addConsumableAt(lootItem, chestX, chestY);
 
           const rarityKey = (lootItem.quality || lootItem.rarity || 'COMMON').toUpperCase();
           const rarity = RARITY[rarityKey] || RARITY.COMMON;
-          const itemName = lootItem.nameZh || lootItem.name || '消耗品';
+          const itemName = lootItem.nameZh || lootItem.name || '药水';
           this.ui.logMessage(`宝箱打开！掉落 ${itemName} [${rarity.name}]`, 'gain');
 
-          // Show floating text with rarity color
           if (this.settings && this.settings.showDamageNumbers !== false) {
             const floatingText = this.floatingTextPool.create(
               chestX * TILE_SIZE,

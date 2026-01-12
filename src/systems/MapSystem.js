@@ -874,7 +874,7 @@ export class MapSystem {
 
     if (!def || def.type !== 'CONSUMABLE') return;
 
-    // 3. 寻找空位 (保持原有逻辑)
+    // 3. 寻找空位
     let dropX = x, dropY = y;
     if (this.getItemAt(dropX, dropY)) {
       const offsets = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]];
@@ -888,10 +888,10 @@ export class MapSystem {
       }
     }
 
-    // 4. 创建地图物品 (确保 itemId 正确)
+    // 4. 创建地图物品
     this.items.push({
       type: 'ITEM_CONSUMABLE',
-      itemId: itemId, // 这里存储的是 UID (如果是动态物品) 或 模板ID
+      itemId: itemId, // 存储 UID 或 模板ID
       x: dropX,
       y: dropY,
       visualX: dropX * TILE_SIZE,
