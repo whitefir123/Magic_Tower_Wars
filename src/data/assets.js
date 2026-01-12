@@ -87,7 +87,22 @@ export const GAMEPLAY_ASSETS = {
   UI_BTN_UNSOCKET: { url: "https://i.postimg.cc/QM17pj7n/chaichu1.png" }, // 拆除按钮
   
   // 状态图标精灵图
-  SPRITE_STATUS_ICONS: { url: "https://i.postimg.cc/jqB3BxsY/smalltubiao1.png" } // 3x3 状态图标精灵图
+  // 3x3 网格布局的状态图标精灵图，包含9个游戏状态图标
+  // 网格布局说明（从左到右，从上到下）：
+  // 第0行（顶部）：
+  //   - (0,0) PYRO (火): 火焰图标
+  //   - (0,1) HYDRO (水): 水滴图标
+  //   - (0,2) CRYO (冰): 雪花或冰晶图标
+  // 第1行（中间）：
+  //   - (1,0) ELECTRO (雷): 闪电图标
+  //   - (1,1) POISON (毒): 毒气泡图标
+  //   - (1,2) STUN (晕眩): 旋转的星星图标
+  // 第2行（底部）：
+  //   - (2,0) CRIT (暴击): 暴击图标（参考英雄联盟的暴击图标）
+  //   - (2,1) SLOW (减速): 红色的朝下的箭头图标
+  //   - (2,2) DEFUP (防御/护盾): 盾牌图标
+  // 索引计算：index = row * 3 + col (0-8)
+  SPRITE_STATUS_ICONS: { url: "https://i.postimg.cc/jqB3BxsY/smalltubiao1.png" }
 };
 
 // 合并所有资源（向后兼容）
