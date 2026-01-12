@@ -1385,52 +1385,59 @@ class Game {
         
         this.ui.updateStats(this.player);
       } else if (it.type === 'ITEM_CONSUMABLE') {
-        // 优先从动态物品池中获取完整数据（用于动态品质/堆叠消耗品）
-        let dynamicItem = null;
-        if (window.__dynamicItems && window.__dynamicItems instanceof Map && it.itemId) {
-          dynamicItem = window.__dynamicItems.get(it.itemId) || null;
+        // 1. 尝试从动态池获取完整对象
+        let itemToAdd = it.itemId; // 默认为 ID 字符串
+        if (window.__dynamicItems && window.__dynamicItems.has(it.itemId)) {
+          itemToAdd = window.__dynamicItems.get(it.itemId);
         }
 
-        let pickedDef = null;
-        let added = false;
-        let questItemId = it.itemId;
-
-        if (dynamicItem) {
-          // 动态消耗品：将完整对象交给背包，由 addToInventory 处理堆叠
-          added = this.player.addToInventory(dynamicItem);
-          pickedDef = dynamicItem;
-          questItemId = dynamicItem.itemId || dynamicItem.id || it.itemId;
-          // 从动态池中清理
-          window.__dynamicItems.delete(it.itemId);
-        } else {
-          // 静态消耗品：回退到旧逻辑
-          const def = EQUIPMENT_DB[it.itemId];
-          pickedDef = def;
-          added = this.player.addToInventory(it.itemId);
-        }
+        // 2. 传入对象进行添加 (addToInventory 现在支持对象并处理堆叠)
+        const added = this.player.addToInventory(itemToAdd);
 
         if (added) {
           this.map.removeItem(it);
-          if (pickedDef) {
-            const itemName = pickedDef.nameZh || pickedDef.name;
-            this.ui.logMessage(`发现了 ${itemName}！`, 'gain');
+
+          // 3. 清理动态池引用 (如果存在)
+          if (window.__dynamicItems && window.__dynamicItems.has(it.itemId)) {
+            window.__dynamicItems.delete(it.itemId);
           }
-          if (this.audio) this.audio.playCloth();
+
+          // 显示日志 (获取正确的名称和品质颜色)
+          let itemName = '';
+          let rarityColor = '#ffffff';
+          if (typeof itemToAdd === 'object') {
+            itemName = itemToAdd.nameZh || itemToAdd.name;
+            // 根据 itemToAdd.quality 获取颜色
+            const rarityKey = (itemToAdd.quality || itemToAdd.rarity || 'COMMON').toUpperCase();
+            const rarity = RARITY[rarityKey] || RARITY.COMMON;
+            rarityColor = rarity.color || '#ffffff';
+          } else {
+            const def = EQUIPMENT_DB[itemToAdd];
+            itemName = def ? (def.nameZh || def.name) : '消耗品';
+          }
+          this.ui.logMessage(`获得了 ${itemName}`, 'gain');
           
+          if (this.audio) this.audio.playCloth();
+
           // 任务系统：检查物品拾取事件
           if (this.questSystem) {
+            const questItemId = typeof itemToAdd === 'object' 
+              ? (itemToAdd.itemId || itemToAdd.id || it.itemId)
+              : it.itemId;
             this.questSystem.check('onLoot', { itemId: questItemId, itemType: 'POTION' });
           }
+
+          // 视觉特效
+          if (this.vfx) {
+            const iconIndex = typeof itemToAdd === 'object' 
+              ? (itemToAdd.iconIndex !== undefined ? itemToAdd.iconIndex : 0)
+              : 0;
+            this.vfx.flyLoot(lootWorldX, lootWorldY, 'ICONS_CONSUMABLES', 'backpack-icon', iconIndex);
+          }
+          this.ui.updateStats(this.player);
         } else {
           this.ui.logMessage('背包已满！', 'info');
         }
-        
-        if (this.vfx) {
-          const iconIndex = pickedDef ? (pickedDef.iconIndex !== undefined ? pickedDef.iconIndex : 0) : 0;
-          this.vfx.flyLoot(lootWorldX, lootWorldY, 'ICONS_CONSUMABLES', 'backpack-icon', iconIndex);
-        }
-        
-        this.ui.updateStats(this.player);
       } else {
         if (it.type.includes('KEY')) { 
           this.player.stats.keys++; 

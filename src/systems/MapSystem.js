@@ -853,35 +853,34 @@ export class MapSystem {
   }
   
   addConsumableAt(itemOrId, x, y) {
-    // ✅ 支持两种模式：字符串ID（旧系统）或物品对象（新生成系统）
     let def, itemId;
 
+    // 1. 处理动态物品对象
     if (typeof itemOrId === 'object' && itemOrId !== null) {
-      // 新逻辑：动态物品对象
       def = itemOrId;
       itemId = def.uid || def.id || def.itemId;
-      
-      // 存入动态物品池，以便拾取时获取完整数据（包含品质、数量等）
+
+      // 存入全局动态物品池，以便拾取时获取完整数据
       if (!window.__dynamicItems) {
         window.__dynamicItems = new Map();
       }
       window.__dynamicItems.set(itemId, def);
-    } else {
-      // 旧逻辑：字符串ID
+    } 
+    // 2. 处理旧版字符串ID
+    else {
       itemId = itemOrId;
       def = EQUIPMENT_DB[itemId];
     }
 
     if (!def || def.type !== 'CONSUMABLE') return;
 
-    // 寻找空位逻辑（保持不变）
+    // 3. 寻找空位 (保持原有逻辑)
     let dropX = x, dropY = y;
     if (this.getItemAt(dropX, dropY)) {
       const offsets = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]];
       for (let o of offsets) {
         const nx = x + o[0], ny = y + o[1];
-        if (nx > 0 && nx < this.width - 1 && ny > 0 && ny < this.height - 1 && 
-            this.grid[ny][nx] === TILE.FLOOR && !this.getItemAt(nx, ny)) {
+        if (nx > 0 && nx < this.width - 1 && ny > 0 && ny < this.height - 1 && this.grid[ny][nx] === TILE.FLOOR && !this.getItemAt(nx, ny)) {
           dropX = nx;
           dropY = ny;
           break;
@@ -889,10 +888,10 @@ export class MapSystem {
       }
     }
 
-    // 创建地图物品对象，确保 itemId 字段正确指向动态物品的 ID
+    // 4. 创建地图物品 (确保 itemId 正确)
     this.items.push({
       type: 'ITEM_CONSUMABLE',
-      itemId: itemId,
+      itemId: itemId, // 这里存储的是 UID (如果是动态物品) 或 模板ID
       x: dropX,
       y: dropY,
       visualX: dropX * TILE_SIZE,
