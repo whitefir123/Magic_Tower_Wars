@@ -2468,7 +2468,7 @@ export class Player extends Entity {
     if (index < 0 || index >= this.inventory.length) return false;
     const item = this.inventory[index];
     if (!item) return false;
-    
+
     // 获取物品定义（兼容旧代码）
     let def = null;
     if (typeof item === 'string') {
@@ -2483,7 +2483,7 @@ export class Player extends Entity {
         }
       }
     }
-    
+
     if (!def) return false;
     const ui = window.game?.ui;
 
@@ -2504,28 +2504,21 @@ export class Player extends Entity {
           this.gainXp(eff.amount || 0);
           ui?.logMessage(`使用 ${itemName}，获得 ${eff.amount||0} XP`, 'gain');
           break;
-        case 'fire': {
-          const dmg = eff.amount || 0;
-          const game = window.game;
-          if (game && game.map) {
-            const victims = [];
-            if (this.pendingCombat) victims.push(this.pendingCombat);
-            else {
-              for (const m of game.map.monsters) {
-                const dist = Math.abs(m.x - this.x) + Math.abs(m.y - this.y);
-                if (dist <= 3) victims.push(m);
-              }
-            }
-            victims.forEach(m => {
-              m.stats.hp -= dmg;
-              if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-                const damageText = game.floatingTextPool.create(m.visualX, m.visualY - 10, `-${dmg}`, '#ff6b6b');
-                game.floatingTexts.push(damageText);
-              }
-              if (m.stats.hp <= 0) game.map.removeMonster(m);
-            });
-            ui?.logMessage(`使用 ${itemName}，造成 ${dmg} 伤害`, 'combat');
+        case 'prime_state': {
+          // 预充能状态：下一次成功攻击前先触发额外效果，不在这里直接造成伤害
+          if (!this.states) this.states = {};
+          if (eff.state) {
+            this.states[eff.state] = true;
           }
+          // 可选：记录配置，方便将来扩展为多种预充能物品
+          if (!this.states._primedEffects) this.states._primedEffects = {};
+          if (eff.state) {
+            this.states._primedEffects[eff.state] = {
+              damage: eff.damage || 0,
+              status: eff.status || null
+            };
+          }
+          ui?.logMessage('火焰卷轴已激活：下一次攻击附带火焰伤害与灼烧。', 'gain');
           break;
         }
         default:

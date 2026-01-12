@@ -1213,6 +1213,72 @@ export class CombatSystem {
         
         return 'BLOCK'; // 格挡，不造成伤害但进入战斗
       }
+
+      // ========== Fire Scroll 预处理：双通道元素判定（卷轴先挂火，再结算主攻击） ==========
+      // 位置要求：在闪避 / 格挡特性之后，主攻击伤害计算（STEP A）之前，
+      // 确保只有真正命中时才消耗卷轴，并且主攻击可以享受卷轴挂上的 BURN 状态带来的元素反应。
+      if (player.states && player.states.fireScrollPrimed) {
+        const game = window.game;
+        // 消耗卷轴预充能状态
+        player.states.fireScrollPrimed = false;
+
+        // 读取预充能配置（如果存在），否则使用默认 30 点伤害与 BURN
+        const primedConfig =
+          player.states._primedEffects &&
+          player.states._primedEffects.fireScrollPrimed
+            ? player.states._primedEffects.fireScrollPrimed
+            : null;
+
+        const baseScrollDamage =
+          (primedConfig && primedConfig.damage) || 30;
+        const scrollStatus =
+          (primedConfig && primedConfig.status) || 'BURN';
+
+        // 按怪物魔防结算：伤害 = 30 - m_def，至少为 1
+        const monMDef = monster.stats.m_def || 0;
+        const scrollDamage = Math.max(1, baseScrollDamage - monMDef);
+
+        // 扣除怪物生命
+        monster.stats.hp -= scrollDamage;
+
+        // 统计总伤害
+        if (game && game.totalDamageDealt !== undefined) {
+          game.totalDamageDealt += scrollDamage;
+        }
+
+        // 施加灼烧状态（可与技能本身的灼烧叠加）
+        if (scrollStatus) {
+          monster.applyStatus(scrollStatus, player);
+        }
+
+        // 飘字显示卷轴附加伤害（红色）
+        if (
+          game &&
+          game.floatingTextPool &&
+          game.settings &&
+          game.settings.showDamageNumbers !== false
+        ) {
+          const offsetX = (Math.random() - 0.5) * 15;
+          const offsetY = -10 - Math.random() * 10;
+          const floatText = game.floatingTextPool.create(
+            monster.visualX + offsetX,
+            monster.visualY + offsetY,
+            `-${scrollDamage}`,
+            '#ff0000'
+          );
+          game.floatingTexts.push(floatText);
+        }
+
+        // 如果卷轴伤害直接击杀怪物，则立即处理死亡并结束本次交互
+        if (monster.stats.hp <= 0) {
+          if (game && game.combatSystem && game.combatSystem.handleMonsterDeath) {
+            game.combatSystem.handleMonsterDeath(monster, player);
+          } else if (game && game.map && game.map.removeMonster) {
+            game.map.removeMonster(monster);
+          }
+          return 'WIN';
+        }
+      }
       
       // ✅ v2.0: Hook - onBeforeAttack（攻击前）
       // ✅ FIX: 通用检查是否有技能就绪状态

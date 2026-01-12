@@ -724,8 +724,11 @@ export const EQUIPMENT_DB = {
     nameZh: '火焰卷轴', 
     type: 'CONSUMABLE', 
     rarity: 'EPIC', 
-    iconIndex: 5, 
-    effect: { kind: 'fire', amount: 20 } 
+  iconIndex: 5, 
+  // 使用后：为下一次成功攻击预充能，先对目标造成30点火焰伤害并施加灼烧，再结算本次攻击（可触发融化等元素反应）
+  desc: '消耗品：使用后，使你的下一次成功攻击在命中前先造成30点火焰伤害并施加灼烧，可与技能本身的灼烧叠加并触发元素反应。',
+  descZh: '消耗品：使用后，使你的下一次成功攻击在命中前先造成30点火焰伤害并施加灼烧，可与技能本身的灼烧叠加并触发元素反应。',
+  effect: { kind: 'prime_state', state: 'fireScrollPrimed', damage: 30, status: 'BURN' } 
   },
 
   // ========== GEMS (宝石系统) ==========
