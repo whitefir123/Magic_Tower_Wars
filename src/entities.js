@@ -1,6 +1,6 @@
 // entities.js
 import { TILE_SIZE, MONSTER_STATS, EQUIPMENT_DB, COMBAT_CONFIG, STATUS_TYPES, STATUS_ICON_MAP, ELITE_AFFIXES, ELITE_SPAWN_CONFIG, ASSETS, getAscensionLevel, FATIGUE_CONFIG, getItemDefinition, CHARACTERS } from './constants.js';
-import { createStandardizedItem } from './data/items.js';
+import { createStandardizedItem, createDynamicConsumable } from './data/items.js';
 import { getSetConfig } from './data/sets.js';
 import { Sprite, FloatingText } from './utils.js';
 
@@ -1383,6 +1383,10 @@ export class Player extends Entity {
     // ========== 攻击速度系统：初始化攻击计时器 ==========
     this.lastAttackTime = 0; // 用于攻击冷却时间追踪
     this.postKillDelay = 0; // 用于防止击杀后立即移动的延迟标志
+    
+    // ========== 怒气溢出系统 ==========
+    this.rageOverflow = 0;        // 怒气溢出池
+    this._lastRageRefillLogTime = 0; // 上次自动回填日志时间戳（防刷屏）
   }
   
   // Handle status tick effects for player
@@ -1426,13 +1430,115 @@ export class Player extends Entity {
    * @returns {boolean} 是否添加成功
    */
   addToInventory(item) { 
-    // Ensure strict null check (not undefined or falsy values)
+    if (!item) return false;
+
+    // =========================
+    // 1. 消耗品：走堆叠逻辑
+    // =========================
+    const resolveType = (it) => {
+      if (!it) return null;
+      if (typeof it === 'object' && it.type) return it.type;
+      const id = typeof it === 'string' ? it : (it.itemId || it.id);
+      const def = id ? EQUIPMENT_DB[id] : null;
+      return def ? def.type : null;
+    };
+
+    const itemType = resolveType(item);
+
+    if (itemType === 'CONSUMABLE') {
+      // 规范化为带 count/maxStack 的实例
+      let instance = null;
+
+      if (typeof item === 'string') {
+        const def = EQUIPMENT_DB[item];
+        if (!def) return false;
+        // 使用动态消耗品工厂，品质沿用定义的稀有度
+        instance = createDynamicConsumable(def, def.rarity || def.quality || 'COMMON');
+      } else if (typeof item === 'object') {
+        // 已经是实例：防御性补全字段
+        instance = { ...item };
+        const def = EQUIPMENT_DB[instance.itemId || instance.id] || {};
+        const quality = (instance.quality || instance.rarity || def.quality || def.rarity || 'COMMON').toUpperCase();
+        instance.quality = quality;
+        if (typeof instance.count !== 'number' || instance.count <= 0) {
+          instance.count = 1;
+        }
+        if (typeof instance.maxStack !== 'number' || instance.maxStack <= 0) {
+          instance.maxStack = 99;
+        }
+        if (!instance.uid) {
+          if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            instance.uid = crypto.randomUUID();
+          } else {
+            instance.uid = `stack_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          }
+        }
+        instance.itemId = instance.itemId || instance.id || def.id;
+      }
+
+      if (!instance) return false;
+
+      const targetItemId = instance.itemId;
+      const targetQuality = instance.quality;
+      const maxStack = instance.maxStack || 99;
+      let remaining = instance.count || 1;
+
+      // 先尝试往已有堆叠中填充
+      for (let i = 0; i < this.inventory.length && remaining > 0; i++) {
+        const slot = this.inventory[i];
+        if (!slot) continue;
+
+        const slotItemId = slot.itemId || slot.id;
+        const slotQuality = slot.quality || slot.rarity || 'COMMON';
+        const slotMaxStack = slot.maxStack || 99;
+        const slotCount = typeof slot.count === 'number' && slot.count > 0 ? slot.count : 1;
+
+        if (slotItemId === targetItemId && slotQuality === targetQuality && slotCount < slotMaxStack) {
+          const space = slotMaxStack - slotCount;
+          const toAdd = Math.min(space, remaining);
+          slot.count = slotCount + toAdd;
+          slot.maxStack = slotMaxStack;
+          remaining -= toAdd;
+        }
+      }
+
+      // 再把剩余数量分配到空槽中
+      while (remaining > 0) {
+        const emptyIdx = this.findFirstEmptyInventorySlot();
+        if (emptyIdx === -1) {
+          // 背包已满，部分添加成功
+          return false;
+        }
+
+        const stackSize = Math.min(maxStack, remaining);
+        let newUid;
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+          newUid = crypto.randomUUID();
+        } else {
+          newUid = `stack_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        }
+
+        const newStack = {
+          ...instance,
+          uid: newUid,
+          count: stackSize,
+          maxStack
+        };
+
+        this.inventory[emptyIdx] = newStack;
+        remaining -= stackSize;
+      }
+
+      return true;
+    }
+
+    // =========================
+    // 2. 非消耗品：沿用旧逻辑（不堆叠）
+    // =========================
     const idx = this.inventory.findIndex(slot => slot === null); 
     if (idx === -1) return false; 
     
-    // 如果传入的是字符串ID,创建标准化的物品实例对象
     if (typeof item === 'string') {
-      // ✅ v2.0: 使用标准化函数创建物品实例
       const itemInstance = createStandardizedItem(item, {
         level: 1,
         affixes: [],
@@ -1444,11 +1550,8 @@ export class Player extends Entity {
       
       this.inventory[idx] = itemInstance;
     } else {
-      // 如果传入的是对象,确保它有标准结构
       if (item && typeof item === 'object') {
-        // 如果对象缺少标准字段，尝试标准化它
         if (!item.uid || !item.meta) {
-          // 如果有 itemId 或 id，尝试标准化
           const itemId = item.itemId || item.id;
           if (itemId) {
             const standardized = createStandardizedItem(itemId, {
@@ -1458,14 +1561,12 @@ export class Player extends Entity {
               setId: item.setId || item.meta?.setId || null
             });
             if (standardized) {
-              // 合并原有属性（如 enhanceLevel, stats 等）
               this.inventory[idx] = { ...standardized, ...item };
               return true;
             }
           }
         }
       }
-      // 如果传入的是对象,直接存储（假设已经是标准对象）
       this.inventory[idx] = item;
     }
     
@@ -2058,6 +2159,29 @@ export class Player extends Entity {
         }
       }
     }
+
+    // ========== 怒气溢出自动回填 ==========
+    if (this.stats && typeof this.stats.rage === 'number' && this.rageOverflow > 0 && this.stats.rage < 100) {
+      const need = 100 - this.stats.rage;
+      const take = Math.min(need, this.rageOverflow);
+      if (take > 0) {
+        this.stats.rage += take;
+        this.rageOverflow -= take;
+
+        const game = window.game;
+        if (game && game.ui) {
+          game.ui.updateStats(this);
+
+          // 日志带冷却，防止刷屏
+          const now = Date.now();
+          const cd = 3000; // 3 秒
+          if (!this._lastRageRefillLogTime || now - this._lastRageRefillLogTime >= cd) {
+            game.ui.logMessage('怒气自动回填！', 'info');
+            this._lastRageRefillLogTime = now;
+          }
+        }
+      }
+    }
   }
   
   // 覆盖 Entity 的 updateVisuals 方法，添加脚步声
@@ -2419,11 +2543,18 @@ export class Player extends Entity {
   }
   gainRage(amt) { 
     const beforeRage = this.stats.rage || 0;
-    this.stats.rage = Math.min(100, beforeRage + amt);
-    // const actualGain = this.stats.rage - beforeRage; // 不再需要计算实际增量用于显示
+    const incoming = amt || 0;
+    const totalRage = beforeRage + incoming;
+
+    if (totalRage > 100) {
+      this.stats.rage = 100;
+      const overflow = totalRage - 100;
+      this.rageOverflow = (this.rageOverflow || 0) + overflow;
+    } else {
+      this.stats.rage = Math.max(0, totalRage);
+    }
+
     if (window.game && window.game.ui) window.game.ui.updateStats(this);
-    
-    // 移除怒气飘字逻辑，保持画面整洁
   }
   takeDamage(amt) { 
     // ✅ 获取最终减伤属性
@@ -2524,7 +2655,17 @@ export class Player extends Entity {
         default:
           break;
       }
-      this.removeFromInventory(index);
+      // 堆叠消耗：先减少 count，再根据结果决定是否移除
+      if (typeof item === 'object') {
+        const currentCount = typeof item.count === 'number' ? item.count : 1;
+        item.count = currentCount - 1;
+        if (item.count <= 0) {
+          this.removeFromInventory(index);
+        }
+      } else {
+        // 旧格式（字符串ID）视为单次使用
+        this.removeFromInventory(index);
+      }
       ui?.updateStats(this);
       ui?.renderInventory?.(this);
       return true;

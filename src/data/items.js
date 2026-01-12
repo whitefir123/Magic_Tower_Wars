@@ -108,6 +108,109 @@ export function createStandardizedItem(itemDef, options = {}) {
   return standardizedItem;
 }
 
+// 品质倍率与名称映射（用于消耗品动态生成）
+const CONSUMABLE_QUALITY_MULTIPLIERS = {
+  COMMON: 1.0,
+  RARE: 1.5,
+  EPIC: 2.5,
+  LEGENDARY: 5.0,
+  MYTHIC: 10.0
+};
+
+const CONSUMABLE_QUALITY_LABELS = {
+  COMMON: { en: 'Common', zh: '粗糙' },
+  RARE: { en: 'Rare', zh: '优秀' },
+  EPIC: { en: 'Epic', zh: '史诗' },
+  LEGENDARY: { en: 'Legendary', zh: '传说' },
+  MYTHIC: { en: 'Mythic', zh: '神话' }
+};
+
+/**
+ * 动态消耗品工厂函数
+ * 基于品质倍率放大数值，并初始化堆叠属性
+ * @param {Object} itemDef - 消耗品基础定义（来自 EQUIPMENT_DB）
+ * @param {string} quality - 品质枚举：COMMON/RARE/EPIC/LEGENDARY/MYTHIC
+ * @returns {Object|null} 动态消耗品实例
+ */
+export function createDynamicConsumable(itemDef, quality = 'COMMON') {
+  if (!itemDef) return null;
+
+  // 防御性处理：兼容传入字符串 ID
+  if (typeof itemDef === 'string') {
+    itemDef = EQUIPMENT_DB[itemDef];
+    if (!itemDef) {
+      console.warn('[createDynamicConsumable] 未找到物品定义:', itemDef);
+      return null;
+    }
+  }
+
+  if (itemDef.type !== 'CONSUMABLE') {
+    console.warn('[createDynamicConsumable] 非消耗品类型，忽略:', itemDef.id || itemDef.itemId);
+    return null;
+  }
+
+  const qKey = (quality || itemDef.quality || itemDef.rarity || 'COMMON').toUpperCase();
+  const mult = CONSUMABLE_QUALITY_MULTIPLIERS[qKey] ?? CONSUMABLE_QUALITY_MULTIPLIERS.COMMON;
+  const labels = CONSUMABLE_QUALITY_LABELS[qKey] || CONSUMABLE_QUALITY_LABELS.COMMON;
+
+  // 深拷贝效果对象，避免污染静态定义
+  let effect = null;
+  if (itemDef.effect && typeof itemDef.effect === 'object') {
+    effect = { ...itemDef.effect };
+
+    // 数值字段按倍率缩放（向下取整）
+    if (typeof effect.amount === 'number') {
+      effect.amount = Math.floor(effect.amount * mult);
+    }
+    if (typeof effect.damage === 'number') {
+      effect.damage = Math.floor(effect.damage * mult);
+    }
+  }
+
+  const baseName = itemDef.name || '';
+  const baseNameZh = itemDef.nameZh || baseName;
+
+  const displayName = `${labels.en} · ${baseName}`;
+  const displayNameZh = `${labels.zh} · ${baseNameZh}`;
+
+  // 生成针对这一“堆”的唯一 UID
+  const uid = generateUID();
+  const templateId = itemDef.id || itemDef.itemId || 'CONSUMABLE_DYNAMIC';
+
+  const instance = {
+    // 标识
+    uid,
+    id: templateId,
+    itemId: templateId,
+
+    // 显示
+    name: displayName,
+    nameZh: displayNameZh,
+
+    // 基本数据
+    type: 'CONSUMABLE',
+    rarity: qKey,
+    quality: qKey,
+    iconIndex: itemDef.iconIndex ?? 0,
+
+    // 效果（已按品质缩放）
+    effect,
+
+    // 堆叠属性
+    count: 1,
+    maxStack: 99,
+
+    // 兼容字段（保留原有描述等）
+    desc: itemDef.desc,
+    descZh: itemDef.descZh,
+
+    // 标记为动态消耗品，方便调试与序列化策略
+    isDynamicConsumable: true
+  };
+
+  return instance;
+}
+
 // Equipment + Consumables DB
 export const EQUIPMENT_DB = {
   // ========== WEAPONS (第1行) ==========
@@ -697,7 +800,8 @@ export const EQUIPMENT_DB = {
     nameZh: '小型药水', 
     type: 'CONSUMABLE', 
     rarity: 'COMMON', 
-    iconIndex: 0, 
+    iconIndex: 0,
+    maxStack: 99,
     effect: { kind: 'heal', amount: 50 } 
   },
   POTION_RAGE: { 
@@ -706,7 +810,8 @@ export const EQUIPMENT_DB = {
     nameZh: '怒气药水', 
     type: 'CONSUMABLE', 
     rarity: 'RARE', 
-    iconIndex: 1, 
+    iconIndex: 1,
+    maxStack: 99,
     effect: { kind: 'rage', amount: 20 } 
   },
   SCROLL_XP: { 
@@ -715,7 +820,8 @@ export const EQUIPMENT_DB = {
     nameZh: '知识卷轴', 
     type: 'CONSUMABLE', 
     rarity: 'RARE', 
-    iconIndex: 4, 
+    iconIndex: 4,
+    maxStack: 99,
     effect: { kind: 'xp', amount: 10 } 
   },
   SCROLL_FIRE: { 
@@ -724,7 +830,8 @@ export const EQUIPMENT_DB = {
     nameZh: '火焰卷轴', 
     type: 'CONSUMABLE', 
     rarity: 'EPIC', 
-  iconIndex: 5, 
+  iconIndex: 5,
+  maxStack: 99,
   // 使用后：为下一次成功攻击预充能，先对目标造成30点火焰伤害并施加灼烧，再结算本次攻击（可触发融化等元素反应）
   desc: '消耗品：使用后，使你的下一次成功攻击在命中前先造成30点火焰伤害并施加灼烧，可与技能本身的灼烧叠加并触发元素反应。',
   descZh: '消耗品：使用后，使你的下一次成功攻击在命中前先造成30点火焰伤害并施加灼烧，可与技能本身的灼烧叠加并触发元素反应。',
@@ -1194,6 +1301,14 @@ export function serializeItem(item) {
     enhanceLevel: item.enhanceLevel,
     meta: item.meta || {}
   };
+
+  // 堆叠属性（主要用于消耗品）
+  if (typeof item.count === 'number') {
+    serialized.count = item.count;
+  }
+  if (typeof item.maxStack === 'number') {
+    serialized.maxStack = item.maxStack;
+  }
   
   // 检查是否为动态物品
   const isDynamicItem = item.uid && (
@@ -1280,6 +1395,18 @@ export function deserializeItem(data) {
     itemId: itemId,
     id: itemId
   };
+
+  // 堆叠属性兼容：旧存档没有 count/maxStack 时自动补全
+  if (typeof restored.count !== 'number' || restored.count <= 0) {
+    restored.count = 1;
+  }
+  if (typeof restored.maxStack !== 'number' || restored.maxStack <= 0) {
+    if (restored.type === 'CONSUMABLE') {
+      restored.maxStack = 99;
+    } else {
+      restored.maxStack = 1;
+    }
+  }
   
   // 如果 data 中有 baseStats，覆盖模板的 baseStats
   if (data.baseStats) {
