@@ -4,6 +4,7 @@
 import { ICON_GRID_COLS, ICON_GRID_ROWS, EQUIPMENT_DB } from '../constants.js';
 import { globalTooltipManager } from '../utils/TooltipManager.js';
 import { getSetConfig } from '../data/sets.js';
+import { ITEM_QUALITY } from '../data/loot.js';
 
 /**
  * InventoryUI - 背包和装备界面管理器
@@ -663,13 +664,12 @@ export class InventoryUI {
         }
       };
 
-      const qualityColors = {
-        COMMON: '#a0a0a0',
-        RARE: '#4da6ff',
-        EPIC: '#b026ff',
-        LEGENDARY: '#ffd700',
-        MYTHIC: '#ff3333'
-      };
+      const qualityColors = Object.keys(ITEM_QUALITY || {}).reduce((acc, key) => {
+        const color = ITEM_QUALITY[key]?.color;
+        if (color) acc[key] = color;
+        return acc;
+      }, {});
+      const defaultQualityColor = '#444';
 
       // 渲染每个格子
       slots.forEach((slot, idx) => {
@@ -756,7 +756,7 @@ export class InventoryUI {
 
         // 根据品质设置边框颜色
         const qualityKey = (item.quality || item.rarity || '').toUpperCase();
-        slot.style.borderColor = qualityColors[qualityKey] || '#444';
+        slot.style.borderColor = qualityColors[qualityKey] || defaultQualityColor;
 
         // 绑定点击事件 - 左键单击显示操作菜单
         slot.onclick = (e) => {

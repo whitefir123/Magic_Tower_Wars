@@ -77,6 +77,8 @@ export class LootGenerator {
       : null;
 
     // === 第六步：生成最终属性 ===
+    const statMulti = affixConfig?.statMulti ?? 1;
+
     const statsResult = this.calculateFinalStats(
       archetype,
       prefix,
@@ -85,6 +87,7 @@ export class LootGenerator {
       monsterTier,
       ascensionLevel,
       fateRoll,
+      statMulti,
       rng
     );
 
@@ -268,10 +271,21 @@ export class LootGenerator {
    * @param {number} monsterTier - 怪物强度 (1-3)
    * @param {number} ascensionLevel - 难度等级
    * @param {Object} fateRoll - 命运骰子结果 { iPwr, isJackpot, isLucky }
+   * @param {number} statMulti - 品质属性倍率（默认1）
    * @param {SeededRandom} rng - 可选的随机数生成器
    * @returns {Object} { baseStats: 纯底材数值, finalStats: 最终数值, materialMult: 材质倍率 }
    */
-  calculateFinalStats(archetype, prefix, suffix, floor, monsterTier, ascensionLevel, fateRoll, rng = null) {
+  calculateFinalStats(
+    archetype,
+    prefix,
+    suffix,
+    floor,
+    monsterTier,
+    ascensionLevel,
+    fateRoll,
+    statMulti = 1,
+    rng = null
+  ) {
     // === 第一步：计算 LevelMult ===
     const levelMult = 1 + (floor * 0.2) + (ascensionLevel * 0.05);
     
@@ -310,7 +324,7 @@ export class LootGenerator {
       const level1Base = range[0] + randomValue * (range[1] - range[0]);
       
       // 应用 LevelMult 和 MaterialMult
-      const finalBase = level1Base * levelMult * materialMult;
+      const finalBase = level1Base * levelMult * materialMult * statMulti;
       
       // 根据属性类型决定取整方式
       if (statKey.includes('rate') || statKey.includes('dodge') || statKey.includes('pen') || statKey.includes('gold') || statKey.includes('lifesteal')) {
