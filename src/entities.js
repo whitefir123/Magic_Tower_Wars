@@ -206,8 +206,9 @@ export class Entity {
   drawStatusIcons(ctx, camX, camY) {
     if (!this.statuses || this.statuses.length === 0) return;
     
-    const screenX = this.visualX;
-    const screenY = this.visualY;
+    // 转换为屏幕坐标 (世界坐标 - 相机偏移)
+    const screenX = this.visualX - (camX || 0);
+    const screenY = this.visualY - (camY || 0);
     const iconSize = 16; // 图标大小（从12调整为16，适配精灵图）
     const iconSpacing = 2; // 图标间距
     const yOffset = -20; // 在实体上方20像素
