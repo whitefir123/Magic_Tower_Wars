@@ -1218,48 +1218,60 @@ class Game {
   }
 
   /**
-   * 处理输入指令（移动或攻击）
-   * @param {string} key - 按键（方向键或空格）
-   * @returns {boolean} - 是否成功处理了输入
+   * 处理输入前置守卫检查
+   * @param {string} key - 按键
+   * @returns {boolean} - 返回 true 表示拦截输入，不应继续处理
    */
-  processInput(key) {
+  handleInputGuard(key) {
     // 死亡阶段禁止操作
     if (this.deathPhase && this.deathPhase.active) {
-      return false;
+      return true;
     }
     
     if (!this.player || this.player.isMoving || this.player.pendingCombat) {
-      return false;
+      return true;
     }
     
-    // 处理攻击键（空格）
+    return false;
+  }
+
+  /**
+   * 处理必杀技（空格键）
+   * @param {string} key - 按键
+   * @returns {boolean} - 返回 true 表示已释放必杀技
+   */
+  handleUltimate(key) {
     if (key === ' ') {
       if (this.player && this.player.stats.rage >= 100) {
         this.activateUltimate();
         return true;
       }
-      return false;
     }
-    
-    // 处理方向键
-    let dx = 0, dy = 0;
-    if (key === 'ArrowUp') { dy = -1; this.player.sprite.setDirection(1); }
-    if (key === 'ArrowDown') { dy = 1; this.player.sprite.setDirection(0); }
-    if (key === 'ArrowLeft') { dx = -1; this.player.sprite.setDirection(2); }
-    if (key === 'ArrowRight') { dx = 1; this.player.sprite.setDirection(3); }
-    
-    if (dx === 0 && dy === 0) {
-      return false; // 不是有效的方向键
-    }
-    
-    const nx = this.player.x + dx;
-    const ny = this.player.y + dy;
+    return false;
+  }
+
+  /**
+   * 检查墙壁碰撞
+   * @param {number} nx - 目标 x 坐标
+   * @param {number} ny - 目标 y 坐标
+   * @returns {boolean} - 返回 false 表示撞墙（不消耗输入）
+   */
+  handleWallCollision(nx, ny) {
     const tile = this.map.grid[ny][nx];
-    
     if (tile === TILE.WALL) {
       return false; // 撞墙，不处理
     }
-    
+    return true; // 没有撞墙，可以继续
+  }
+
+  /**
+   * 处理环境交互（开门）
+   * @param {number} nx - 目标 x 坐标
+   * @param {number} ny - 目标 y 坐标
+   * @returns {boolean} - 返回 true 表示已处理开门
+   */
+  handleEnvironmentInteraction(nx, ny) {
+    const tile = this.map.grid[ny][nx];
     if (tile === TILE.DOOR) {
       if (this.player.stats.keys > 0) { 
         this.player.stats.keys--; 
@@ -1272,7 +1284,16 @@ class Game {
       }
       return true; // 处理了开门
     }
-    
+    return false;
+  }
+
+  /**
+   * 处理战斗输入
+   * @param {number} nx - 目标 x 坐标
+   * @param {number} ny - 目标 y 坐标
+   * @returns {boolean} - 返回 true 表示已处理战斗（无论冷却是否就绪）
+   */
+  handleCombatInput(nx, ny) {
     const monster = this.map.getMonsterAt(nx, ny);
     if (monster) {
       // 攻击速度系统：检查攻击冷却时间
@@ -1285,11 +1306,21 @@ class Game {
         this.player.lastAttackTime = now;
         return true;
       } else {
-        // 攻击冷却中，不执行任何操作
-        return false;
+        // 攻击冷却中，不执行任何操作，但算处理了输入
+        return true;
       }
     }
-    
+    return false;
+  }
+
+  /**
+   * 处理实体交互（NPC、铁匠、神龛、可破坏物、祭坛）
+   * @param {number} nx - 目标 x 坐标
+   * @param {number} ny - 目标 y 坐标
+   * @returns {boolean} - 返回 true 表示已触发交互
+   */
+  handleEntityInteraction(nx, ny) {
+    // 检查 NPC
     const npc = this.map.getNpcAt(nx, ny);
     if (npc) { 
       if (npc.type === 'GAMBLER') {
@@ -1343,10 +1374,20 @@ class Game {
       }
     }
     
-    // 可以移动，执行移动
+    return false;
+  }
+
+  /**
+   * 处理移动及移动后事件（物品拾取、楼梯检测）
+   * @param {number} nx - 目标 x 坐标
+   * @param {number} ny - 目标 y 坐标
+   * @returns {boolean} - 返回 true 表示已处理移动
+   */
+  handleMovementAndEvents(nx, ny) {
+    // 执行移动
     this.player.startMove(nx, ny);
     
-    // 拾取物品
+    // 拾取物品（必须在移动后执行）
     let it = this.map.getItemAt(nx, ny);
     if (!it) it = this.map.getItemAt(this.player.x, this.player.y);
     if (it) {
@@ -1449,7 +1490,8 @@ class Game {
       }
     }
     
-    // 检查楼梯
+    // 检查楼梯（必须在移动后执行）
+    const tile = this.map.grid[ny][nx];
     if (tile === TILE.STAIRS_DOWN) {
       const hasBoss = this.map.monsters.some(m => m.type === 'BOSS');
       if (hasBoss) {
@@ -1461,6 +1503,43 @@ class Game {
     }
     
     return true; // 成功处理了移动
+  }
+
+  /**
+   * 处理输入指令（移动或攻击）
+   * @param {string} key - 按键（方向键或空格）
+   * @returns {boolean} - 是否成功处理了输入
+   */
+  processInput(key) {
+    // 1. 前置守卫
+    if (this.handleInputGuard(key)) return false;
+    
+    // 2. 必杀技
+    if (this.handleUltimate(key)) return true;
+
+    // 3. 计算坐标 (保留原有的 dx/dy 计算逻辑)
+    let dx = 0, dy = 0;
+    if (key === 'ArrowUp') { dy = -1; this.player.sprite.setDirection(1); }
+    if (key === 'ArrowDown') { dy = 1; this.player.sprite.setDirection(0); }
+    if (key === 'ArrowLeft') { dx = -1; this.player.sprite.setDirection(2); }
+    if (key === 'ArrowRight') { dx = 1; this.player.sprite.setDirection(3); }
+    
+    if (dx === 0 && dy === 0) {
+      return false; // 不是有效的方向键
+    }
+    
+    const nx = this.player.x + dx;
+    const ny = this.player.y + dy;
+
+    // 4. 责任链执行 (顺序至关重要)
+    // 墙壁碰撞是最高优先级，必须最先检查
+    if (!this.handleWallCollision(nx, ny)) return false; // 撞墙不消耗回合
+    if (this.handleEnvironmentInteraction(nx, ny)) return true; // 开门
+    if (this.handleCombatInput(nx, ny)) return true; // 战斗
+    if (this.handleEntityInteraction(nx, ny)) return true; // 交互
+    
+    // 5. 移动及移动后事件
+    return this.handleMovementAndEvents(nx, ny);
   }
 
   update(dt) {
