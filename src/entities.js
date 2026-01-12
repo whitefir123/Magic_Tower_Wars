@@ -249,7 +249,15 @@ export class Entity {
     // 绘制参数
     const iconSize = 16; // 绘制尺寸（16x16像素）
     const iconSpacing = 2; // 图标间距
-    const yOffset = -10; // 在实体上方10像素
+    
+    // 动态计算 Y 偏移，确保显示在 Sprite 头顶上方
+    let yOffset = -20;
+    if (this.sprite && this.sprite.destHeight) {
+      // 假设 Sprite 是底部对齐的，计算其顶部位置
+      // Sprite 顶部偏移 = destHeight - TILE_SIZE
+      const spriteTop = this.sprite.destHeight - TILE_SIZE;
+      yOffset = -spriteTop - 15; // 在头顶上方 15px
+    }
     
     // 计算图标起始位置（居中显示）
     const totalWidth = this.statuses.length * (iconSize + iconSpacing) - iconSpacing;
@@ -399,6 +407,7 @@ export class Entity {
 export class Monster extends Entity {
   constructor(type, x, y, loader, diff, TILE, floor = 1, ascensionLevel = 1) {
     super(x, y);
+    this.loader = loader; // 保存 Loader 引用，用于状态图标加载
     this.type = type; this.homeX = x; this.homeY = y;
     this.ascensionLevel = ascensionLevel; // 存储噩梦层级
     
