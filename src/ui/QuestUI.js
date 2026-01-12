@@ -326,15 +326,26 @@ export class QuestUI {
         transform: rotate(90deg);
       }
 
-      .quest-category-content {
-        display: none;
+      /* 分类内容外层包装器：使用 CSS Grid 做高度过渡动画 */
+      .quest-category-wrapper {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.3s ease-out;
+        background: transparent;
+      }
+
+      /* 展开状态：高度从 0fr 过渡到 1fr，实现平滑展开 */
+      .quest-category-wrapper.expanded {
+        grid-template-rows: 1fr;
+      }
+
+      /* 内部容器：真正承载任务列表项，overflow 隐藏多余内容 */
+      .quest-category-inner {
+        overflow: hidden;
+        display: flex;
         flex-direction: column;
         gap: 5px;
         padding-left: 10px;
-      }
-
-      .quest-category-content.expanded {
-        display: flex;
       }
 
       .quest-list-item {
@@ -856,35 +867,40 @@ export class QuestUI {
           categoryHeader.classList.add('expanded');
         }
         categoryHeader.textContent = categoryNames[category];
-        
-        // 添加点击事件：切换展开/收起
+
+        // 创建分类内容外层包装器（负责高度缓动动画）
+        const categoryWrapper = document.createElement('div');
+        categoryWrapper.className = 'quest-category-wrapper';
+        if (this.categoryStates[category]) {
+          categoryWrapper.classList.add('expanded');
+        }
+
+        // 创建分类内容内部容器（实际承载任务项）
+        const categoryInner = document.createElement('div');
+        categoryInner.className = 'quest-category-inner';
+
+        // 添加点击事件：切换展开/收起（切换外层 wrapper 的 expanded 类）
         categoryHeader.addEventListener('click', () => {
           this.categoryStates[category] = !this.categoryStates[category];
           categoryHeader.classList.toggle('expanded');
-          categoryContent.classList.toggle('expanded');
+          categoryWrapper.classList.toggle('expanded');
         });
-
-        // 创建分类内容容器
-        const categoryContent = document.createElement('div');
-        categoryContent.className = 'quest-category-content';
-        if (this.categoryStates[category]) {
-          categoryContent.classList.add('expanded');
-        }
 
         // 添加活跃任务
         categoryData.active.forEach(quest => {
           const item = this.createQuestListItem(quest, 'active');
-          categoryContent.appendChild(item);
+          categoryInner.appendChild(item);
         });
 
         // 添加已完成任务
         categoryData.completed.forEach(quest => {
           const item = this.createQuestListItem(quest, 'completed');
-          categoryContent.appendChild(item);
+          categoryInner.appendChild(item);
         });
 
+        categoryWrapper.appendChild(categoryInner);
         categoryContainer.appendChild(categoryHeader);
-        categoryContainer.appendChild(categoryContent);
+        categoryContainer.appendChild(categoryWrapper);
         listContent.appendChild(categoryContainer);
       });
 
