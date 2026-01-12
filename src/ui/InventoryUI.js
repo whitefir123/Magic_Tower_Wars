@@ -711,7 +711,7 @@ export class InventoryUI {
           slot.onclick = null;
           slot.removeAttribute('draggable');
           this.tooltipManager.unbind(slot);
-          slot.style.borderColor = '#444';
+          slot.style.border = '1px solid #444';
           return;
         }
         
@@ -740,7 +740,7 @@ export class InventoryUI {
           slot.onclick = null;
           slot.removeAttribute('draggable');
           this.tooltipManager.unbind(slot);
-          slot.style.borderColor = '#444';
+          slot.style.border = '1px solid #444';
           return;
         }
         
@@ -756,7 +756,8 @@ export class InventoryUI {
 
         // 根据品质设置边框颜色
         const qualityKey = (item.quality || item.rarity || '').toUpperCase();
-        slot.style.borderColor = qualityColors[qualityKey] || defaultQualityColor;
+        const qualityColor = qualityColors[qualityKey] || defaultQualityColor;
+        slot.style.border = `1px solid ${qualityColor}`;
 
         // 绑定点击事件 - 左键单击显示操作菜单
         slot.onclick = (e) => {
@@ -853,7 +854,7 @@ export class InventoryUI {
             this.tooltipManager.unbind(socket);
             socket.removeAttribute('draggable');
             socket.onclick = null;
-            socket.style.borderColor = defaultQualityColor;
+            socket.style.border = `1px solid ${defaultQualityColor}`;
             socket.ondragover = (ev) => { ev.preventDefault(); setDragOver(socket, true); };
             socket.ondragleave = () => setDragOver(socket, false);
             socket.ondrop = (ev) => {
@@ -899,7 +900,7 @@ export class InventoryUI {
             this.tooltipManager.unbind(socket);
             socket.removeAttribute('draggable');
             socket.onclick = null;
-            socket.style.borderColor = defaultQualityColor;
+            socket.style.border = `1px solid ${defaultQualityColor}`;
           });
           return;
         }
@@ -939,7 +940,8 @@ export class InventoryUI {
 
           // 根据品质设置边框颜色（支持 quality 和 rarity 字段，默认 COMMON）
           const qualityKey = (item.quality || item.rarity || 'COMMON').toUpperCase();
-          socket.style.borderColor = qualityColors[qualityKey] || defaultQualityColor;
+          const qualityColor = qualityColors[qualityKey] || defaultQualityColor;
+          socket.style.border = `1px solid ${qualityColor}`;
           
           if (img) {
             const canvas = this.createItemIcon(img, item, cellW, cellH, this.style.equipmentIconSize, cols);

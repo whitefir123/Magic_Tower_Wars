@@ -3,6 +3,7 @@
 
 import { EQUIPMENT_DB } from '../constants.js';
 import { getSetConfig } from '../data/sets.js';
+import { ITEM_QUALITY } from '../data/loot.js';
 
 /**
  * TooltipManager - 提示框管理器
@@ -112,21 +113,19 @@ export class TooltipManager {
     const displayName = item.nameZh || item.name || item.displayName || '未知物品';
     const typeZh = this.typeNameMap[item.type] || item.type;
     
-    let content = `<div class="tt-name">${displayName}</div>`;
+    // 获取物品品质对应的颜色
+    const qualityKey = (item.quality || item.rarity || 'COMMON').toUpperCase();
+    const qualityConfig = ITEM_QUALITY[qualityKey] || ITEM_QUALITY.COMMON;
+    const qualityColor = qualityConfig.color || '#ffffff';
+    const qualityName = qualityConfig.name || qualityKey;
+    
+    // 应用品质颜色到物品名称
+    let content = `<div class="tt-name" style="color: ${qualityColor};">${displayName}</div>`;
     content += `<div class="tt-type">${typeZh}</div>`;
     
     // 显示品质和强化等级（如果有）
-    if (item.quality) {
-      const qualityNames = {
-        'COMMON': '普通',
-        'UNCOMMON': '优秀',
-        'RARE': '稀有',
-        'EPIC': '史诗',
-        'LEGENDARY': '传说',
-        'MYTHIC': '神话'
-      };
-      const qualityName = qualityNames[item.quality] || item.quality;
-      content += `<div class="tt-quality">${qualityName}</div>`;
+    if (item.quality || item.rarity) {
+      content += `<div class="tt-quality" style="color: ${qualityColor};">${qualityName}</div>`;
     }
     
     if (item.enhanceLevel && item.enhanceLevel > 0) {
@@ -208,16 +207,10 @@ export class TooltipManager {
           const gemDef = EQUIPMENT_DB[socket.gemId];
           if (gemDef) {
             const gemName = gemDef.nameZh || gemDef.name || '未知宝石';
-            const gemQuality = gemDef.quality || gemDef.rarity || 'COMMON';
-            const qualityColors = {
-              'COMMON': '#ffffff',
-              'UNCOMMON': '#1eff00',
-              'RARE': '#0070dd',
-              'EPIC': '#a335ee',
-              'LEGENDARY': '#ff8000',
-              'MYTHIC': '#e6cc80'
-            };
-            const gemColor = qualityColors[gemQuality] || '#ffffff';
+            const gemQuality = (gemDef.quality || gemDef.rarity || 'COMMON').toUpperCase();
+            // 复用 ITEM_QUALITY 颜色配置
+            const gemQualityConfig = ITEM_QUALITY[gemQuality] || ITEM_QUALITY.COMMON;
+            const gemColor = gemQualityConfig.color || '#ffffff';
             
             // 获取宝石效果描述
             let gemEffectDesc = '';
