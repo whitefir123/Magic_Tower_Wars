@@ -524,10 +524,10 @@ export class QuestUI {
 
       /* Toast 通知样式（统一使用成就框背景） */
       .quest-toast {
-        position: fixed;
-        top: 20px;
+        position: absolute; /* 相对于父容器（优先 canvas-wrapper）定位 */
+        top: 50%;
         left: 50%;
-        transform: translateX(-50%);
+        transform: translate(-50%, -50%); /* 垂直+水平居中 */
         min-width: 360px;
         max-width: 70%;
         min-height: 90px;
@@ -1125,12 +1125,14 @@ export class QuestUI {
    */
   showToast(message, type = 'info') {
     // 创建 Toast 元素
+    const container = document.getElementById('canvas-wrapper') || document.body;
+
     let toast = document.getElementById('quest-toast');
     if (!toast) {
       toast = document.createElement('div');
       toast.id = 'quest-toast';
       toast.className = 'quest-toast';
-      document.body.appendChild(toast);
+      container.appendChild(toast);
     }
 
     // 设置内容和类型
