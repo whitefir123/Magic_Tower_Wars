@@ -663,6 +663,14 @@ export class InventoryUI {
         }
       };
 
+      const qualityColors = {
+        COMMON: '#a0a0a0',
+        RARE: '#4da6ff',
+        EPIC: '#b026ff',
+        LEGENDARY: '#ffd700',
+        MYTHIC: '#ff3333'
+      };
+
       // 渲染每个格子
       slots.forEach((slot, idx) => {
         slot.innerHTML = '';
@@ -703,6 +711,7 @@ export class InventoryUI {
           slot.onclick = null;
           slot.removeAttribute('draggable');
           this.tooltipManager.unbind(slot);
+          slot.style.borderColor = '#444';
           return;
         }
         
@@ -731,6 +740,7 @@ export class InventoryUI {
           slot.onclick = null;
           slot.removeAttribute('draggable');
           this.tooltipManager.unbind(slot);
+          slot.style.borderColor = '#444';
           return;
         }
         
@@ -743,6 +753,10 @@ export class InventoryUI {
           const canvas = this.createItemIcon(img, item, cellW, cellH, this.style.slotSize, cols);
           if (canvas) slot.appendChild(canvas);
         }
+
+        // 根据品质设置边框颜色
+        const qualityKey = (item.quality || item.rarity || '').toUpperCase();
+        slot.style.borderColor = qualityColors[qualityKey] || '#444';
 
         // 绑定点击事件 - 左键单击显示操作菜单
         slot.onclick = (e) => {
@@ -1036,6 +1050,21 @@ export class InventoryUI {
     const offsetY = Math.round((size - destH) / 2);
 
     ctx.drawImage(img, sx, sy, sw, sh, offsetX, offsetY, destW, destH);
+
+    // 堆叠数量显示（右下角）
+    const count = typeof item.count === 'number' ? item.count : 1;
+    if (count > 1) {
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 3;
+      ctx.fillText(count, size - 4, size - 2);
+      ctx.restore();
+    }
+
     return canvas;
   }
 

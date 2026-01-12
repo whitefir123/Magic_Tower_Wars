@@ -4,6 +4,7 @@
 import { ARCHETYPES, AFFIXES, getAvailableAffixes, weightedRandom } from '../data/procgen.js';
 import { ITEM_QUALITY } from '../data/loot.js';
 import { getAllSetIds } from '../data/sets.js';
+import { EQUIPMENT_DB, CONSUMABLE_IDS, createDynamicConsumable } from '../data/items.js';
 
 /**
  * LootGenerator - 程序化生成装备的核心系统
@@ -205,6 +206,36 @@ export class LootGenerator {
     }
     
     return 'COMMON';
+  }
+
+  /**
+   * 生成带随机品质的消耗品
+   * @param {number} floor - 当前楼层
+   * @param {number} magicFind - 魔法发现（0-1）
+   * @param {SeededRandom|null} rng - 可选随机数生成器
+   * @returns {Object|null} 动态消耗品实例
+   */
+  generateConsumable(floor, magicFind, rng = null) {
+    // 1. 获取所有消耗品ID（优先使用 CONSUMABLE_IDS）
+    const consumableIds = (Array.isArray(CONSUMABLE_IDS) && CONSUMABLE_IDS.length > 0)
+      ? CONSUMABLE_IDS
+      : ['POTION_HP_S', 'POTION_RAGE', 'SCROLL_XP', 'SCROLL_FIRE'];
+
+    if (consumableIds.length === 0) return null;
+
+    const randomVal = rng ? rng.next() : Math.random();
+    const id = consumableIds[Math.floor(randomVal * consumableIds.length)];
+    const def = EQUIPMENT_DB[id];
+
+    if (!def) return null;
+
+    // 2. 判定品质：构造一个虚拟 iPwr 用于品质计算
+    const baseiPwr = Math.max(1, floor) * 5;
+    const fate = this.rollFate(baseiPwr, rng);
+    const quality = this.determineQuality(fate.iPwr, magicFind || 0, fate.isJackpot);
+
+    // 3. 生成实例
+    return createDynamicConsumable(def, quality);
   }
 
   /**
@@ -680,5 +711,17 @@ export function generateLoot(floor, options = {}) {
     floor,
     ...options
   });
+}
+
+/**
+ * 便捷生成消耗品函数
+ * @param {number} floor - 楼层
+ * @param {Object} options - 额外选项
+ * @param {number} options.magicFind - 魔法发现（0-1）
+ * @param {SeededRandom} options.rng - 随机数生成器
+ */
+export function generateConsumableLoot(floor, options = {}) {
+  const { magicFind = 0, rng = null } = options;
+  return lootGenerator.generateConsumable(floor, magicFind, rng);
 }
 
