@@ -132,6 +132,39 @@ export class BlacksmithSystem {
     const newQuality = this.rollQuality();
     item.quality = newQuality;
 
+    // ✅ FIX: 处理动态装备的品质调整
+    const isDynamicItem = item.uid && (item.uid.includes('PROCGEN') || item.meta);
+
+    if (isDynamicItem && item.baseStats) {
+      // 获取旧品质和新品质的倍率
+      const oldMult = ITEM_QUALITY[oldQuality]?.multiplier || 1;
+      const newMult = ITEM_QUALITY[newQuality]?.multiplier || 1;
+      const ratio = newMult / oldMult;
+
+      // 调整 baseStats
+      for (const key in item.baseStats) {
+        if (typeof item.baseStats[key] === 'number') {
+          // 判断是否为百分比属性
+          if (key.includes('rate') || key.includes('dodge') || key.includes('pen') || key.includes('gold') || key.includes('lifesteal')) {
+            // 百分比属性保留2位小数
+            item.baseStats[key] = Math.round(item.baseStats[key] * ratio * 100) / 100;
+          } else {
+            // 整数属性向下取整
+            item.baseStats[key] = Math.floor(item.baseStats[key] * ratio);
+          }
+        }
+      }
+
+      // 更新 Tier
+      if (['LEGENDARY', 'MYTHIC'].includes(newQuality)) {
+        item.tier = 3;
+      } else if (['RARE', 'EPIC'].includes(newQuality)) {
+        item.tier = 2;
+      } else {
+        item.tier = 1;
+      }
+    }
+
     // 重新计算属性
     this.recalculateStats(item);
 
