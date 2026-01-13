@@ -1,5 +1,5 @@
 // CombatSystem.js - 战斗计算逻辑
-import { COMBAT_CONFIG, MONSTER_STATS, getEquipmentDropForFloor, getRandomConsumable, ELITE_AFFIXES, ELEMENTS, STATUS_TYPES, ELEMENT_REACTIONS, PENETRATION_CONFIG, CRITICAL_CONFIG, MONSTER_TRAITS, EQUIPMENT_DB } from '../constants.js';
+import { COMBAT_CONFIG, MONSTER_STATS, getEquipmentDropForFloor, getRandomConsumable, ELITE_AFFIXES, ELEMENTS, STATUS_TYPES, ELEMENT_REACTIONS, PENETRATION_CONFIG, CRITICAL_CONFIG, MONSTER_TRAITS, EQUIPMENT_DB, TILE_SIZE } from '../constants.js';
 import { WEAPON_MASTERY, COMBO_RESET_TIME } from '../data/combat.js';
 import { FloatingText } from '../utils.js';
 import { RUNE_POOL } from '../data/Runes.js';
@@ -2005,10 +2005,19 @@ export class CombatSystem {
       
       // 触发刀光特效
       if (game.vfx) {
-        const dx = monster.visualX - player.visualX;
-        const dy = monster.visualY - player.visualY;
+        // 计算玩家和怪物的中心点坐标
+        const playerCenterX = player.visualX + TILE_SIZE / 2;
+        const playerCenterY = player.visualY + TILE_SIZE / 2;
+        const centerX = monster.visualX + TILE_SIZE / 2;
+        const centerY = monster.visualY + TILE_SIZE / 2;
+        
+        // 使用中心点计算攻击角度
+        const dx = centerX - playerCenterX;
+        const dy = centerY - playerCenterY;
         const angle = Math.atan2(dy, dx);
-        game.vfx.triggerSlash(monster.visualX, monster.visualY, angle, isCrit);
+        
+        // 在怪物中心触发特效
+        game.vfx.triggerSlash(centerX, centerY, angle, isCrit);
       }
       
       if (dmgToMon > 10) game.camera.shakeTimer = Math.max(game.camera.shakeTimer || 0, 10);
