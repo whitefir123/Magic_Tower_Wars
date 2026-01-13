@@ -164,7 +164,7 @@ export class CombatSystem {
       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
         const offsetX = (Math.random() - 0.5) * 15;
         const offsetY = -10 - Math.random() * 10;
-        game.floatingTextPool.create(monster.visualX + offsetX, monster.visualY + offsetY, `⚡${actualDmg}`, '#00ffff');
+        game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, `⚡${actualDmg}`, '#00ffff');
       }
       
       // 触发受击逻辑
@@ -287,7 +287,7 @@ export class CombatSystem {
         const offsetX = (Math.random() - 0.5) * 15;
         const offsetY = -10 - Math.random() * 10;
         const chainText = game.floatingTextPool.create(
-          enemy.visualX + offsetX,
+          enemy.visualX + TILE_SIZE / 2 + offsetX,
           enemy.visualY + offsetY,
           `⚡${chainDamage}`,
           '#ffff00'
@@ -319,7 +319,7 @@ export class CombatSystem {
             attacker.stats.gold = (attacker.stats.gold || 0) + finalGold;
             if (game.settings && game.settings.showDamageNumbers !== false) {
               const offsetX = (Math.random() - 0.5) * 15;
-              const goldText = game.floatingTextPool.create(enemy.visualX + offsetX, enemy.visualY - 26, `+${finalGold} 金币`, '#ffd700');
+              const goldText = game.floatingTextPool.create(enemy.visualX + TILE_SIZE / 2 + offsetX, enemy.visualY - 26, `+${finalGold} 金币`, '#ffd700');
               game.floatingTexts.push(goldText);
             }
             if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -431,7 +431,7 @@ export class CombatSystem {
         if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
           const offsetX = (Math.random() - 0.5) * 15;
           const offsetY = -10 - Math.random() * 10;
-          const dotText = game.floatingTextPool.create(entity.visualX + offsetX, entity.visualY + offsetY, `-${damage}`, dotColor);
+          const dotText = game.floatingTextPool.create(entity.visualX + TILE_SIZE / 2 + offsetX, entity.visualY + offsetY, `-${damage}`, dotColor);
           game.floatingTexts.push(dotText);
         }
         
@@ -452,7 +452,7 @@ export class CombatSystem {
                   source.stats.gold = (source.stats.gold || 0) + g;
                   if (game.settings && game.settings.showDamageNumbers !== false) {
                     const offsetX = (Math.random() - 0.5) * 15;
-                    const goldText = game.floatingTextPool.create(entity.visualX + offsetX, entity.visualY - 26, `+${g} 金币`, '#ffd700');
+                    const goldText = game.floatingTextPool.create(entity.visualX + TILE_SIZE / 2 + offsetX, entity.visualY - 26, `+${g} 金币`, '#ffd700');
                     game.floatingTexts.push(goldText);
                   }
                   if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -540,7 +540,7 @@ export class CombatSystem {
       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
         const offsetX = (Math.random() - 0.5) * 15;
         const offsetY = -10 - Math.random() * 10;
-        const electroText = game.floatingTextPool.create(entity.visualX + offsetX, entity.visualY + offsetY, `-${damage}`, '#ffff00');
+        const electroText = game.floatingTextPool.create(entity.visualX + TILE_SIZE / 2 + offsetX, entity.visualY + offsetY, `-${damage}`, '#ffff00');
         game.floatingTexts.push(electroText);
       }
       
@@ -582,7 +582,7 @@ export class CombatSystem {
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
             const offsetX = (Math.random() - 0.5) * 15;
             const offsetY = -10 - Math.random() * 10;
-            const tetherText = game.floatingTextPool.create(nearestEnemy.visualX + offsetX, nearestEnemy.visualY + offsetY, `-${damage}`, '#ffff00');
+            const tetherText = game.floatingTextPool.create(nearestEnemy.visualX + TILE_SIZE / 2 + offsetX, nearestEnemy.visualY + offsetY, `-${damage}`, '#ffff00');
             game.floatingTexts.push(tetherText);
           }
           
@@ -600,7 +600,7 @@ export class CombatSystem {
                 // ✅ FIX: 优化飘字显示重叠 - 金币和XP使用不同的高度偏移
                 if (game.settings && game.settings.showDamageNumbers !== false) {
                   const offsetX = (Math.random() - 0.5) * 15;
-                  const goldText = game.floatingTextPool.create(nearestEnemy.visualX + offsetX, nearestEnemy.visualY - 26, `+${g} 金币`, '#ffd700');
+                  const goldText = game.floatingTextPool.create(nearestEnemy.visualX + TILE_SIZE / 2 + offsetX, nearestEnemy.visualY - 26, `+${g} 金币`, '#ffd700');
                   game.floatingTexts.push(goldText);
                 }
                 if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -677,7 +677,7 @@ export class CombatSystem {
                 source.stats.gold = (source.stats.gold || 0) + g;
                 if (game.settings && game.settings.showDamageNumbers !== false) {
                   const offsetX = (Math.random() - 0.5) * 15;
-                  const goldText = game.floatingTextPool.create(entity.visualX + offsetX, entity.visualY - 26, `+${g} 金币`, '#ffd700');
+                  const goldText = game.floatingTextPool.create(entity.visualX + TILE_SIZE / 2 + offsetX, entity.visualY - 26, `+${g} 金币`, '#ffd700');
                   game.floatingTexts.push(goldText);
                 }
                 if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -809,7 +809,7 @@ export class CombatSystem {
                 if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
                   const offsetX = (Math.random() - 0.5) * 15;
                   const offsetY = -10 - Math.random() * 10;
-                  const aoeText = game.floatingTextPool.create(enemy.visualX + offsetX, enemy.visualY + offsetY, `-${aoeDamage}`, '#ff9900');
+                  const aoeText = game.floatingTextPool.create(enemy.visualX + TILE_SIZE / 2 + offsetX, enemy.visualY + offsetY, `-${aoeDamage}`, '#ff9900');
                   game.floatingTexts.push(aoeText);
                 }
                 if (enemy.stats.hp <= 0) {
@@ -923,7 +923,7 @@ export class CombatSystem {
                 if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
                   const offsetX = (Math.random() - 0.5) * 15;
                   const offsetY = -10 - Math.random() * 10;
-                  const blastText = game.floatingTextPool.create(enemy.visualX + offsetX, enemy.visualY + offsetY, `-${blastDamage}`, '#00ff00');
+                  const blastText = game.floatingTextPool.create(enemy.visualX + TILE_SIZE / 2 + offsetX, enemy.visualY + offsetY, `-${blastDamage}`, '#00ff00');
                   game.floatingTexts.push(blastText);
                 }
                 if (enemy.stats.hp <= 0) {
@@ -947,7 +947,7 @@ export class CombatSystem {
     if (reactionOccurred && game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
       const offsetX = (Math.random() - 0.5) * 20;
       const offsetY = -40 - Math.random() * 10; // 反应名称在更上方
-      const reactionText = game.floatingTextPool.create(target.visualX + offsetX, target.visualY + offsetY, `${reactionName}!`, '#ff00ff');
+      const reactionText = game.floatingTextPool.create(target.visualX + TILE_SIZE / 2 + offsetX, target.visualY + offsetY, `${reactionName}!`, '#ff00ff');
       game.floatingTexts.push(reactionText);
     }
     
@@ -1117,7 +1117,7 @@ export class CombatSystem {
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
             const offsetX = (Math.random() - 0.5) * 15;
             const offsetY = -10 - Math.random() * 10;
-            const dodgeText = game.floatingTextPool.create(monster.visualX + offsetX, monster.visualY + offsetY, '闪避!', '#ffffff');
+            const dodgeText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, '闪避!', '#ffffff');
             game.floatingTexts.push(dodgeText);
           }
           return 'BOUNCE'; // 闪避，不造成伤害
@@ -1139,7 +1139,7 @@ export class CombatSystem {
         if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
           const offsetX = (Math.random() - 0.5) * 15;
           const offsetY = -10 - Math.random() * 10;
-          const blockText = game.floatingTextPool.create(monster.visualX + offsetX, monster.visualY + offsetY, '格挡!', '#ffffff');
+          const blockText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, '格挡!', '#ffffff');
           game.floatingTexts.push(blockText);
         }
         if (game.audio) game.audio.playHit(); // 播放金属音效
@@ -1188,7 +1188,7 @@ export class CombatSystem {
         if (dmgToPlay > 0) {
           player.takeDamage(dmgToPlay);
           if (game.settings && game.settings.showDamageNumbers !== false) {
-            const playerDamageText = game.floatingTextPool.create(player.visualX, player.visualY - 10, `-${dmgToPlay}`, '#ffffff'); // 怪物主动反击飘字为白色
+            const playerDamageText = game.floatingTextPool.create(player.visualX + TILE_SIZE / 2, player.visualY - 10, `-${dmgToPlay}`, '#ffffff'); // 怪物主动反击飘字为白色
             game.floatingTexts.push(playerDamageText);
           }
           if (dmgToPlay > 10) game.camera.shakeTimer = Math.max(game.camera.shakeTimer || 0, 10);
@@ -1199,7 +1199,7 @@ export class CombatSystem {
             const healAmount = Math.floor(dmgToPlay * 0.5); // 回复造成伤害的50%
             monster.stats.hp = Math.min(monster.stats.maxHp, monster.stats.hp + healAmount);
             if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-              const healText = game.floatingTextPool.create(monster.visualX, monster.visualY - 30, `+${healAmount}`, '#00ff00');
+              const healText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2, monster.visualY - 30, `+${healAmount}`, '#00ff00');
               game.floatingTexts.push(healText);
             }
             if (monster.eliteVisualEffects) monster.eliteVisualEffects.vampiricTintTimer = 100;
@@ -1261,7 +1261,7 @@ export class CombatSystem {
           const offsetX = (Math.random() - 0.5) * 15;
           const offsetY = -10 - Math.random() * 10;
           const floatText = game.floatingTextPool.create(
-            monster.visualX + offsetX,
+            monster.visualX + TILE_SIZE / 2 + offsetX,
             monster.visualY + offsetY,
             `-${scrollDamage}`,
             '#ff0000'
@@ -1417,7 +1417,7 @@ export class CombatSystem {
           // Show overload effect
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
             const elementText = game.floatingTextPool.create(
-              monster.visualX,
+              monster.visualX + TILE_SIZE / 2,
               monster.visualY - 40,
               `过载! +${elementalBonus}`,
               '#ff9900'
@@ -1469,7 +1469,7 @@ export class CombatSystem {
                     const offsetX = (Math.random() - 0.5) * 15;
                     const offsetY = -10 - Math.random() * 10;
                     const cleaveText = game.floatingTextPool.create(
-                      otherMonster.visualX + offsetX,
+                      otherMonster.visualX + TILE_SIZE / 2 + offsetX,
                       otherMonster.visualY + offsetY,
                       `顺劈! -${cleaveDamage}`,
                       '#ff6666'
@@ -1504,7 +1504,7 @@ export class CombatSystem {
             // 显示combo提示
             if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
               const comboText = game.floatingTextPool.create(
-                monster.visualX,
+                monster.visualX + TILE_SIZE / 2,
                 monster.visualY - 30,
                 '顺劈!',
                 '#ffaa00'
@@ -1537,7 +1537,7 @@ export class CombatSystem {
             // 显示combo提示
             if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
               const comboText = game.floatingTextPool.create(
-                monster.visualX,
+                monster.visualX + TILE_SIZE / 2,
                 monster.visualY - 30,
                 '暗杀!',
                 '#ff00ff'
@@ -1553,7 +1553,7 @@ export class CombatSystem {
             // 显示combo提示
             if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
               const comboText = game.floatingTextPool.create(
-                monster.visualX,
+                monster.visualX + TILE_SIZE / 2,
                 monster.visualY - 30,
                 '处决!',
                 '#ff0000'
@@ -1842,7 +1842,7 @@ export class CombatSystem {
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
             const offsetX = (Math.random() - 0.5) * 15;
             const offsetY = -30 - Math.random() * 10;
-            const resistText = game.floatingTextPool.create(monster.visualX + offsetX, monster.visualY + offsetY, '抵抗', '#999999');
+            const resistText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, '抵抗', '#999999');
             game.floatingTexts.push(resistText);
           }
         } else if (incomingElement === ELEMENTS.ELECTRO) {
@@ -1852,7 +1852,7 @@ export class CombatSystem {
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
             const offsetX = (Math.random() - 0.5) * 15;
             const offsetY = -30 - Math.random() * 10;
-            const weaknessText = game.floatingTextPool.create(monster.visualX + offsetX, monster.visualY + offsetY, '弱点', '#ff9900');
+            const weaknessText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, '弱点', '#ff9900');
             game.floatingTexts.push(weaknessText);
           }
         }
@@ -1870,7 +1870,7 @@ export class CombatSystem {
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
             const offsetX = (Math.random() - 0.5) * 15;
             const offsetY = -30 - Math.random() * 10;
-            const etherealText = game.floatingTextPool.create(monster.visualX + offsetX, monster.visualY + offsetY, '虚无', '#cc00ff');
+            const etherealText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, '虚无', '#cc00ff');
             game.floatingTexts.push(etherealText);
           }
         } else {
@@ -1880,7 +1880,7 @@ export class CombatSystem {
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
             const offsetX = (Math.random() - 0.5) * 15;
             const offsetY = -30 - Math.random() * 10;
-            const etherealText = game.floatingTextPool.create(monster.visualX + offsetX, monster.visualY + offsetY, '魔法弱点', '#cc00ff');
+            const etherealText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, '魔法弱点', '#cc00ff');
             game.floatingTexts.push(etherealText);
           }
         }
@@ -1950,7 +1950,7 @@ export class CombatSystem {
           // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
           const offsetX = (Math.random() - 0.5) * 15;
           const offsetY = -20 - Math.random() * 10;
-          const reflectText = game.floatingTextPool.create(player.visualX + offsetX, player.visualY + offsetY, `-${thornsDamage}`, '#ffffff'); // 怪物被动反击飘字为白色
+          const reflectText = game.floatingTextPool.create(player.visualX + TILE_SIZE / 2 + offsetX, player.visualY + offsetY, `-${thornsDamage}`, '#ffffff'); // 怪物被动反击飘字为白色
           game.floatingTexts.push(reflectText);
         }
       }
@@ -1992,7 +1992,7 @@ export class CombatSystem {
         const offsetX = (Math.random() - 0.5) * 15;
         const offsetY = -10 - Math.random() * 10;
         const monsterDamageText = game.floatingTextPool.create(
-          monster.visualX + offsetX, 
+          monster.visualX + TILE_SIZE / 2 + offsetX, 
           monster.visualY + offsetY, 
           damageText, 
           damageColor,
@@ -2032,7 +2032,7 @@ export class CombatSystem {
             // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
             const offsetX = (Math.random() - 0.5) * 15;
             const offsetY = -10 - Math.random() * 10;
-            const playerDamageText = game.floatingTextPool.create(player.visualX + offsetX, player.visualY + offsetY, `-${dmgToPlay}`, '#ffffff'); // 怪物主动反击飘字为白色
+            const playerDamageText = game.floatingTextPool.create(player.visualX + TILE_SIZE / 2 + offsetX, player.visualY + offsetY, `-${dmgToPlay}`, '#ffffff'); // 怪物主动反击飘字为白色
             game.floatingTexts.push(playerDamageText);
           }
           if (dmgToPlay > 10) game.camera.shakeTimer = Math.max(game.camera.shakeTimer || 0, 10);
@@ -2046,7 +2046,7 @@ export class CombatSystem {
               // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
               const offsetX = (Math.random() - 0.5) * 15;
               const offsetY = -30 - Math.random() * 10;
-              const healText = game.floatingTextPool.create(monster.visualX + offsetX, monster.visualY + offsetY, `+${healAmount}`, '#00ff00');
+              const healText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, `+${healAmount}`, '#00ff00');
               game.floatingTexts.push(healText);
             }
             if (monster.eliteVisualEffects) monster.eliteVisualEffects.vampiricTintTimer = 100;
@@ -2098,7 +2098,7 @@ export class CombatSystem {
             if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
               const offsetX = (Math.random() - 0.5) * 15;
               const offsetY = -10 - Math.random() * 10;
-              const explodeText = game.floatingTextPool.create(player.visualX + offsetX, player.visualY + offsetY, `-${aoeDamage}`, '#ff00ff');
+              const explodeText = game.floatingTextPool.create(player.visualX + TILE_SIZE / 2 + offsetX, player.visualY + offsetY, `-${aoeDamage}`, '#ff00ff');
               game.floatingTexts.push(explodeText);
             }
             if (game.ui) {
@@ -2120,7 +2120,7 @@ export class CombatSystem {
                 if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
                   const offsetX = (Math.random() - 0.5) * 15;
                   const offsetY = -10 - Math.random() * 10;
-                  const aoeText = game.floatingTextPool.create(otherMonster.visualX + offsetX, otherMonster.visualY + offsetY, `-${aoeDamage}`, '#ff00ff');
+                  const aoeText = game.floatingTextPool.create(otherMonster.visualX + TILE_SIZE / 2 + offsetX, otherMonster.visualY + offsetY, `-${aoeDamage}`, '#ff00ff');
                   game.floatingTexts.push(aoeText);
                 }
                 
@@ -2137,7 +2137,7 @@ export class CombatSystem {
                       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
                         const offsetX = (Math.random() - 0.5) * 15;
                         const offsetY = -20 - Math.random() * 10;
-                        const chainText = game.floatingTextPool.create(player.visualX + offsetX, player.visualY + offsetY, `连锁爆炸! -${otherAoeDamage}`, '#ff00ff');
+                        const chainText = game.floatingTextPool.create(player.visualX + TILE_SIZE / 2 + offsetX, player.visualY + offsetY, `连锁爆炸! -${otherAoeDamage}`, '#ff00ff');
                         game.floatingTexts.push(chainText);
                       }
                     }
@@ -2178,7 +2178,7 @@ export class CombatSystem {
           player.stats.gold = (player.stats.gold || 0) + g;
           if (game.settings && game.settings.showDamageNumbers !== false) {
             const offsetX = (Math.random() - 0.5) * 15;
-            const goldText = game.floatingTextPool.create(monster.visualX + offsetX, monster.visualY - 26, `+${g} 金币`, '#ffd700');
+            const goldText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY - 26, `+${g} 金币`, '#ffd700');
             game.floatingTexts.push(goldText);
           }
           if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -2274,7 +2274,7 @@ export class CombatSystem {
               // 显示浮动文字
               if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
                 const bonusText = game.floatingTextPool.create(
-                  monster.visualX,
+                  monster.visualX + TILE_SIZE / 2,
                   monster.visualY - 30,
                   `吸收了 ${monster.nickname || '冒险者'} 的力量！${statName} +${value}`,
                   '#ffaa00'
@@ -2365,7 +2365,7 @@ export class CombatSystem {
       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
         const offsetX = (Math.random() - 0.5) * 15;
         const offsetY = -10 - Math.random() * 10;
-        const missText = game.floatingTextPool.create(player.visualX + offsetX, player.visualY + offsetY, 'MISS', '#ffffff');
+        const missText = game.floatingTextPool.create(player.visualX + TILE_SIZE / 2 + offsetX, player.visualY + offsetY, 'MISS', '#ffffff');
         game.floatingTexts.push(missText);
       }
       return 'DODGED';
@@ -2496,7 +2496,7 @@ export class CombatSystem {
         }
         
         const damageText = game.floatingTextPool.create(
-          player.visualX, 
+          player.visualX + TILE_SIZE / 2, 
           player.visualY - 10, 
           dmgText, 
           color,
