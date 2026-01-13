@@ -298,19 +298,60 @@ export class Camera {
 }
 
 export class FloatingText {
-  constructor(x, y, text, color) {
-    this.x = x; this.y = y; this.text = text; this.color = color || '#fff';
-    this.life = 800; this.alpha = 1; this.velocityY = 0.05; this.scale = 1;
+  constructor(x, y, text, color, iconIndex = null, fontSize = 16, type = 'NORMAL') {
+    this.init(x, y, text, color, iconIndex, fontSize, type);
   }
-  update(dt) { this.life -= dt; this.y -= this.velocityY * dt; this.alpha = Math.max(0, this.life/800); this.scale = 1 + (1 - this.alpha) * 0.1; }
-  isDead() { return this.life <= 0; }
+
+  init(x, y, text, color, iconIndex = null, fontSize = 16, type = 'NORMAL') {
+    this.x = x;
+    this.y = y;
+    this.text = text;
+    this.color = color || '#fff';
+    this.iconIndex = iconIndex;
+    this.fontSize = fontSize || 16;
+    this.type = type;
+    
+    this.life = 800;
+    this.alpha = 1;
+    this.velocityY = 0.05;
+    this.scale = 1;
+  }
+
+  update(dt) {
+    this.life -= dt;
+    this.y -= this.velocityY * dt;
+    this.alpha = Math.max(0, this.life / 800);
+    // 暴击时缩放更明显
+    const scaleBonus = (this.type === 'CRIT') ? 0.3 : 0.1;
+    this.scale = 1 + (1 - this.alpha) * scaleBonus;
+  }
+
+  isDead() {
+    return this.life <= 0;
+  }
+
   draw(ctx) {
-    const { x, y } = this; 
-    // Assumes world-space draw call (no camera offsets inside)
+    const { x, y } = this;
     ctx.save();
-    ctx.globalAlpha = this.alpha; ctx.fillStyle = this.color; ctx.font = 'bold 16px Cinzel, serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'black'; ctx.shadowBlur = 4;
-    ctx.fillText(this.text, x + TILE_SIZE/2, y);
+    
+    // 计算中心点并应用缩放
+    const centerX = x + TILE_SIZE / 2;
+    const centerY = y;
+    
+    ctx.translate(centerX, centerY);
+    ctx.scale(this.scale, this.scale);
+    
+    ctx.globalAlpha = this.alpha;
+    ctx.fillStyle = this.color;
+    ctx.font = `bold ${this.fontSize}px Cinzel, serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'black';
+    ctx.shadowBlur = 4;
+    
+    // 因为已经 translate 到了中心，这里在 0,0 绘制
+    ctx.fillText(this.text, 0, 0);
+    
     ctx.restore();
   }
 }
