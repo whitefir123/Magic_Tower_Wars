@@ -269,7 +269,7 @@
   background: transparent;
   aspect-ratio: calc(var(--btn-ratio-w) / var(--btn-ratio-h));
   width: 143px;
-  height: 62px;
+  height: 28px;
   padding: 0 var(--btn-px, 32px);
   margin-top: 0px;
   white-space: nowrap;
