@@ -215,21 +215,14 @@ class Game {
       let totalImages = imageElements.length + elementsWithBg.length;
       let loadedImages = 0;
       
-      console.log(`[ResourceMonitor] Found ${totalImages} DOM images to monitor`);
-      
       if (totalImages === 0) {
-        console.log('[ResourceMonitor] No DOM images to wait for, proceeding...');
         resolve();
         return;
       }
       
       const checkComplete = () => {
         loadedImages++;
-        const percent = Math.round((loadedImages / totalImages) * 100);
-        console.log(`[ResourceMonitor] DOM images loaded: ${loadedImages}/${totalImages} (${percent}%)`);
-        
         if (loadedImages >= totalImages) {
-          console.log('[ResourceMonitor] All DOM images loaded!');
           resolve();
         }
       };
@@ -291,21 +284,14 @@ class Game {
       let totalLinks = links.length;
       let loadedLinks = 0;
       
-      console.log(`[ResourceMonitor] Found ${totalLinks} stylesheets to monitor`);
-      
       if (totalLinks === 0) {
-        console.log('[ResourceMonitor] No stylesheets to wait for, proceeding...');
         resolve();
         return;
       }
       
       const checkComplete = () => {
         loadedLinks++;
-        const percent = Math.round((loadedLinks / totalLinks) * 100);
-        console.log(`[ResourceMonitor] Stylesheets loaded: ${loadedLinks}/${totalLinks} (${percent}%)`);
-        
         if (loadedLinks >= totalLinks) {
-          console.log('[ResourceMonitor] All stylesheets loaded!');
           resolve();
         }
       };
@@ -328,16 +314,13 @@ class Game {
   async waitForFontsLoaded() {
     return new Promise((resolve) => {
       if (document.fonts && document.fonts.ready) {
-        console.log('[ResourceMonitor] Waiting for fonts to load...');
         document.fonts.ready.then(() => {
-          console.log('[ResourceMonitor] All fonts loaded!');
           resolve();
         }).catch((e) => {
           console.warn('[ResourceMonitor] Font loading error (non-critical):', e);
           resolve(); // 即使字体加载失败也继续
         });
       } else {
-        console.log('[ResourceMonitor] FontFaceSet API not available, skipping font check');
         resolve();
       }
     });
@@ -349,11 +332,9 @@ class Game {
   async waitForPageFullyLoaded() {
     return new Promise((resolve) => {
       if (document.readyState === 'complete') {
-        console.log('[ResourceMonitor] Page already fully loaded');
         resolve();
       } else {
         window.addEventListener('load', () => {
-          console.log('[ResourceMonitor] Page fully loaded event fired');
           resolve();
         }, { once: true });
       }
@@ -494,7 +475,7 @@ class Game {
 
   async init() {
     try {
-      console.log('[Init] 🚀 启动并行初始化流程...');
+      console.log('[Init] 🚀 启动游戏初始化...');
       
       // 1. 立即显示加载界面
       this.loadingUI.init(); // 确保 DOM 引用已抓取
@@ -522,7 +503,6 @@ class Game {
       // 这里我们使用 Promise.all，意味着只有当所有 CSS/字体/关键图片/UI音效都就绪后才继续
       await Promise.all([...sysTasks, assetTask, audioTask]);
       
-      console.log('[Init] 核心资源并行加载完成');
       this.loadingUI.setProgress(80);
       this.loadingUI.setTip('正在构建游戏世界...');
 
@@ -587,7 +567,6 @@ class Game {
               // 3. 移除激活状态，让 performTransition 控制淡入
               mainMenu.classList.remove('scene-active');
               // 注意：不在这里设置 opacity，让 performTransition 的视觉预备阶段处理
-              console.log('[Init] 主菜单已准备（转场将由 performTransition 控制）');
             } else {
               // 如果找不到元素，仍然执行 showMainMenu
               this.showMainMenu(true);
@@ -604,14 +583,11 @@ class Game {
           this.ui.patchNotesUI.checkAndShow();
         }
       } else {
-        console.log('[Init] 游戏页面检测到，跳过主菜单显示');
-        
         // FIX: 如果是每日挑战模式，不要隐藏加载层，直接保持显示以实现平滑过渡
         const gameMode = sessionStorage.getItem('gameMode');
         if (gameMode !== 'daily') {
           this.loadingUI.hide();
         } else {
-          console.log('[Init] 每日挑战模式：保持加载层显示，等待 startDailyChallenge 接管');
           // 可以更新一下提示文字
           this.loadingUI.setTip('准备每日挑战...');
         }
@@ -620,17 +596,10 @@ class Game {
       // 7. [关键优化] 闲时后台预加载
       // 主菜单显示后，立即在后台加载游戏内重型资源，为"开始游戏"做准备
       setTimeout(() => {
-        console.log('[Init] 启动后台静默预加载...');
         this.loader.loadGameplayAssets(GAMEPLAY_ASSETS).catch(e => console.warn('后台资源加载警告:', e));
         this.audio.preloadGameplayAudio().catch(e => console.warn('后台音频加载警告:', e));
       }, 100);
       
-      // 调试辅助：在点击时输出被点击的元素，帮助定位遮挡问题
-      // 仅在开发环境下或调试时有用，不影响正常逻辑
-      document.addEventListener('click', (e) => {
-        console.log('Clicked element:', e.target);
-        console.log('   Parent path:', e.composedPath());
-      }, { once: true }); // 只运行一次，避免刷屏
 
     } catch (e) {
       console.error('[Init] CRITICAL ERROR:', e);
@@ -906,8 +875,6 @@ class Game {
         mainUI.style.transform = `scale(${scale})`;
       }
       
-      // 调试信息
-      console.log(`[Screen Scaling] Window: ${windowWidth}x${windowHeight}, Scale: ${scale.toFixed(3)}`);
     };
     
     // 初始调用
@@ -2373,10 +2340,7 @@ class Game {
 
   // INVENTORY
   openInventory() {
-    console.log('🎒 Game.openInventory() called');
-    
     if (!this.gameStarted) {
-      console.warn('Game not started yet, cannot open inventory');
       return;
     }
     
@@ -2384,7 +2348,6 @@ class Game {
     this.inputStack = []; 
     
     if (this.ui && this.ui.openInventory) {
-      console.log('🎒 Rendering and opening inventory UI...');
       this.ui.renderInventory(this.player);
       this.ui.openInventory();
       
@@ -2392,8 +2355,6 @@ class Game {
       if (this.audio) {
         this.audio.playCloth();
       }
-      
-      console.log('✓ Inventory opened successfully');
     } else {
       console.error('UI or openInventory method not available');
     }
@@ -4265,22 +4226,17 @@ class Game {
       questTrackerIcon.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('📋 Quest icon clicked!');
         if (this.ui && this.ui.questUI) {
           this.ui.questUI.open();
         }
       });
     }
-    
-    console.log('✓ Quest icon setup complete (managed by QuestTracker)');
   }
 
   /**
    * 保存游戏状态并跳转到 game.html
    */
   startGameWithRedirect() {
-    console.log('[StartGameWithRedirect] Saving state and redirecting...');
-    
     // 1. 显示加载界面（视觉反馈）
     this.loadingUI.show('正在进入世界...');
     this.loadingUI.setProgress(100); // 设为满，表示准备就绪
@@ -4303,8 +4259,6 @@ class Game {
       if (dailyConfig) {
         sessionStorage.setItem('enableFog', (dailyConfig.enableFog || false).toString());
         sessionStorage.setItem('enableLighting', (dailyConfig.enableLighting || false).toString());
-        console.log('[StartGameWithRedirect] Daily challenge mode detected, saving seed:', dailyConfig.seed);
-        console.log(`[StartGameWithRedirect] Daily mode: enableFog=${dailyConfig.enableFog}, enableLighting=${dailyConfig.enableLighting}`);
       } else {
         // 防御性回退：如果无法获取配置，默认关闭
         sessionStorage.setItem('enableFog', 'false');
@@ -4329,7 +4283,6 @@ class Game {
       const infiniteCheckbox = document.getElementById('chk-infinite');
       const infiniteMode = infiniteCheckbox ? infiniteCheckbox.checked : false;
       sessionStorage.setItem('infiniteMode', infiniteMode.toString());
-      console.log(`[StartGameWithRedirect] Infinite Mode: ${infiniteMode}`);
     }
     
     // 保存选择的角色和噩梦层级到 sessionStorage
@@ -4339,9 +4292,6 @@ class Game {
     
     const enableFog = sessionStorage.getItem('enableFog') === 'true';
     const enableLighting = sessionStorage.getItem('enableLighting') === 'true';
-    console.log(`[StartGameWithRedirect] Saved: charId=${this.selectedCharId}, ascensionLevel=${this.selectedAscensionLevel}, enableFog=${enableFog}, enableLighting=${enableLighting}, gameMode=${isDailyMode ? 'daily' : 'normal'}`);
-    
-    console.log('[Transition] Redirecting to game.html...');
     
     // 2. 延迟跳转，让用户看到加载层出现
     setTimeout(() => {
@@ -4411,7 +4361,6 @@ class Game {
     try {
       // 🚀 优化：确认游戏内资源加载完成（资源可能已在后台预加载）
       // 如果资源已经由 init() 的后台预加载完成，这里的回调会瞬间完成（预期行为，秒开游戏）
-      console.log('[StartGame] 确认游戏内资源加载状态...');
       this.loadingUI.setTip('加载游戏资源（图片）...');
       
       // 加载游戏内图片资源（如果已加载，会立即完成）
@@ -4419,14 +4368,12 @@ class Game {
         // 更新加载进度（0-70% 用于图片资源）
         const imageProgress = Math.round((percent * 0.7));
         this.loadingUI.setProgress(imageProgress);
-        console.log(`[StartGame] 游戏资源加载进度: ${imageProgress}% (${loaded}/${total})`);
       });
-      console.log('[StartGame] ✓ 游戏内图片资源已就绪');
       
       // 加载游戏内音频资源（后台加载，不阻塞）
       this.loadingUI.setTip('加载游戏资源（音频）...');
       this.audio.preloadGameplayAudio().then(() => {
-        console.log('[StartGame] ✓ 游戏内音频资源后台加载完成');
+        // 后台加载完成
       }).catch(err => {
         console.warn('[StartGame] 游戏内音频资源加载失败:', err);
       });
@@ -4440,13 +4387,11 @@ class Game {
       if (enableFogFromSession !== null) {
         // Convert string to boolean
         this.config.enableFog = enableFogFromSession === 'true';
-        console.log(`[StartGame] Fog of War setting from sessionStorage: ${this.config.enableFog}`);
       } else {
         // Fallback: try to get from checkbox (for direct game start)
         const fogCheckbox = document.getElementById('chk-fog');
         if (fogCheckbox) {
           this.config.enableFog = fogCheckbox.checked;
-          console.log(`[StartGame] Fog of War setting from checkbox: ${this.config.enableFog}`);
         }
       }
       
@@ -4455,13 +4400,11 @@ class Game {
       if (enableLightingFromSession !== null) {
         // Convert string to boolean
         this.config.enableLighting = enableLightingFromSession === 'true';
-        console.log(`[StartGame] Dynamic Lighting setting from sessionStorage: ${this.config.enableLighting}`);
       } else {
         // Fallback: try to get from checkbox (for direct game start)
         const lightingCheckbox = document.getElementById('chk-lighting');
         if (lightingCheckbox) {
           this.config.enableLighting = lightingCheckbox.checked;
-          console.log(`[StartGame] Dynamic Lighting setting from checkbox: ${this.config.enableLighting}`);
         }
       }
       
@@ -4469,13 +4412,11 @@ class Game {
       const infiniteModeFromSession = sessionStorage.getItem('infiniteMode');
       if (infiniteModeFromSession !== null) {
         this.config.infiniteMode = infiniteModeFromSession === 'true';
-        console.log(`[StartGame] Infinite Mode setting from sessionStorage: ${this.config.infiniteMode}`);
       } else {
         // Fallback: try to get from checkbox (for direct game start)
         const infiniteCheckbox = document.getElementById('chk-infinite');
         if (infiniteCheckbox) {
           this.config.infiniteMode = infiniteCheckbox.checked;
-          console.log(`[StartGame] Infinite Mode setting from checkbox: ${this.config.infiniteMode}`);
         }
       }
       
@@ -4487,7 +4428,6 @@ class Game {
       
       // Hide main menu (should already be hidden, but ensure it's hidden)
       this.hideMainMenu();
-      console.log('[StartGame] Main menu and character select hidden');
       
       // Prepare main UI (but don't show yet)
       // 注意：不在这里设置 display，让 performTransition 统一处理
@@ -4586,34 +4526,6 @@ class Game {
       // Initialize skill bar
       this.ui.initSkillBar(this.player);
       
-      // Diagnostic: Check skill bar visibility
-      setTimeout(() => {
-        const skillBar = document.getElementById('skill-bar');
-        console.log('SKILL BAR DIAGNOSTIC:');
-        console.log('  Element found:', !!skillBar);
-        if (skillBar) {
-          const style = window.getComputedStyle(skillBar);
-          console.log('  Display:', style.display);
-          console.log('  Visibility:', style.visibility);
-          console.log('  Opacity:', style.opacity);
-          console.log('  Z-index:', style.zIndex);
-          console.log('  Position:', style.position);
-          console.log('  Bottom:', style.bottom);
-          console.log('  Left:', style.left);
-          console.log('  Width:', style.width);
-          console.log('  Height:', style.height);
-          console.log('  Children count:', skillBar.children.length);
-          
-          // Check parent
-          const parent = skillBar.parentElement;
-          console.log('  Parent ID:', parent?.id);
-          const parentStyle = window.getComputedStyle(parent);
-          console.log('  Parent overflow:', parentStyle.overflow);
-          console.log('  Parent display:', parentStyle.display);
-          console.log('  Parent z-index:', parentStyle.zIndex);
-        }
-      }, 100);
-      
       // 等待游玩界面的所有资源加载完毕
       await this.waitForGameplayScreenResourcesLoaded();
       
@@ -4656,7 +4568,6 @@ class Game {
       if (mainUI) {
         mainUI.classList.add('scene-fade-in', 'scene-active', 'loaded', 'ui-fade-active');
         // 使用类来控制 opacity，而不是硬编码
-        console.log('[StartGame] 错误恢复：强制显示主UI（使用类控制）');
       }
     }
   }

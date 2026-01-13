@@ -288,7 +288,6 @@ export class RoguelikeSystem {
         this.game.ui.logMessage(`获得符文: ${option.name}`, 'gain');
       }
       
-      console.log(`[RoguelikeSystem] 应用符文: ${rune.id}, 层数: ${player.runeState.effects[rune.id]}`);
     } catch (err) {
       console.error('[RoguelikeSystem] 应用符文效果错误:', err);
     }
@@ -359,7 +358,6 @@ export class RoguelikeSystem {
         }
       }
       
-      console.log(`[RoguelikeSystem] 刷新符文选项，当前刷新费用: ${this.currentRerollCost}`);
     } finally {
       // ✅ FIX: 释放处理锁（使用 setTimeout 确保 UI 更新完成后再释放）
       setTimeout(() => {
@@ -395,7 +393,6 @@ export class RoguelikeSystem {
     // 关闭界面
     this.closeDraft();
     
-    console.log(`[RoguelikeSystem] 放弃符文选择，获得 ${recycleGold}G`);
   }
   
   /**
@@ -589,13 +586,8 @@ export class RoguelikeSystem {
   enqueueDraft(tier, sourceMonster, draftContext = null) {
     if (!this.queue) this.queue = [];
     this.queue.push({ tier: tier || 'NORMAL', sourceMonster, draftContext });
-    console.log(`[RoguelikeSystem] 符文选择任务已加入队列: tier=${tier}, draftContext=${draftContext}, isOpen=${this.isOpen}, queue长度=${this.queue.length}`);
-    
     if (!this.isOpen) {
-      console.log('[RoguelikeSystem] 符文选择界面未打开，立即处理');
       this.processNext();
-    } else {
-      console.log('[RoguelikeSystem] 符文选择界面已打开，任务已加入队列，等待处理');
     }
   }
   
@@ -606,7 +598,6 @@ export class RoguelikeSystem {
     try {
       // 检查队列是否为空
       if (!this.queue || this.queue.length === 0) {
-        console.log('[RoguelikeSystem] 队列为空，关闭符文选择界面');
         this.isOpen = false;
         if (this.game) {
           this.game.isPaused = false;
@@ -629,8 +620,6 @@ export class RoguelikeSystem {
       
       // 重置刷新费用
       this.currentRerollCost = 50;
-      
-      console.log(`[RoguelikeSystem] 处理符文选择: tier=${tier}, draftContext=${draftContext}, queue剩余=${this.queue.length}`);
       
       // 设置标题
       const titleEl = document.getElementById('draft-title');
@@ -667,8 +656,6 @@ export class RoguelikeSystem {
             
             // 添加淡入类，使 opacity 变为 1
             overlay.classList.add('overlay-fade-in');
-            
-            console.log('[RoguelikeSystem] 符文选择界面已显示（带淡入动画）');
           });
         });
       } else {

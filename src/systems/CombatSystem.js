@@ -1730,7 +1730,6 @@ export class CombatSystem {
           
           // ✅ FIX: 使用动态 CD 值
           player.startSkillCooldown('active', activeCd);
-          console.log(`[CombatSystem] 主动技能 ${activeSkillId} 已使用，冷却时间: ${activeCd}ms`);
         }
         
         // 处理大招（如果使用了）
@@ -1752,7 +1751,6 @@ export class CombatSystem {
           
           // ✅ FIX: 使用动态 CD 值
           player.startSkillCooldown('ult', ultCd);
-          console.log(`[CombatSystem] 大招 ${ultSkillId} 已使用，冷却时间: ${ultCd}ms`);
         }
       }
       

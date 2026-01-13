@@ -604,7 +604,6 @@ export class MapSystem {
       });
       destructiblesPlaced++;
     }
-    console.log(`[MapGen] Generated ${destructiblesPlaced} destructible objects`);
 
     // Generate Cursed Altar: 应用guaranteedCurseAltar修饰符
     // Altar is 2 tiles wide, so we need to ensure (x, y) and (x+1, y) are both valid floor tiles
@@ -669,7 +668,6 @@ export class MapSystem {
         });
         
         altarPlaced = true;
-        console.log(`[MapGen] Cursed Altar placed at (${ax}, ${ay})`);
       }
       
       // 如果guaranteedCurseAltar为true但放置失败，强制在第一个可用位置放置
@@ -754,14 +752,10 @@ export class MapSystem {
           }
         }
       }
-      console.log('Fog particles generated:', this.fogParticles.length);
-      
       // 登场爆发：在关卡开始时瞬间驱散大范围迷雾
       const startWorldX = start.cx * TILE_SIZE + TILE_SIZE / 2;
       const startWorldY = start.cy * TILE_SIZE + TILE_SIZE / 2;
       this.triggerInitialClear(startWorldX, startWorldY);
-    } else {
-      console.log('Fog of War disabled - skipping fog particle generation');
     }
     
     // 清理 RNG 引用（生成完成后）
@@ -1025,7 +1019,6 @@ export class MapSystem {
     if (paths.length < minPaths) {
       console.warn(`ensureMultiplePaths: 无法生成 ${minPaths} 条独立路径，仅生成 ${paths.length} 条`);
     } else {
-      console.log(`ensureMultiplePaths: 成功生成 ${paths.length} 条独立路径`);
     }
   }
   

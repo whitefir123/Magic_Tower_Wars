@@ -376,14 +376,12 @@ export class UIManager {
         socket.onclick = (e) => {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Right sidebar equipment socket clicked:', slotType, itemId);
           this.inventoryUI.showActionMenu(e, itemId, null, socket);
         };
         
         socket.oncontextmenu = (e) => {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Right sidebar equipment socket right-clicked:', slotType, itemId);
           this.inventoryUI.showActionMenu(e, itemId, null, socket);
           return false;
         };
@@ -727,8 +725,6 @@ export class UIManager {
    */
   initSkillBar(player) {
     const skillBar = document.getElementById('skill-bar');
-    console.log('🎯 [UIManager] initSkillBar called', { skillBar, player, game: window.game });
-    
     if (!skillBar) {
       console.error('❌ [UIManager] Skill bar element not found');
       return;
@@ -746,7 +742,6 @@ export class UIManager {
     
     // 清空现有槽位（防止重复绑定）
     skillBar.innerHTML = '';
-    console.log('✅ [UIManager] Skill bar cleared');
     
     // 创建 3 个技能槽：被动、主动、大招
     const skillTypes = ['PASSIVE', 'ACTIVE', 'ULT'];
@@ -759,8 +754,6 @@ export class UIManager {
         return;
       }
       
-      console.log(`📝 [UIManager] Creating skill slot for ${skillType}`, skillData);
-      
       const slot = document.createElement('div');
       slot.className = 'skill-slot';
       slot.dataset.skillType = skillType;
@@ -772,12 +765,6 @@ export class UIManager {
       slot.style.position = 'relative';
       slot.style.zIndex = '1001'; // 确保在 canvas 之上
       
-      console.log(`🔧 [UIManager] Skill slot style set for ${skillType}:`, {
-        pointerEvents: slot.style.pointerEvents,
-        cursor: slot.style.cursor,
-        zIndex: slot.style.zIndex
-      });
-      
       // ✅ 1. 绑定 Tooltip
       try {
         globalTooltipManager.bind(slot, {
@@ -785,7 +772,6 @@ export class UIManager {
           category: skillType,
           data: skillData
         });
-        console.log(`✅ [UIManager] Tooltip bound for ${skillType}`, skillData);
       } catch (error) {
         console.error(`❌ [UIManager] Failed to bind tooltip for ${skillType}:`, error);
       }
@@ -797,29 +783,18 @@ export class UIManager {
           e.stopPropagation(); // 防止事件穿透到 canvas
           e.preventDefault();
           
-          console.log(`🖱️ [UIManager] 点击技能: ${skillType}`, {
-            skillData,
-            player: player ? 'exists' : 'null',
-            game: window.game ? 'exists' : 'null',
-            event: e,
-            cooldowns: player.cooldowns
-          });
-          
           // ✅ [新增] 1. 冷却检查：如果技能正在冷却，直接拦截
           let onCooldown = false;
           if (player.cooldowns) {
             if (skillType === 'ACTIVE' && player.cooldowns.active > 0) {
               onCooldown = true;
-              console.log(`⏳ [UIManager] 技能 ${skillType} 冷却中，剩余: ${(player.cooldowns.active / 1000).toFixed(1)}秒`);
             }
             if (skillType === 'ULT' && player.cooldowns.ult > 0) {
               onCooldown = true;
-              console.log(`⏳ [UIManager] 技能 ${skillType} 冷却中，剩余: ${(player.cooldowns.ult / 1000).toFixed(1)}秒`);
             }
           }
 
           if (onCooldown) {
-            console.warn(`⚠️ [UIManager] 技能 ${skillType} 冷却中，无法使用`);
             // 添加拒绝操作的视觉反馈：抖动动画
             slot.classList.add('shake');
             setTimeout(() => slot.classList.remove('shake'), 200);
@@ -853,7 +828,6 @@ export class UIManager {
             
             // 调用主动技能
             if (player.castActiveSkill) {
-              console.log('✅ [UIManager] Calling player.castActiveSkill()');
               player.castActiveSkill();
             } else {
               console.error('❌ [UIManager] player.castActiveSkill is not a function');
@@ -861,10 +835,8 @@ export class UIManager {
           } else if (skillType === 'ULT') {
             // 调用终极技能
             if (window.game && window.game.activateUltimate) {
-              console.log('✅ [UIManager] Calling window.game.activateUltimate()');
               window.game.activateUltimate();
             } else if (player.castUltimateSkill) {
-              console.log('✅ [UIManager] Calling player.castUltimateSkill()');
               // 如果没有 game.activateUltimate，直接调用 player 方法（需要手动检查）
               if (player.hasStatus && player.hasStatus('FROZEN')) {
                 console.warn('⚠️ [UIManager] 冰冻状态下无法使用必杀技！');
@@ -897,8 +869,6 @@ export class UIManager {
         
         // 保存处理器引用以便后续清理（如果需要）
         slot._clickHandler = clickHandler;
-        
-        console.log(`✅ [UIManager] Click handler bound for ${skillType}`);
       }
       
       // 创建技能图标
@@ -914,7 +884,6 @@ export class UIManager {
         icon.style.backgroundPosition = `${pos[col]} ${pos[row]}`;
         icon.style.backgroundSize = '300% 300%';
         icon.style.backgroundImage = `url('${ASSETS.ICONS_SKILLS.url}')`;
-        console.log(`  📍 [UIManager] Icon position: ${pos[col]} ${pos[row]} (index: ${skillData.iconIndex})`);
       }
       
       // 创建冷却遮罩
@@ -944,17 +913,7 @@ export class UIManager {
       
       skillBar.appendChild(slot);
       slotsCreated++;
-      console.log(`✅ [UIManager] Skill slot created for ${skillType}`, slot);
     });
-    
-    console.log(`🎉 [UIManager] Skill bar initialized with ${slotsCreated} slots`);
-    console.log('📊 [UIManager] Skill bar element:', skillBar);
-    console.log('📊 [UIManager] Skill bar children:', skillBar.children.length);
-    if (skillBar.children.length > 0) {
-      console.log('📊 [UIManager] First slot computed style:', window.getComputedStyle(skillBar.children[0]));
-      console.log('📊 [UIManager] First slot pointer-events:', window.getComputedStyle(skillBar.children[0]).pointerEvents);
-    }
-    console.log('✅ [UIManager] Skill bar initialization complete - Tooltip and click interactions ready');
   }
 
   /**
@@ -1236,7 +1195,6 @@ export class UIManager {
         lightingCheckbox.disabled = true; // 保持禁用，确保玩家无法手动更改
       }
 
-      console.log('[UIManager] 每日挑战模式：已锁定英雄选择和设置');
     } else {
       // 普通模式
       charSelectScreen.classList.remove('mode-daily');
@@ -1307,7 +1265,6 @@ export class UIManager {
         diffDesc.style.color = ''; // 重置为空字符串，恢复默认样式
       }
 
-      console.log('[UIManager] 普通模式：已恢复所有选项的可交互状态');
     }
   }
 
