@@ -303,53 +303,58 @@ export class FloatingText {
   }
 
   init(x, y, text, color, iconIndex = null, fontSize = 16, type = 'NORMAL') {
-    this.x = x;
-    this.y = y;
-    this.text = text;
+    this.x = x; 
+    this.y = y; 
+    this.text = text; 
     this.color = color || '#fff';
     this.iconIndex = iconIndex;
     this.fontSize = fontSize || 16;
     this.type = type;
     
-    this.life = 800;
-    this.alpha = 1;
-    this.velocityY = 0.05;
+    this.life = 800; 
+    this.alpha = 1; 
+    this.velocityY = 0.05; 
     this.scale = 1;
   }
 
-  update(dt) {
-    this.life -= dt;
-    this.y -= this.velocityY * dt;
-    this.alpha = Math.max(0, this.life / 800);
-    // 暴击时缩放更明显
+  update(dt) { 
+    this.life -= dt; 
+    this.y -= this.velocityY * dt; 
+    this.alpha = Math.max(0, this.life/800); 
+    // 暴击时缩放幅度稍大
     const scaleBonus = (this.type === 'CRIT') ? 0.3 : 0.1;
-    this.scale = 1 + (1 - this.alpha) * scaleBonus;
+    this.scale = 1 + (1 - this.alpha) * scaleBonus; 
   }
 
-  isDead() {
-    return this.life <= 0;
-  }
+  isDead() { return this.life <= 0; }
 
   draw(ctx) {
-    const { x, y } = this;
+    // 防御性：确保 TILE_SIZE 有值，避免坐标变成 NaN
+    const tileSize = (typeof TILE_SIZE !== 'undefined') ? TILE_SIZE : 32;
+    
     ctx.save();
     
-    // 计算中心点并应用缩放
-    const centerX = x + TILE_SIZE / 2;
-    const centerY = y;
+    // 计算格子的中心点 X 坐标
+    const centerX = this.x + tileSize / 2;
+    const centerY = this.y;
     
+    // 移动画布原点到文字中心
     ctx.translate(centerX, centerY);
+    // 应用缩放动画（以中心为基准）
     ctx.scale(this.scale, this.scale);
     
-    ctx.globalAlpha = this.alpha;
-    ctx.fillStyle = this.color;
+    ctx.globalAlpha = this.alpha; 
+    ctx.fillStyle = this.color; 
     ctx.font = `bold ${this.fontSize}px Cinzel, serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.shadowColor = 'black';
+    
+    // 关键修正：强制设置为居中对齐，防止文字偏右
+    ctx.textAlign = 'center'; 
+    ctx.textBaseline = 'middle'; 
+    
+    ctx.shadowColor = 'black'; 
     ctx.shadowBlur = 4;
     
-    // 因为已经 translate 到了中心，这里在 0,0 绘制
+    // 在原点(0,0)绘制，因为已经 translate 到了中心
     ctx.fillText(this.text, 0, 0);
     
     ctx.restore();
