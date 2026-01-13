@@ -1965,11 +1965,13 @@ export class CombatSystem {
       let floatingTextType = 'NORMAL';
       
       // ✅ FIX: 通用技能名称显示（根据技能 ID 显示技能名）
+      let critIcon = null; // 暴击图标索引
       if (skillUsed && activeSkillId) {
         const skillName = player.skills?.ACTIVE?.name || activeSkillId;
         if (isCrit) {
-          damageText = `${skillName}暴击！-${dmgToMon}`;
+          damageText = `${skillName}暴击 -${dmgToMon}`;
           damageColor = '#FF2424'; // 红色
+          critIcon = 6; // 暴击图标索引
         } else {
           damageText = `${skillName}！-${dmgToMon}`;
           damageColor = '#ff6b6b';
@@ -1979,9 +1981,10 @@ export class CombatSystem {
         damageText = `${ultName}! -${dmgToMon}`;
         damageColor = incomingElement === ELEMENTS.CRYO ? '#00bfff' : '#ff6b6b';
       } else if (isCrit) { 
-        damageText = `暴击！-${dmgToMon}`; 
+        damageText = `暴击 -${dmgToMon}`; 
         damageColor = '#FF2424'; // 深红色
         floatingTextType = 'CRIT'; // 使用暴击类型
+        critIcon = 6; // 暴击图标索引
       }
       
       if (game.settings && game.settings.showDamageNumbers !== false) {
@@ -1993,7 +1996,7 @@ export class CombatSystem {
           monster.visualY + offsetY, 
           damageText, 
           damageColor,
-          null,
+          critIcon, // 传递图标索引（数字6）或null
           16,
           floatingTextType
         );
@@ -2449,11 +2452,13 @@ export class CombatSystem {
         let dmgText = `-${finalDamage}`;
         let color = '#ffffff'; // 怪物主动攻击玩家的伤害飘字为白色
         let type = 'NORMAL';
+        let critIcon = null; // 暴击图标索引
         
         if (isCrit) {
-          dmgText = `暴击! -${finalDamage}`;
+          dmgText = `暴击 -${finalDamage}`;
           color = '#FF2424'; // 深红色
           type = 'CRIT'; // 使用暴击类型
+          critIcon = 6; // 暴击图标索引
         } else if (baseDamage === 0 && penetrationDamage > 0) {
            color = '#ff8c00';
         }
@@ -2463,7 +2468,7 @@ export class CombatSystem {
           player.visualY - 10, 
           dmgText, 
           color,
-          null,
+          critIcon, // 传递图标索引（数字6）或null
           16,
           type
         );

@@ -165,11 +165,13 @@ export class FloatingTextPool extends ObjectPool {
         this.age = 0;
         this.startX = x;
         
-        // 如果有图标URL，预加载图片
-        if (icon && !this.iconImage) {
+        // 如果有图标URL（字符串），预加载图片
+        // 如果是数字索引，不需要预加载，draw方法中会从精灵图获取
+        if (icon && typeof icon === 'string' && !this.iconImage) {
           this.iconImage = new Image();
           this.iconImage.src = icon;
-        } else if (!icon) {
+        } else if (!icon || typeof icon === 'number') {
+          // 数字索引或没有图标时，清空缓存的图像对象
           this.iconImage = null;
         }
       },
@@ -235,9 +237,97 @@ export class FloatingTextPool extends ObjectPool {
         const centerX = this.x + TILE_SIZE / 2;
         const textY = this.y;
         
-        // 绘制文本
+        // 检查是否有图标（数字索引或URL）
+        let iconImage = null;
+        let iconIndex = null;
+        let iconSpacing = 4; // 图标和文本之间的间距
+        
+        if (typeof this.icon === 'number') {
+          // 数字索引：从 SPRITE_STATUS_ICONS 精灵图中获取
+          iconIndex = this.icon;
+          const game = window.game;
+          const loader = (game && game.loader) || window.ResourceManager;
+          if (loader && loader.getImage) {
+            iconImage = loader.getImage('SPRITE_STATUS_ICONS');
+          }
+        } else if (this.icon && typeof this.icon === 'string') {
+          // URL字符串：使用缓存的图像对象
+          iconImage = this.iconImage;
+        }
+        
+        // 测量文本宽度（用于居中计算）
         ctx.fillStyle = this.color;
-        ctx.textAlign = 'center';
+        ctx.textAlign = 'left'; // 临时设置为left以测量文本宽度
+        ctx.textBaseline = 'middle';
+        
+        if (this.type === 'CRIT') {
+          // 暴击飘字样式：深红色，基于scale动态调整字体大小，暗红色硬阴影
+          const baseFontSize = 12; // 基础字体大小（调小）
+          const fontSize = baseFontSize * this.scale;
+          ctx.font = `bold ${fontSize}px Cinzel, serif`;
+        } else {
+          // 普通飘字样式
+          ctx.font = 'bold 16px Cinzel, serif';
+        }
+        
+        const textMetrics = ctx.measureText(this.text);
+        const textWidth = textMetrics.width;
+        
+        // 计算图标尺寸和位置
+        let iconWidth = 0;
+        let iconHeight = 0;
+        let iconX = 0;
+        let iconY = 0;
+        
+        if (iconImage && iconImage.complete && iconImage.naturalWidth > 0) {
+          if (typeof iconIndex === 'number') {
+            // 从精灵图中切片
+            const gridCols = 3; // 3x3网格
+            const gridRows = 3;
+            const cellW = iconImage.naturalWidth / gridCols;
+            const cellH = iconImage.naturalHeight / gridRows;
+            const col = iconIndex % 3;
+            const row = Math.floor(iconIndex / 3);
+            const sx = col * cellW;
+            const sy = row * cellH;
+            
+            // 图标绘制尺寸
+            iconWidth = this.iconSize;
+            iconHeight = this.iconSize;
+            
+            // 计算整体宽度（图标 + 间距 + 文本）
+            const totalWidth = iconWidth + iconSpacing + textWidth;
+            
+            // 计算起始位置（使整体居中）
+            const startX = centerX - totalWidth / 2;
+            iconX = startX;
+            iconY = textY - iconHeight / 2;
+            
+            // 绘制图标切片
+            ctx.drawImage(
+              iconImage,
+              sx, sy, cellW, cellH,
+              iconX, iconY, iconWidth, iconHeight
+            );
+          } else if (iconImage) {
+            // URL图像：直接绘制
+            iconWidth = this.iconSize;
+            iconHeight = this.iconSize;
+            
+            // 计算整体宽度（图标 + 间距 + 文本）
+            const totalWidth = iconWidth + iconSpacing + textWidth;
+            
+            // 计算起始位置（使整体居中）
+            const startX = centerX - totalWidth / 2;
+            iconX = startX;
+            iconY = textY - iconHeight / 2;
+            
+            ctx.drawImage(iconImage, iconX, iconY, iconWidth, iconHeight);
+          }
+        }
+        
+        // 绘制文本
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         
         if (this.type === 'CRIT') {
@@ -258,7 +348,10 @@ export class FloatingTextPool extends ObjectPool {
           ctx.shadowOffsetY = 0;
         }
         
-        ctx.fillText(this.text, centerX, textY);
+        // 计算文本X位置（如果有图标，文本在图标右侧）
+        const textX = iconWidth > 0 ? iconX + iconWidth + iconSpacing : centerX;
+        
+        ctx.fillText(this.text, textX, textY);
         ctx.restore();
       }
     });
