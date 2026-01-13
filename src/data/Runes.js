@@ -721,7 +721,10 @@ export const RUNE_POOL = [
     rarity: 'COMMON',
     spawnWeight: 1.0,
     description: '攻击速度 +{{value}}',
-    onObtain: (player, value = 0.10) => {
+    onObtain: (player, value = 1) => {
+      // ✅ FIX: 将外部传入的通用数值转换为攻击速度加成（基础值 0.10）
+      const baseValue = 0.10;
+      const actualValue = baseValue * value;
       if (!player.runeState) {
         player.runeState = {
           effects: {},
@@ -731,7 +734,7 @@ export const RUNE_POOL = [
       if (!player.runeState.bonusStats) {
         player.runeState.bonusStats = { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0 };
       }
-      player.runeState.bonusStats.atk_speed = (player.runeState.bonusStats.atk_speed || 0) + value;
+      player.runeState.bonusStats.atk_speed = (player.runeState.bonusStats.atk_speed || 0) + actualValue;
     }
   },
   
@@ -744,7 +747,10 @@ export const RUNE_POOL = [
     rarity: 'RARE',
     spawnWeight: 1.0,
     description: '攻击速度 +{{value}}',
-    onObtain: (player, value = 0.25) => {
+    onObtain: (player, value = 1) => {
+      // ✅ FIX: 将外部传入的通用数值转换为攻击速度加成（基础值 0.25）
+      const baseValue = 0.25;
+      const actualValue = baseValue * value;
       if (!player.runeState) {
         player.runeState = {
           effects: {},
@@ -754,7 +760,7 @@ export const RUNE_POOL = [
       if (!player.runeState.bonusStats) {
         player.runeState.bonusStats = { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0 };
       }
-      player.runeState.bonusStats.atk_speed = (player.runeState.bonusStats.atk_speed || 0) + value;
+      player.runeState.bonusStats.atk_speed = (player.runeState.bonusStats.atk_speed || 0) + actualValue;
     }
   },
   
@@ -767,7 +773,10 @@ export const RUNE_POOL = [
     rarity: 'LEGENDARY',
     spawnWeight: 0.4,
     description: '攻击速度 +{{value}}，移动速度 +0.1',
-    onObtain: (player, value = 0.50) => {
+    onObtain: (player, value = 1) => {
+      // ✅ FIX: 将外部传入的通用数值转换为攻击速度加成（基础值 0.50）
+      const baseValue = 0.50;
+      const actualValue = baseValue * value;
       if (!player.runeState) {
         player.runeState = {
           effects: {},
@@ -777,7 +786,7 @@ export const RUNE_POOL = [
       if (!player.runeState.bonusStats) {
         player.runeState.bonusStats = { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0 };
       }
-      player.runeState.bonusStats.atk_speed = (player.runeState.bonusStats.atk_speed || 0) + value;
+      player.runeState.bonusStats.atk_speed = (player.runeState.bonusStats.atk_speed || 0) + actualValue;
       
       // 增加移动速度
       if (player.moveSpeed !== undefined) {
