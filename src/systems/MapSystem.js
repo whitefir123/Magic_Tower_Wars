@@ -506,15 +506,55 @@ export class MapSystem {
     for (let i = 0; i < Math.min(secureCount, eligible.length); i++) { const pos = eligible[i]; this.addItem('ITEM_KEY_BRONZE', pos.x, pos.y); }
     if (this.items.filter(i => i.type.includes('KEY')).length === 0) this.addItem('ITEM_KEY_BRONZE', Math.min(this.width - 2, start.cx + 1), start.cy);
 
+    // Generate Destructible Objects: Crates and Barrels (5-10 per level)
+    // ✅ 确认生成顺序：可破坏物体在陷阱之前生成，陷阱生成时会自动跳过已有箱子的位置，从而物理上杜绝重叠
+    const destructibleCount = this._randomInt(5, 10);
+    let destructiblesPlaced = 0;
+    let destructibleAttempts = 0;
+    while (destructiblesPlaced < destructibleCount && destructibleAttempts < destructibleCount * 10) {
+      destructibleAttempts++;
+      const dx = this._randomInt(1, this.width - 2);
+      const dy = this._randomInt(1, this.height - 2);
+      
+      // 严格检查地板类型
+      if (this.grid[dy][dx] !== TILE.FLOOR) continue;
+      
+      // ✅ FIX: 严格检查位置占用：怪物、物品、或者任何已存在的对象
+      const isOccupied = this.getMonsterAt(dx, dy) || 
+                         this.getItemAt(dx, dy) || 
+                         this.objects.some(o => o.x === dx && o.y === dy);
+      
+      if (isOccupied) continue;
+      
+      // Avoid start and stairs
+      if ((dx === start.cx && dy === start.cy) || (dx === endRoom.cx && dy === endRoom.cy)) continue;
+      
+      // Random choice: Crate or Barrel
+      const destructibleType = this._random() < 0.5 ? 'OBJ_CRATE' : 'OBJ_BARREL';
+      const config = destructibleType === 'OBJ_CRATE' ? OBJ_CRATE : OBJ_BARREL;
+      
+      this.objects.push({
+        type: destructibleType,
+        config: config,
+        x: dx,
+        y: dy,
+        visualX: dx * TILE_SIZE,
+        visualY: dy * TILE_SIZE,
+        hp: config.hp,
+        destroyed: false
+      });
+      destructiblesPlaced++;
+    }
+
     // Generate Traps: 应用陷阱密度修饰符
-    // ✅ 确认生成顺序：陷阱必须在可破坏物体之前生成，以防止重叠
+    // ✅ 确认生成顺序：陷阱在可破坏物体之后生成，通过 this.objects.some(...) 检查自动跳过已有箱子的位置
     const baseTrapChance = 0.05;
     const trapChance = Math.min(0.25, baseTrapChance + ascConfig.trapDensity * baseTrapChance); // 最多25%概率
     const trapDamageMultiplier = 1 + ascConfig.trapDamageMult;
     for (let y = 1; y < this.height - 1; y++) {
       for (let x = 1; x < this.width - 1; x++) {
         if (this.grid[y][x] !== TILE.FLOOR) continue;
-        // ✅ FIX: 严格检查位置占用：怪物、物品、或者任何已存在的对象
+        // ✅ FIX: 严格检查位置占用：怪物、物品、或者任何已存在的对象（包括可破坏物体）
         if (this.getMonsterAt(x, y) || this.getItemAt(x, y) || this.objects.some(o => o.x === x && o.y === y)) continue;
         // Avoid start and stairs
         if ((x === start.cx && y === start.cy) || (x === endRoom.cx && y === endRoom.cy)) continue;
@@ -562,47 +602,6 @@ export class MapSystem {
       const pos = deadEnds[i];
       const shrineType = this._random() < 0.5 ? 'OBJ_SHRINE_HEAL' : 'OBJ_SHRINE_POWER';
       this.objects.push({ type: shrineType, x: pos.x, y: pos.y, visualX: pos.x * TILE_SIZE, visualY: pos.y * TILE_SIZE + 4, active: true });
-    }
-
-    // Generate Destructible Objects: Crates and Barrels (5-10 per level)
-    // ✅ 确认生成顺序：可破坏物体在陷阱之后生成，以避免与陷阱重叠
-    const destructibleCount = this._randomInt(5, 10);
-    let destructiblesPlaced = 0;
-    let destructibleAttempts = 0;
-    while (destructiblesPlaced < destructibleCount && destructibleAttempts < destructibleCount * 10) {
-      destructibleAttempts++;
-      const dx = this._randomInt(1, this.width - 2);
-      const dy = this._randomInt(1, this.height - 2);
-      
-      // 严格检查地板类型
-      if (this.grid[dy][dx] !== TILE.FLOOR) continue;
-      
-      // ✅ FIX: 严格检查位置占用：怪物、物品、或者任何已存在的对象（包括陷阱）
-      // 明确排除已存在的陷阱（OBJ_TRAP）和其他所有对象类型
-      const isOccupied = this.getMonsterAt(dx, dy) || 
-                         this.getItemAt(dx, dy) || 
-                         this.objects.some(o => o.x === dx && o.y === dy);
-      
-      if (isOccupied) continue;
-      
-      // Avoid start and stairs
-      if ((dx === start.cx && dy === start.cy) || (dx === endRoom.cx && dy === endRoom.cy)) continue;
-      
-      // Random choice: Crate or Barrel
-      const destructibleType = this._random() < 0.5 ? 'OBJ_CRATE' : 'OBJ_BARREL';
-      const config = destructibleType === 'OBJ_CRATE' ? OBJ_CRATE : OBJ_BARREL;
-      
-      this.objects.push({
-        type: destructibleType,
-        config: config,
-        x: dx,
-        y: dy,
-        visualX: dx * TILE_SIZE,
-        visualY: dy * TILE_SIZE,
-        hp: config.hp,
-        destroyed: false
-      });
-      destructiblesPlaced++;
     }
 
     // Generate Cursed Altar: 应用guaranteedCurseAltar修饰符
