@@ -52,7 +52,6 @@ class Game {
     
     // 初始化元进度存档系统（灵魂水晶和天赋）
     this.metaSaveSystem = new MetaSaveSystem();
-    console.log('[Game] 元进度系统已初始化');
     
     // 初始化铁匠系统和UI
     this.blacksmithSystem = new BlacksmithSystem();
@@ -66,13 +65,11 @@ class Game {
     
     // 初始化排行榜UI
     this.leaderboardUI = new LeaderboardUI(this);
-    console.log('[Game] 排行榜UI已初始化');
     
     // 初始化成就系统
     this.achievementSystem = new AchievementSystem(this);
     this.achievementUI = new AchievementUI(this);
     this.achievementSystem.setUI(this.achievementUI);
-    console.log('[Game] 成就系统已初始化');
     
     // 初始化任务系统
     this.questSystem = new QuestSystem(this);
@@ -81,16 +78,13 @@ class Game {
     if (this.ui) {
       this.ui.setQuestUI(this.questUI);
     }
-    console.log('[Game] 任务系统已初始化');
     
     // 初始化音效管理器
     this.audio = AudioManager.getInstance();
-    console.log('[Game] 音效管理器已初始化');
     
     // 初始化程序化装备生成系统
     this.lootGenerator = lootGenerator;
     window.__lootGenerator = lootGenerator; // 全局访问
-    console.log('[Game] 程序化装备生成系统已初始化');
     
     // 种子随机数生成器（用于每日挑战等确定性生成）
     // 普通模式下保持为 null，使用 Math.random()
@@ -175,7 +169,6 @@ class Game {
     
     // 初始化开发者模式管理器
     window.devModeManager = getDevModeManager();
-    console.log('[Game] 开发者模式管理器已初始化');
     
     // 视觉特效系统（粒子 / 掉落飞行 / 屏幕闪烁）
     this.vfx = new VisualEffectsSystem(this);
@@ -2416,7 +2409,6 @@ class Game {
     // 延迟初始化天赋树UI
     if (!this.talentTreeUI) {
       this.talentTreeUI = new TalentTreeUI(this);
-      console.log('[Game] 天赋树UI已初始化');
     }
     
     // 获取主菜单元素

@@ -31,7 +31,6 @@ export class RoguelikeSystem {
    */
   resetRerollCost() {
     this.currentRerollCost = 50;
-    console.log('[RoguelikeSystem] 刷新费用已重置为 50G');
   }
   
   /**
@@ -690,6 +689,5 @@ export class RoguelikeSystem {
    */
   resetRerollCost() {
     this.currentRerollCost = 50;
-    console.log('[RoguelikeSystem] 刷新费用已重置为 50G');
   }
 }
