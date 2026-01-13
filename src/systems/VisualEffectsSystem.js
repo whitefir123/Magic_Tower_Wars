@@ -362,11 +362,11 @@ export class VisualEffectsSystem {
       x,
       y,
       rotation,
-      scale: isCrit ? 1.5 : 1.0,
+      scale: isCrit ? 0.15 : 0.1,
       totalFrames: 5,
       currentFrame: 0,
       frameTimer: 0,
-      frameDuration: 30, // 每帧持续30ms，总时长约150ms
+      frameDuration: 70, // 每帧持续70ms，总时长约350ms
       textureKey: 'TEX_VFX_SLASH',
       isCrit
     });
