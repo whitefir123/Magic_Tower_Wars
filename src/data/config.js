@@ -197,3 +197,19 @@ export const FLOOR_ZONES = [
   { maxFloor: 9999, name: 'Dark Dungeon', nameZh: '暗黑地牢' }
 ];
 
+/**
+ * VISUAL_CONFIG - 视觉配置
+ * 用于控制飘字系统等视觉效果的参数
+ */
+export const VISUAL_CONFIG = {
+  // 玩家飘字偏移
+  PLAYER_TEXT_OFFSET_X: 0,  // 用户后续会微调，建议尝试 -5
+  PLAYER_TEXT_OFFSET_Y: -15,
+  
+  // 怪物飘字偏移
+  MONSTER_TEXT_OFFSET_Y: -10,
+  
+  // 是否启用微小的垂直随机偏移（防止完全重叠）
+  ENABLE_MICRO_SCATTER: true
+};
+

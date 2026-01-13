@@ -1,5 +1,5 @@
 // entities.js
-import { TILE_SIZE, MONSTER_STATS, EQUIPMENT_DB, COMBAT_CONFIG, STATUS_TYPES, STATUS_ICON_MAP, ELITE_AFFIXES, ELITE_SPAWN_CONFIG, ASSETS, getAscensionLevel, FATIGUE_CONFIG, getItemDefinition, CHARACTERS } from './constants.js';
+import { TILE_SIZE, MONSTER_STATS, EQUIPMENT_DB, COMBAT_CONFIG, STATUS_TYPES, STATUS_ICON_MAP, ELITE_AFFIXES, ELITE_SPAWN_CONFIG, ASSETS, getAscensionLevel, FATIGUE_CONFIG, getItemDefinition, CHARACTERS, VISUAL_CONFIG } from './constants.js';
 import { createStandardizedItem, createDynamicConsumable } from './data/items.js';
 import { getSetConfig } from './data/sets.js';
 import { Sprite, FloatingText } from './utils.js';
@@ -46,7 +46,9 @@ export class Entity {
           const stacks = existing.config?.stacks || 1;
           const statusText = `${statusDef.name} x${stacks}!`;
           const statusColor = this.getStatusColor(type);
-          const floatingText = game.floatingTextPool.create(this.visualX, this.visualY - 30, statusText, statusColor);
+          const pos = this.getFloatingTextPosition();
+          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+          const floatingText = game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, statusText, statusColor);
           if (game.floatingTexts) {
             game.floatingTexts.push(floatingText);
           }
@@ -81,7 +83,9 @@ export class Entity {
       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
         const statusText = `${statusDef.name}!`;
         const statusColor = this.getStatusColor(type);
-        const floatingText = game.floatingTextPool.create(this.visualX, this.visualY - 30, statusText, statusColor);
+        const pos = this.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+        const floatingText = game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, statusText, statusColor);
         if (game.floatingTexts) {
           game.floatingTexts.push(floatingText);
         }
@@ -811,6 +815,17 @@ export class Monster extends Entity {
     return `${affixName}${baseName}`;
   }
   
+  /**
+   * 获取飘字位置
+   * @returns {{x: number, y: number}} 飘字的基准坐标
+   */
+  getFloatingTextPosition() {
+    return {
+      x: this.visualX + (TILE_SIZE / 2), // 怪物默认居中
+      y: this.visualY + VISUAL_CONFIG.MONSTER_TEXT_OFFSET_Y
+    };
+  }
+  
   // Trigger teleport effect
   triggerTeleport() {
     const game = window.game;
@@ -904,7 +919,9 @@ export class Monster extends Entity {
         // 显示视觉提示
         const game = window.game;
         if (game && game.floatingTextPool && game.floatingTexts) {
-          const shieldText = game.floatingTextPool.create(this.visualX, this.visualY - 30, '护盾!', '#cccccc');
+          const pos = this.getFloatingTextPosition();
+          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+          const shieldText = game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, '护盾!', '#cccccc');
           game.floatingTexts.push(shieldText);
         }
       }
@@ -1004,7 +1021,9 @@ export class Monster extends Entity {
       player.takeDamage(config.explodeDamage);
       
       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-        const damageText = game.floatingTextPool.create(player.visualX, player.visualY - 10, `-${config.explodeDamage}`, '#ff3333');
+        const pos = player.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+        const damageText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${config.explodeDamage}`, '#ff3333');
         game.floatingTexts.push(damageText);
       }
       
@@ -1400,7 +1419,9 @@ export class Player extends Entity {
       const damage = Math.max(1, Math.floor(this.stats.maxHp * damagePercent));
       this.takeDamage(damage);
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
-        const burnText = window.game.floatingTextPool.create(this.visualX, this.visualY - 10, `-${damage}`, '#ff6b6b');
+        const pos = this.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+        const burnText = window.game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${damage}`, '#ff6b6b');
         window.game.floatingTexts.push(burnText);
       }
     } else if (type === 'FREEZE_DOT') {
@@ -1409,7 +1430,9 @@ export class Player extends Entity {
       const damage = Math.max(1, Math.floor(this.stats.maxHp * damagePercent));
       this.takeDamage(damage);
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
-        const freezeText = window.game.floatingTextPool.create(this.visualX, this.visualY - 10, `-${damage}`, '#00bfff');
+        const pos = this.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+        const freezeText = window.game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${damage}`, '#00bfff');
         window.game.floatingTexts.push(freezeText);
       }
     } else if (type === 'POISON') {
@@ -1419,7 +1442,9 @@ export class Player extends Entity {
       const damage = Math.max(1, Math.floor(this.stats.maxHp * damagePercent * stacks));
       this.takeDamage(damage);
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
-        const poisonText = window.game.floatingTextPool.create(this.visualX, this.visualY - 10, `-${damage}`, '#00ff00');
+        const pos = this.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+        const poisonText = window.game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${damage}`, '#00ff00');
         window.game.floatingTexts.push(poisonText);
       }
     }
@@ -2452,7 +2477,9 @@ export class Player extends Entity {
         window.game.ui.updateStats(this);
       }
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
-        const readyText = window.game.floatingTextPool.create(this.visualX, this.visualY - 30, '已准备!', '#ffff00');
+        const pos = this.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+        const readyText = window.game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, '已准备!', '#ffff00');
         window.game.floatingTexts.push(readyText);
       }
     } else if (this.charConfig && this.charConfig.id === 'MAGE') {
@@ -2466,7 +2493,9 @@ export class Player extends Entity {
         window.game.ui.updateStats(this);
       }
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
-        const scorchText = window.game.floatingTextPool.create(this.visualX, this.visualY - 30, '火球术!', '#ff6b6b');
+        const pos = this.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+        const scorchText = window.game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, '火球术!', '#ff6b6b');
         window.game.floatingTexts.push(scorchText);
       }
     }
@@ -2490,7 +2519,9 @@ export class Player extends Entity {
         window.game.ui.updateStats(this);
       }
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
-        const freezeText = window.game.floatingTextPool.create(this.visualX, this.visualY - 30, '冰墓术!', '#00bfff');
+        const pos = this.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+        const freezeText = window.game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, '冰墓术!', '#00bfff');
         window.game.floatingTexts.push(freezeText);
       }
       return true;
@@ -2537,7 +2568,9 @@ export class Player extends Entity {
     
     // 显示回血数字（如果设置开启）
     if (actualHeal > 0 && window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
-      const text = window.game.floatingTextPool.create(this.visualX, this.visualY - 20, `+${actualHeal}`, '#00ff88');
+      const pos = this.getFloatingTextPosition();
+      const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+      const text = window.game.floatingTextPool.create(pos.x, pos.y - 5 + microScatterY, `+${actualHeal}`, '#00ff88');
       window.game.floatingTexts.push(text);
     }
   }
@@ -2723,6 +2756,17 @@ export class Player extends Entity {
    */
   getRelics() {
     return Array.from(this.relics.values());
+  }
+  
+  /**
+   * 获取飘字位置
+   * @returns {{x: number, y: number}} 飘字的基准坐标
+   */
+  getFloatingTextPosition() {
+    return {
+      x: this.visualX + (TILE_SIZE / 2) + VISUAL_CONFIG.PLAYER_TEXT_OFFSET_X,
+      y: this.visualY + VISUAL_CONFIG.PLAYER_TEXT_OFFSET_Y
+    };
   }
 }
 

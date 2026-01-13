@@ -1,5 +1,5 @@
 // CombatSystem.js - 战斗计算逻辑
-import { COMBAT_CONFIG, MONSTER_STATS, getEquipmentDropForFloor, getRandomConsumable, ELITE_AFFIXES, ELEMENTS, STATUS_TYPES, ELEMENT_REACTIONS, PENETRATION_CONFIG, CRITICAL_CONFIG, MONSTER_TRAITS, EQUIPMENT_DB, TILE_SIZE } from '../constants.js';
+import { COMBAT_CONFIG, MONSTER_STATS, getEquipmentDropForFloor, getRandomConsumable, ELITE_AFFIXES, ELEMENTS, STATUS_TYPES, ELEMENT_REACTIONS, PENETRATION_CONFIG, CRITICAL_CONFIG, MONSTER_TRAITS, EQUIPMENT_DB, TILE_SIZE, VISUAL_CONFIG } from '../constants.js';
 import { WEAPON_MASTERY, COMBO_RESET_TIME } from '../data/combat.js';
 import { FloatingText } from '../utils.js';
 import { RUNE_POOL } from '../data/Runes.js';
@@ -162,9 +162,9 @@ export class CombatSystem {
       
       // 显示伤害数字
       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-        const offsetX = (Math.random() - 0.5) * 15;
-        const offsetY = -10 - Math.random() * 10;
-        game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, `⚡${actualDmg}`, '#00ffff');
+        const pos = monster.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+        game.floatingTextPool.create(pos.x, pos.y + microScatterY, `⚡${actualDmg}`, '#00ffff');
       }
       
       // 触发受击逻辑
@@ -284,11 +284,11 @@ export class CombatSystem {
       
       // 显示伤害数字
       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-        const offsetX = (Math.random() - 0.5) * 15;
-        const offsetY = -10 - Math.random() * 10;
+        const pos = enemy.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
         const chainText = game.floatingTextPool.create(
-          enemy.visualX + TILE_SIZE / 2 + offsetX,
-          enemy.visualY + offsetY,
+          pos.x,
+          pos.y + microScatterY,
           `⚡${chainDamage}`,
           '#ffff00'
         );
@@ -318,8 +318,8 @@ export class CombatSystem {
             
             attacker.stats.gold = (attacker.stats.gold || 0) + finalGold;
             if (game.settings && game.settings.showDamageNumbers !== false) {
-              const offsetX = (Math.random() - 0.5) * 15;
-              const goldText = game.floatingTextPool.create(enemy.visualX + TILE_SIZE / 2 + offsetX, enemy.visualY - 26, `+${finalGold} 金币`, '#ffd700');
+              const pos = enemy.getFloatingTextPosition();
+              const goldText = game.floatingTextPool.create(pos.x, pos.y - 16, `+${finalGold} 金币`, '#ffd700');
               game.floatingTexts.push(goldText);
             }
             if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -429,9 +429,9 @@ export class CombatSystem {
         
         // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
         if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-          const offsetX = (Math.random() - 0.5) * 15;
-          const offsetY = -10 - Math.random() * 10;
-          const dotText = game.floatingTextPool.create(entity.visualX + TILE_SIZE / 2 + offsetX, entity.visualY + offsetY, `-${damage}`, dotColor);
+          const pos = entity.getFloatingTextPosition();
+          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+          const dotText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${damage}`, dotColor);
           game.floatingTexts.push(dotText);
         }
         
@@ -451,8 +451,8 @@ export class CombatSystem {
                 if (g > 0) {
                   source.stats.gold = (source.stats.gold || 0) + g;
                   if (game.settings && game.settings.showDamageNumbers !== false) {
-                    const offsetX = (Math.random() - 0.5) * 15;
-                    const goldText = game.floatingTextPool.create(entity.visualX + TILE_SIZE / 2 + offsetX, entity.visualY - 26, `+${g} 金币`, '#ffd700');
+                    const pos = entity.getFloatingTextPosition();
+                    const goldText = game.floatingTextPool.create(pos.x, pos.y - 16, `+${g} 金币`, '#ffd700');
                     game.floatingTexts.push(goldText);
                   }
                   if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -538,9 +538,9 @@ export class CombatSystem {
       
       // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-        const offsetX = (Math.random() - 0.5) * 15;
-        const offsetY = -10 - Math.random() * 10;
-        const electroText = game.floatingTextPool.create(entity.visualX + TILE_SIZE / 2 + offsetX, entity.visualY + offsetY, `-${damage}`, '#ffff00');
+        const pos = entity.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+        const electroText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${damage}`, '#ffff00');
         game.floatingTexts.push(electroText);
       }
       
@@ -580,9 +580,9 @@ export class CombatSystem {
           
           // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-            const offsetX = (Math.random() - 0.5) * 15;
-            const offsetY = -10 - Math.random() * 10;
-            const tetherText = game.floatingTextPool.create(nearestEnemy.visualX + TILE_SIZE / 2 + offsetX, nearestEnemy.visualY + offsetY, `-${damage}`, '#ffff00');
+            const pos = nearestEnemy.getFloatingTextPosition();
+            const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+            const tetherText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${damage}`, '#ffff00');
             game.floatingTexts.push(tetherText);
           }
           
@@ -599,8 +599,8 @@ export class CombatSystem {
                 source.stats.gold = (source.stats.gold || 0) + g;
                 // ✅ FIX: 优化飘字显示重叠 - 金币和XP使用不同的高度偏移
                 if (game.settings && game.settings.showDamageNumbers !== false) {
-                  const offsetX = (Math.random() - 0.5) * 15;
-                  const goldText = game.floatingTextPool.create(nearestEnemy.visualX + TILE_SIZE / 2 + offsetX, nearestEnemy.visualY - 26, `+${g} 金币`, '#ffd700');
+                  const pos = nearestEnemy.getFloatingTextPosition();
+                  const goldText = game.floatingTextPool.create(pos.x, pos.y - 16, `+${g} 金币`, '#ffd700');
                   game.floatingTexts.push(goldText);
                 }
                 if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -676,8 +676,8 @@ export class CombatSystem {
               if (g > 0) {
                 source.stats.gold = (source.stats.gold || 0) + g;
                 if (game.settings && game.settings.showDamageNumbers !== false) {
-                  const offsetX = (Math.random() - 0.5) * 15;
-                  const goldText = game.floatingTextPool.create(entity.visualX + TILE_SIZE / 2 + offsetX, entity.visualY - 26, `+${g} 金币`, '#ffd700');
+                  const pos = entity.getFloatingTextPosition();
+                  const goldText = game.floatingTextPool.create(pos.x, pos.y - 16, `+${g} 金币`, '#ffd700');
                   game.floatingTexts.push(goldText);
                 }
                 if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -807,9 +807,9 @@ export class CombatSystem {
                 }
                 // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
                 if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-                  const offsetX = (Math.random() - 0.5) * 15;
-                  const offsetY = -10 - Math.random() * 10;
-                  const aoeText = game.floatingTextPool.create(enemy.visualX + TILE_SIZE / 2 + offsetX, enemy.visualY + offsetY, `-${aoeDamage}`, '#ff9900');
+                  const pos = enemy.getFloatingTextPosition();
+                  const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+                  const aoeText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${aoeDamage}`, '#ff9900');
                   game.floatingTexts.push(aoeText);
                 }
                 if (enemy.stats.hp <= 0) {
@@ -921,9 +921,9 @@ export class CombatSystem {
                 }
                 // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
                 if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-                  const offsetX = (Math.random() - 0.5) * 15;
-                  const offsetY = -10 - Math.random() * 10;
-                  const blastText = game.floatingTextPool.create(enemy.visualX + TILE_SIZE / 2 + offsetX, enemy.visualY + offsetY, `-${blastDamage}`, '#00ff00');
+                  const pos = enemy.getFloatingTextPosition();
+                  const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+                  const blastText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${blastDamage}`, '#00ff00');
                   game.floatingTexts.push(blastText);
                 }
                 if (enemy.stats.hp <= 0) {
@@ -945,9 +945,9 @@ export class CombatSystem {
     
     // ✅ FIX: 优化飘字显示重叠 - 反应名称在更上方，并添加随机偏移
     if (reactionOccurred && game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-      const offsetX = (Math.random() - 0.5) * 20;
-      const offsetY = -40 - Math.random() * 10; // 反应名称在更上方
-      const reactionText = game.floatingTextPool.create(target.visualX + TILE_SIZE / 2 + offsetX, target.visualY + offsetY, `${reactionName}!`, '#ff00ff');
+      const pos = target.getFloatingTextPosition();
+      const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+      const reactionText = game.floatingTextPool.create(pos.x, pos.y - 30 + microScatterY, `${reactionName}!`, '#ff00ff');
       game.floatingTexts.push(reactionText);
     }
     
@@ -1115,9 +1115,9 @@ export class CombatSystem {
           
           // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-            const offsetX = (Math.random() - 0.5) * 15;
-            const offsetY = -10 - Math.random() * 10;
-            const dodgeText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, '闪避!', '#ffffff');
+            const pos = monster.getFloatingTextPosition();
+            const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+            const dodgeText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, '闪避!', '#ffffff');
             game.floatingTexts.push(dodgeText);
           }
           return 'BOUNCE'; // 闪避，不造成伤害
@@ -1137,9 +1137,9 @@ export class CombatSystem {
         
         // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
         if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-          const offsetX = (Math.random() - 0.5) * 15;
-          const offsetY = -10 - Math.random() * 10;
-          const blockText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, '格挡!', '#ffffff');
+          const pos = monster.getFloatingTextPosition();
+          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+          const blockText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, '格挡!', '#ffffff');
           game.floatingTexts.push(blockText);
         }
         if (game.audio) game.audio.playHit(); // 播放金属音效
@@ -1188,7 +1188,9 @@ export class CombatSystem {
         if (dmgToPlay > 0) {
           player.takeDamage(dmgToPlay);
           if (game.settings && game.settings.showDamageNumbers !== false) {
-            const playerDamageText = game.floatingTextPool.create(player.visualX + TILE_SIZE / 2, player.visualY - 10, `-${dmgToPlay}`, '#ffffff'); // 怪物主动反击飘字为白色
+            const pos = player.getFloatingTextPosition();
+            const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+            const playerDamageText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${dmgToPlay}`, '#ffffff'); // 怪物主动反击飘字为白色
             game.floatingTexts.push(playerDamageText);
           }
           if (dmgToPlay > 10) game.camera.shakeTimer = Math.max(game.camera.shakeTimer || 0, 10);
@@ -1199,7 +1201,9 @@ export class CombatSystem {
             const healAmount = Math.floor(dmgToPlay * 0.5); // 回复造成伤害的50%
             monster.stats.hp = Math.min(monster.stats.maxHp, monster.stats.hp + healAmount);
             if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-              const healText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2, monster.visualY - 30, `+${healAmount}`, '#00ff00');
+              const pos = monster.getFloatingTextPosition();
+              const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+              const healText = game.floatingTextPool.create(pos.x, pos.y - 20 + microScatterY, `+${healAmount}`, '#00ff00');
               game.floatingTexts.push(healText);
             }
             if (monster.eliteVisualEffects) monster.eliteVisualEffects.vampiricTintTimer = 100;
@@ -1258,11 +1262,11 @@ export class CombatSystem {
           game.settings &&
           game.settings.showDamageNumbers !== false
         ) {
-          const offsetX = (Math.random() - 0.5) * 15;
-          const offsetY = -10 - Math.random() * 10;
+          const pos = monster.getFloatingTextPosition();
+          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
           const floatText = game.floatingTextPool.create(
-            monster.visualX + TILE_SIZE / 2 + offsetX,
-            monster.visualY + offsetY,
+            pos.x,
+            pos.y + microScatterY,
             `-${scrollDamage}`,
             '#ff0000'
           );
@@ -1416,9 +1420,11 @@ export class CombatSystem {
           
           // Show overload effect
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
+            const pos = monster.getFloatingTextPosition();
+            const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
             const elementText = game.floatingTextPool.create(
-              monster.visualX + TILE_SIZE / 2,
-              monster.visualY - 40,
+              pos.x,
+              pos.y - 30 + microScatterY,
               `过载! +${elementalBonus}`,
               '#ff9900'
             );
@@ -1466,11 +1472,11 @@ export class CombatSystem {
                   
                   // 显示伤害数字
                   if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-                    const offsetX = (Math.random() - 0.5) * 15;
-                    const offsetY = -10 - Math.random() * 10;
+                    const pos = otherMonster.getFloatingTextPosition();
+                    const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
                     const cleaveText = game.floatingTextPool.create(
-                      otherMonster.visualX + TILE_SIZE / 2 + offsetX,
-                      otherMonster.visualY + offsetY,
+                      pos.x,
+                      pos.y + microScatterY,
                       `顺劈! -${cleaveDamage}`,
                       '#ff6666'
                     );
@@ -1503,9 +1509,11 @@ export class CombatSystem {
             
             // 显示combo提示
             if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
+              const pos = monster.getFloatingTextPosition();
+              const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
               const comboText = game.floatingTextPool.create(
-                monster.visualX + TILE_SIZE / 2,
-                monster.visualY - 30,
+                pos.x,
+                pos.y - 20 + microScatterY,
                 '顺劈!',
                 '#ffaa00'
               );
@@ -1536,9 +1544,11 @@ export class CombatSystem {
             
             // 显示combo提示
             if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
+              const pos = monster.getFloatingTextPosition();
+              const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
               const comboText = game.floatingTextPool.create(
-                monster.visualX + TILE_SIZE / 2,
-                monster.visualY - 30,
+                pos.x,
+                pos.y - 20 + microScatterY,
                 '暗杀!',
                 '#ff00ff'
               );
@@ -1552,9 +1562,11 @@ export class CombatSystem {
             
             // 显示combo提示
             if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
+              const pos = monster.getFloatingTextPosition();
+              const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
               const comboText = game.floatingTextPool.create(
-                monster.visualX + TILE_SIZE / 2,
-                monster.visualY - 30,
+                pos.x,
+                pos.y - 20 + microScatterY,
                 '处决!',
                 '#ff0000'
               );
@@ -1840,9 +1852,9 @@ export class CombatSystem {
           dmgToMon = Math.floor(dmgToMon * 0.5);
           // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-            const offsetX = (Math.random() - 0.5) * 15;
-            const offsetY = -30 - Math.random() * 10;
-            const resistText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, '抵抗', '#999999');
+            const pos = monster.getFloatingTextPosition();
+            const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+            const resistText = game.floatingTextPool.create(pos.x, pos.y - 20 + microScatterY, '抵抗', '#999999');
             game.floatingTexts.push(resistText);
           }
         } else if (incomingElement === ELEMENTS.ELECTRO) {
@@ -1850,9 +1862,9 @@ export class CombatSystem {
           dmgToMon = Math.floor(dmgToMon * 1.5);
           // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-            const offsetX = (Math.random() - 0.5) * 15;
-            const offsetY = -30 - Math.random() * 10;
-            const weaknessText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, '弱点', '#ff9900');
+            const pos = monster.getFloatingTextPosition();
+            const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+            const weaknessText = game.floatingTextPool.create(pos.x, pos.y - 20 + microScatterY, '弱点', '#ff9900');
             game.floatingTexts.push(weaknessText);
           }
         }
@@ -1868,9 +1880,9 @@ export class CombatSystem {
           dmgToMon = Math.floor(dmgToMon * 0.2);
           // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-            const offsetX = (Math.random() - 0.5) * 15;
-            const offsetY = -30 - Math.random() * 10;
-            const etherealText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, '虚无', '#cc00ff');
+            const pos = monster.getFloatingTextPosition();
+            const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+            const etherealText = game.floatingTextPool.create(pos.x, pos.y - 20 + microScatterY, '虚无', '#cc00ff');
             game.floatingTexts.push(etherealText);
           }
         } else {
@@ -1878,9 +1890,9 @@ export class CombatSystem {
           dmgToMon = Math.floor(dmgToMon * 2.0);
           // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
           if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-            const offsetX = (Math.random() - 0.5) * 15;
-            const offsetY = -30 - Math.random() * 10;
-            const etherealText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, '魔法弱点', '#cc00ff');
+            const pos = monster.getFloatingTextPosition();
+            const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+            const etherealText = game.floatingTextPool.create(pos.x, pos.y - 20 + microScatterY, '魔法弱点', '#cc00ff');
             game.floatingTexts.push(etherealText);
           }
         }
@@ -1948,9 +1960,9 @@ export class CombatSystem {
         player.takeDamage(thornsDamage);
         if (game.settings && game.settings.showDamageNumbers !== false) {
           // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
-          const offsetX = (Math.random() - 0.5) * 15;
-          const offsetY = -20 - Math.random() * 10;
-          const reflectText = game.floatingTextPool.create(player.visualX + TILE_SIZE / 2 + offsetX, player.visualY + offsetY, `-${thornsDamage}`, '#ffffff'); // 怪物被动反击飘字为白色
+          const pos = player.getFloatingTextPosition();
+          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+          const reflectText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${thornsDamage}`, '#ffffff'); // 怪物被动反击飘字为白色
           game.floatingTexts.push(reflectText);
         }
       }
@@ -1989,11 +2001,11 @@ export class CombatSystem {
       
       if (game.settings && game.settings.showDamageNumbers !== false) {
         // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
-        const offsetX = (Math.random() - 0.5) * 15;
-        const offsetY = -10 - Math.random() * 10;
+        const pos = monster.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
         const monsterDamageText = game.floatingTextPool.create(
-          monster.visualX + TILE_SIZE / 2 + offsetX, 
-          monster.visualY + offsetY, 
+          pos.x, 
+          pos.y + microScatterY, 
           damageText, 
           damageColor,
           critIcon, // 传递图标索引（数字6）或null
@@ -2030,9 +2042,9 @@ export class CombatSystem {
         if (dmgToPlay > 0) {
           if (game.settings && game.settings.showDamageNumbers !== false) {
             // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
-            const offsetX = (Math.random() - 0.5) * 15;
-            const offsetY = -10 - Math.random() * 10;
-            const playerDamageText = game.floatingTextPool.create(player.visualX + TILE_SIZE / 2 + offsetX, player.visualY + offsetY, `-${dmgToPlay}`, '#ffffff'); // 怪物主动反击飘字为白色
+            const pos = player.getFloatingTextPosition();
+            const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+            const playerDamageText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${dmgToPlay}`, '#ffffff'); // 怪物主动反击飘字为白色
             game.floatingTexts.push(playerDamageText);
           }
           if (dmgToPlay > 10) game.camera.shakeTimer = Math.max(game.camera.shakeTimer || 0, 10);
@@ -2044,9 +2056,9 @@ export class CombatSystem {
             monster.stats.hp = Math.min(monster.stats.maxHp, monster.stats.hp + healAmount);
             if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
               // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
-              const offsetX = (Math.random() - 0.5) * 15;
-              const offsetY = -30 - Math.random() * 10;
-              const healText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY + offsetY, `+${healAmount}`, '#00ff00');
+              const pos = monster.getFloatingTextPosition();
+              const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+              const healText = game.floatingTextPool.create(pos.x, pos.y - 20 + microScatterY, `+${healAmount}`, '#00ff00');
               game.floatingTexts.push(healText);
             }
             if (monster.eliteVisualEffects) monster.eliteVisualEffects.vampiricTintTimer = 100;
@@ -2096,9 +2108,9 @@ export class CombatSystem {
             explosionOccurred = true;
             // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
             if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-              const offsetX = (Math.random() - 0.5) * 15;
-              const offsetY = -10 - Math.random() * 10;
-              const explodeText = game.floatingTextPool.create(player.visualX + TILE_SIZE / 2 + offsetX, player.visualY + offsetY, `-${aoeDamage}`, '#ff00ff');
+              const pos = player.getFloatingTextPosition();
+              const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+              const explodeText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${aoeDamage}`, '#ff00ff');
               game.floatingTexts.push(explodeText);
             }
             if (game.ui) {
@@ -2118,9 +2130,9 @@ export class CombatSystem {
                 
                 // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
                 if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-                  const offsetX = (Math.random() - 0.5) * 15;
-                  const offsetY = -10 - Math.random() * 10;
-                  const aoeText = game.floatingTextPool.create(otherMonster.visualX + TILE_SIZE / 2 + offsetX, otherMonster.visualY + offsetY, `-${aoeDamage}`, '#ff00ff');
+                  const pos = otherMonster.getFloatingTextPosition();
+                  const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+                  const aoeText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${aoeDamage}`, '#ff00ff');
                   game.floatingTexts.push(aoeText);
                 }
                 
@@ -2135,9 +2147,9 @@ export class CombatSystem {
                       player.takeDamage(otherAoeDamage);
                       // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
                       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-                        const offsetX = (Math.random() - 0.5) * 15;
-                        const offsetY = -20 - Math.random() * 10;
-                        const chainText = game.floatingTextPool.create(player.visualX + TILE_SIZE / 2 + offsetX, player.visualY + offsetY, `连锁爆炸! -${otherAoeDamage}`, '#ff00ff');
+                        const pos = player.getFloatingTextPosition();
+                        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+                        const chainText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, `连锁爆炸! -${otherAoeDamage}`, '#ff00ff');
                         game.floatingTexts.push(chainText);
                       }
                     }
@@ -2177,8 +2189,8 @@ export class CombatSystem {
         if (g > 0) {
           player.stats.gold = (player.stats.gold || 0) + g;
           if (game.settings && game.settings.showDamageNumbers !== false) {
-            const offsetX = (Math.random() - 0.5) * 15;
-            const goldText = game.floatingTextPool.create(monster.visualX + TILE_SIZE / 2 + offsetX, monster.visualY - 26, `+${g} 金币`, '#ffd700');
+            const pos = monster.getFloatingTextPosition();
+            const goldText = game.floatingTextPool.create(pos.x, pos.y - 16, `+${g} 金币`, '#ffd700');
             game.floatingTexts.push(goldText);
           }
           if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -2363,9 +2375,9 @@ export class CombatSystem {
       if (player.triggerDodgeAnimation) player.triggerDodgeAnimation();
       // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-        const offsetX = (Math.random() - 0.5) * 15;
-        const offsetY = -10 - Math.random() * 10;
-        const missText = game.floatingTextPool.create(player.visualX + TILE_SIZE / 2 + offsetX, player.visualY + offsetY, 'MISS', '#ffffff');
+        const pos = player.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+        const missText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, 'MISS', '#ffffff');
         game.floatingTexts.push(missText);
       }
       return 'DODGED';
