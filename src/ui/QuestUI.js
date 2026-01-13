@@ -383,7 +383,8 @@ export class QuestUI {
         right: 30px;
         top: 50px;
         width: 431px;
-        height: 327px;
+        height: 314px;
+        overflow: hidden; /* 防止内容溢出到按钮区域 */
         padding-left: 0px;
         padding-right: 0px;
         padding-top: 0px;
@@ -406,6 +407,10 @@ export class QuestUI {
         display: flex;
         flex-direction: column;
         gap: 12px;
+        height: 273px;
+        max-height: 273px;
+        overflow-y: auto; /* 超出自动提交按钮上边界的文本通过滚轮查看 */
+        padding-right: 4px; /* 预留一点空间避免文字被裁掉 */
       }
 
       .quest-title {
@@ -741,10 +746,10 @@ export class QuestUI {
         font-size: 0;
         text-indent: -9999px;
         overflow: hidden;
-        margin-left: 65px;
-        margin-right: 65px;
-        margin-top: 22px;
-        margin-bottom: 22px;
+        margin-left: 61px;
+        margin-right: 61px;
+        margin-top: 17px;
+        margin-bottom: 17px;
       }
 
       .quest-close-button:hover {
@@ -757,21 +762,25 @@ export class QuestUI {
       }
 
       /* 滚动条样式 */
-      .quest-list-content::-webkit-scrollbar {
-        width: 8px;
+      .quest-list {
+        scrollbar-width: none; /* Firefox 隐藏滚动条 */
       }
 
-      .quest-list-content::-webkit-scrollbar-track {
-        background: rgba(0, 0, 0, 0.3);
+      .quest-list::-webkit-scrollbar {
+        width: 0;
+        height: 0; /* WebKit 隐藏滚动条 */
       }
 
-      .quest-list-content::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.5);
-        border-radius: 4px;
+      /* 全局隐藏任务界面滚动条，但保留滚动能力 */
+      .quest-ui-container,
+      .quest-ui-container * {
+        scrollbar-width: none; /* Firefox */
       }
 
-      .quest-list-content::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.7);
+      .quest-ui-container::-webkit-scrollbar,
+      .quest-ui-container *::-webkit-scrollbar {
+        width: 0;
+        height: 0; /* WebKit */
       }
     `;
 

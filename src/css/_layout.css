@@ -157,6 +157,8 @@ canvas {
   pointer-events: auto;
   margin-left: -8px;
   margin-right: -8px;
+  margin-top: -53px;
+  margin-bottom: -53px;
 }
 
 /* Right Sidebar - Character Stats & Actions */
