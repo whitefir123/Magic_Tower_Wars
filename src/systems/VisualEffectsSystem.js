@@ -33,6 +33,16 @@ export class VisualEffectsSystem {
      * }>} */
     this.lootFlights = [];
 
+    /** @type {Array<{
+     * type:string,
+     * x:number,y:number,rotation:number,
+     * scale:number,
+     * totalFrames:number,currentFrame:number,
+     * frameTimer:number,frameDuration:number,
+     * textureKey:string,isCrit:boolean
+     * }>} */
+    this.animations = [];
+
     // 初始化 DOM 元素 (如果不存在则自动创建)
     this.initDOMElements();
   }
@@ -340,6 +350,29 @@ export class VisualEffectsSystem {
   }
 
   /**
+   * 触发刀光特效
+   * @param {number} x - 世界坐标 X（像素）
+   * @param {number} y - 世界坐标 Y（像素）
+   * @param {number} rotation - 旋转角度（弧度）
+   * @param {boolean} isCrit - 是否暴击
+   */
+  triggerSlash(x, y, rotation, isCrit = false) {
+    this.animations.push({
+      type: 'SLASH',
+      x,
+      y,
+      rotation,
+      scale: isCrit ? 1.5 : 1.0,
+      totalFrames: 5,
+      currentFrame: 0,
+      frameTimer: 0,
+      frameDuration: 30, // 每帧持续30ms，总时长约150ms
+      textureKey: 'TEX_VFX_SLASH',
+      isCrit
+    });
+  }
+
+  /**
    * 触发屏幕闪烁
    * @param {'DAMAGE'|'LOOT'|'ULT'|string} type
    */
@@ -380,6 +413,24 @@ export class VisualEffectsSystem {
    */
   update(dt) {
     const dtMs = dt || 16;
+
+    // 更新动画
+    if (this.animations.length) {
+      for (let i = this.animations.length - 1; i >= 0; i--) {
+        const anim = this.animations[i];
+        anim.frameTimer += dtMs;
+        
+        if (anim.frameTimer >= anim.frameDuration) {
+          anim.currentFrame++;
+          anim.frameTimer = 0;
+          
+          if (anim.currentFrame >= anim.totalFrames) {
+            // 动画播放结束，移除
+            this.animations.splice(i, 1);
+          }
+        }
+      }
+    }
 
     // 更新粒子
     if (this.particles.length) {
@@ -463,6 +514,58 @@ export class VisualEffectsSystem {
    * @param {Camera} _camera
    */
   draw(ctx, _camera) {
+    // 绘制动画（在粒子之前绘制，确保刀光在粒子之上）
+    if (this.animations.length) {
+      for (const anim of this.animations) {
+        if (anim.type === 'SLASH') {
+          try {
+            const img = this.game.loader?.getImage(anim.textureKey);
+            if (!img || !img.complete || img.width === 0) {
+              // 图片未加载完成，跳过
+              continue;
+            }
+            
+            const frameWidth = img.width / anim.totalFrames;
+            
+            ctx.save();
+            
+            // 移动到目标位置
+            ctx.translate(anim.x, anim.y);
+            
+            // 旋转到攻击方向
+            ctx.rotate(anim.rotation);
+            
+            // 应用缩放（暴击变大）
+            ctx.scale(anim.scale, anim.scale);
+            
+            // 如果是暴击，使用更亮的混合模式
+            if (anim.isCrit) {
+              ctx.globalCompositeOperation = 'lighter';
+            }
+            
+            // 居中绘制当前帧
+            ctx.drawImage(
+              img,
+              frameWidth * anim.currentFrame, // 源X
+              0, // 源Y
+              frameWidth, // 源宽度
+              img.height, // 源高度
+              -frameWidth / 2, // 目标X（居中）
+              -img.height / 2, // 目标Y（居中）
+              frameWidth, // 目标宽度
+              img.height // 目标高度
+            );
+            
+            ctx.restore();
+          } catch (e) {
+            // 静默处理错误，避免影响游戏运行
+            console.warn('[VFX] Failed to draw slash animation:', e);
+          }
+        }
+      }
+    }
+
+    // 绘制粒子
     if (!this.particles.length) return;
 
     ctx.save();

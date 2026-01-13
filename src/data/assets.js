@@ -102,7 +102,10 @@ export const GAMEPLAY_ASSETS = {
   //   - (2,1) SLOW (减速): 红色的朝下的箭头图标
   //   - (2,2) DEFUP (防御/护盾): 盾牌图标
   // 索引计算：index = row * 3 + col (0-8)
-  SPRITE_STATUS_ICONS: { url: "https://i.postimg.cc/jqB3BxsY/smalltubiao1.png" }
+  SPRITE_STATUS_ICONS: { url: "https://i.postimg.cc/jqB3BxsY/smalltubiao1.png" },
+  
+  // 特效资源
+  TEX_VFX_SLASH: { url: "https://i.postimg.cc/zvmXqRkS/daopin-A1.png" } // 横向排列的序列图，包含5帧挥砍动作
 };
 
 // 合并所有资源（向后兼容）

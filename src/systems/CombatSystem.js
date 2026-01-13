@@ -2002,6 +2002,15 @@ export class CombatSystem {
         );
         game.floatingTexts.push(monsterDamageText);
       }
+      
+      // 触发刀光特效
+      if (game.vfx) {
+        const dx = monster.visualX - player.visualX;
+        const dy = monster.visualY - player.visualY;
+        const angle = Math.atan2(dy, dx);
+        game.vfx.triggerSlash(monster.visualX, monster.visualY, angle, isCrit);
+      }
+      
       if (dmgToMon > 10) game.camera.shakeTimer = Math.max(game.camera.shakeTimer || 0, 10);
       
       // ✅ FIX: 修复死亡反击逻辑 - 如果怪物在受到玩家攻击后HP已经 <= 0，则不应进行普通攻击反击
