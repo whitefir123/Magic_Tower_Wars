@@ -2279,8 +2279,22 @@ export class CombatSystem {
           game.questSystem.check('onKill', { monsterType: monster.type });
         }
         
+        // 符文强化触发判定 (Draft Trigger) - 概率触发以控制数值膨胀
         if (game.roguelike && game.roguelike.triggerDraft) {
-          game.roguelike.triggerDraft('NORMAL', monster, 'MONSTER_KILL');
+          // 基础概率：普通怪 40%
+          let draftChance = 0.4;
+
+          // 精英或 Boss 必定触发
+          if (monster.isElite || monster.type === 'BOSS') {
+            draftChance = 1.0;
+          }
+
+          // 兼容每日挑战固定 RNG；否则使用 Math.random
+          const draftRoll = rng ? rng.next() : Math.random();
+
+          if (draftRoll < draftChance) {
+            game.roguelike.triggerDraft('NORMAL', monster, 'MONSTER_KILL');
+          }
         }
         
         game.map.removeMonster(monster);
