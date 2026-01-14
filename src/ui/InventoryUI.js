@@ -293,7 +293,7 @@ export class InventoryUI {
     
     // 如果是取消操作，直接关闭菜单
     if (action === 'cancel') {
-      // UI 取消音效（优先用“合书”）
+      // ✅ 第二步：右键菜单关闭音效
       if (AudioManager && typeof AudioManager.playBookClose === 'function') {
         AudioManager.playBookClose();
       } else if (AudioManager && typeof AudioManager.playMetalClick === 'function') {
@@ -329,7 +329,7 @@ export class InventoryUI {
 
       if (AudioManager) {
         if (isConsumable) {
-          // 消耗品：根据类型区分是金币类还是普通药水/卷轴
+          // ✅ 第二步：区分物品类型音效
           const id = item.itemId || item.id || (typeof itemId === 'string' ? itemId : '');
           const name = item.nameZh || item.name || '';
           const upperId = typeof id === 'string' ? id.toUpperCase() : '';
@@ -339,9 +339,18 @@ export class InventoryUI {
 
           if (isCoinLike && typeof AudioManager.playCoins === 'function') {
             AudioManager.playCoins({ forceCategory: 'ui' });
-          } else if (typeof AudioManager.playCloth === 'function') {
-            // 药水/卷轴等消耗品
-            AudioManager.playCloth();
+          } else if (upperId && (upperId.includes('SCROLL') || upperId.includes('卷轴'))) {
+            // ✅ 第二步：卷轴音效
+            if (typeof AudioManager.playBookOpen === 'function') {
+              AudioManager.playBookOpen({ volume: 0.6 });
+            }
+          } else {
+            // ✅ 第二步：药水音效（使用 handleSmallLeather 模拟打开瓶塞）
+            if (typeof AudioManager.play === 'function') {
+              AudioManager.play('handleSmallLeather', { volume: 0.6, pitchVar: 0.1 });
+            } else if (typeof AudioManager.playCloth === 'function') {
+              AudioManager.playCloth();
+            }
           }
         } else {
           // 装备：根据材质区分金属类与布甲/皮甲
@@ -385,9 +394,11 @@ export class InventoryUI {
         game.equipFromInventory(slotIndex);
       }
     } else if (action === 'discard') {
-      // 丢弃：统一使用物品落地语义化音效
+      // ✅ 第二步：丢弃物品音效（确保生效）
       if (AudioManager && typeof AudioManager.playItemDrop === 'function') {
         AudioManager.playItemDrop();
+      } else if (AudioManager && typeof AudioManager.play === 'function') {
+        AudioManager.play('leatherDrop', { volume: 0.5, pitchVar: 0.1 });
       } else if (AudioManager && typeof AudioManager.playCloth === 'function') {
         AudioManager.playCloth();
       }
@@ -427,6 +438,11 @@ export class InventoryUI {
   showActionMenu(e, itemId, slotIndex, slotElement) {
     e.preventDefault();
     e.stopPropagation();
+    
+    // ✅ 第二步：右键菜单打开音效
+    if (AudioManager && typeof AudioManager.playBookFlip === 'function') {
+      AudioManager.playBookFlip();
+    }
     
     console.log('showActionMenu called:', { itemId, slotIndex, hasElement: !!slotElement });
 

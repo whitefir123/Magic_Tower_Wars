@@ -1584,9 +1584,13 @@ export class UIManager {
     void container.offsetWidth;
     container.classList.add('active');
     
-    // 4. 播放音效
-    if (window.game && window.game.audio && typeof window.game.audio.playLevelStart === 'function') {
-      window.game.audio.playLevelStart();
+    // ✅ 第四步：楼层进入音效（确保调用）
+    if (window.game && window.game.audio) {
+      if (typeof window.game.audio.playLevelStart === 'function') {
+        window.game.audio.playLevelStart();
+      } else if (typeof window.game.audio.play === 'function') {
+        window.game.audio.play('metalLatch', { volume: 0.6, forceCategory: 'gameplay' });
+      }
     }
   }
 }

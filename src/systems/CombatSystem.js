@@ -439,6 +439,11 @@ export class CombatSystem {
           game.floatingTexts.push(dotText);
         }
         
+        // ✅ 第三步：状态伤害 (DoT) 音效（极低音量）
+        if (game.audio && typeof game.audio.play === 'function') {
+          game.audio.play('cloth2', { volume: 0.2, forceCategory: 'gameplay' });
+        }
+        
         // 检查目标是否死亡
         if (entity.stats.hp <= 0) {
           if (game.map) {
@@ -1127,6 +1132,10 @@ export class CombatSystem {
             const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
             const dodgeText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, '闪避!', '#ffffff');
             game.floatingTexts.push(dodgeText);
+          }
+          // ✅ 第三步：闪避音效
+          if (game.audio && typeof game.audio.play === 'function') {
+            game.audio.play('cloth1', { volume: 0.5, pitchVar: 0.2, forceCategory: 'gameplay' });
           }
           return 'BOUNCE'; // 闪避，不造成伤害
         }
@@ -2377,22 +2386,26 @@ export class CombatSystem {
     else direction = dy > 0 ? 0 : 1;
     if (monster.sprite) monster.sprite.setDirection(direction);
     
-    // 闪避判定
-    // ✅ FIX: 使用 RNG（如果存在，每日挑战模式需要确定性）
-    const rng = (game.isDailyMode && game.rng) ? game.rng : null;
-    const dodgeRate = pTotals.dodge || 0;
-    const dodgeRoll = rng ? rng.next() : Math.random();
-    if (dodgeRoll < dodgeRate) {
-      if (player.triggerDodgeAnimation) player.triggerDodgeAnimation();
-      // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
-      if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-        const pos = player.getFloatingTextPosition();
-        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
-        const missText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, 'MISS', '#ffffff');
-        game.floatingTexts.push(missText);
+      // 闪避判定
+      // ✅ FIX: 使用 RNG（如果存在，每日挑战模式需要确定性）
+      const rng = (game.isDailyMode && game.rng) ? game.rng : null;
+      const dodgeRate = pTotals.dodge || 0;
+      const dodgeRoll = rng ? rng.next() : Math.random();
+      if (dodgeRoll < dodgeRate) {
+        if (player.triggerDodgeAnimation) player.triggerDodgeAnimation();
+        // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
+        if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
+          const pos = player.getFloatingTextPosition();
+          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+          const missText = game.floatingTextPool.create(pos.x, pos.y + microScatterY, 'MISS', '#ffffff');
+          game.floatingTexts.push(missText);
+        }
+        // ✅ 第三步：闪避音效
+        if (game.audio && typeof game.audio.play === 'function') {
+          game.audio.play('cloth1', { volume: 0.5, pitchVar: 0.2, forceCategory: 'gameplay' });
+        }
+        return 'DODGED';
       }
-      return 'DODGED';
-    }
     
     // 1. 基础攻击力计算 (含激怒加成)
     const monsterUsesMagic = ((monster.stats.m_atk || 0) > (monster.stats.p_atk || 0));
@@ -2480,6 +2493,12 @@ export class CombatSystem {
     
     // 6. 应用伤害（使用 hook 处理后的伤害值）
     const actualDamage = damageContext.damage || finalDamage;
+    
+    // ✅ 第三步：格挡音效（如果伤害被完全格挡）
+    if (actualDamage <= 0 && game.audio && typeof game.audio.play === 'function') {
+      game.audio.play('metalPot1', { volume: 0.5, forceCategory: 'gameplay' });
+    }
+    
     player.takeDamage(actualDamage);
     
     // ========== 怪物特性 - 黏液 (STICKY) ==========
@@ -2562,6 +2581,11 @@ export class CombatSystem {
   static handleMonsterDeath(monster, attacker) {
     const game = window.game;
     if (!game || !monster) return;
+
+    // ✅ 第三步：怪物死亡音效（在移除怪物之前）
+    if (game.audio && typeof game.audio.play === 'function') {
+      game.audio.play('leatherDrop', { volume: 0.6, pitchVar: 0.15, forceCategory: 'gameplay' });
+    }
 
     // 视觉效果：死亡烟雾粒子
     if (game.vfx) {

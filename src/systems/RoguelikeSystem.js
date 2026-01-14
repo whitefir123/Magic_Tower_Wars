@@ -466,6 +466,16 @@ export class RoguelikeSystem {
       cardsContainer.appendChild(cardDiv);
     }
     
+    // ✅ 第四步：卡片出现音效
+    const game = this.game;
+    if (game && game.audio) {
+      if (typeof game.audio.playBookOpen === 'function') {
+        game.audio.playBookOpen();
+      } else if (typeof game.audio.play === 'function') {
+        game.audio.play('bookOpen', { volume: 0.6, forceCategory: 'ui' });
+      }
+    }
+    
     // 更新按钮状态
     this.updateButtons();
   }
@@ -530,6 +540,16 @@ export class RoguelikeSystem {
    * 选择符文
    */
   selectRune(option) {
+    // ✅ 第四步：选择卡片音效（天赋解锁音效）
+    const game = this.game;
+    if (game && game.audio) {
+      if (typeof game.audio.playTalentUnlock === 'function') {
+        game.audio.playTalentUnlock();
+      } else if (typeof game.audio.play === 'function') {
+        game.audio.play('metalClick', { volume: 0.7, playbackRate: 1.5, pitchVar: 0, forceCategory: 'ui' });
+      }
+    }
+    
     this.applyRune(option);
     this.closeDraft();
   }

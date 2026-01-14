@@ -2651,6 +2651,10 @@ class Game {
         document.getElementById('bgm-value').textContent = value + '%';
         this.settings.bgmVolume = parseInt(value);
         this.audio.updateVolumes(this.settings); // 实时更新
+        // ✅ 第一步：滑动条音效（实时反馈）
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
+        }
       });
       // 拖拽结束保存设置
       bgmVolume.addEventListener('change', () => {
@@ -2668,6 +2672,10 @@ class Game {
         document.getElementById('sfx-value').textContent = value + '%';
         this.settings.sfxVolume = parseInt(value);
         this.audio.updateVolumes(this.settings);
+        // ✅ 第一步：滑动条音效（实时反馈）
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
+        }
       });
       // 拖拽结束播放预览音效并保存设置
       sfxVolume.addEventListener('change', () => {
@@ -2685,6 +2693,10 @@ class Game {
         document.getElementById('ui-sfx-value').textContent = value + '%';
         this.settings.uiSfxVolume = parseInt(value);
         this.audio.updateVolumes(this.settings);
+        // ✅ 第一步：滑动条音效（实时反馈）
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
+        }
       });
       // 拖拽结束播放预览音效并保存设置
       uiSfxVolume.addEventListener('change', () => {
@@ -2702,8 +2714,9 @@ class Game {
         this.settings.audioEnabled = e.target.checked;
         this.audio.updateVolumes(this.settings);
         this.saveSettings();
-        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
-          this.audio.playMetalClick();
+        // ✅ 第一步：复选框音效
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
         }
       });
     }
@@ -2727,8 +2740,9 @@ class Game {
       particleEffects.addEventListener('change', (e) => {
         this.settings.particleEffects = e.target.checked;
         this.saveSettings();
-        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
-          this.audio.playMetalClick();
+        // ✅ 第一步：复选框音效
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
         }
       });
     }
@@ -2738,8 +2752,9 @@ class Game {
       screenShake.addEventListener('change', (e) => {
         this.settings.screenShake = e.target.checked;
         this.saveSettings();
-        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
-          this.audio.playMetalClick();
+        // ✅ 第一步：复选框音效
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
         }
       });
     }
@@ -2749,8 +2764,9 @@ class Game {
       bloomEffect.addEventListener('change', (e) => {
         this.settings.bloomEffect = e.target.checked;
         this.saveSettings();
-        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
-          this.audio.playMetalClick();
+        // ✅ 第一步：复选框音效
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
         }
       });
     }
@@ -2762,6 +2778,10 @@ class Game {
         const value = parseFloat(e.target.value).toFixed(1);
         document.getElementById('game-speed-value').textContent = value + 'x';
         this.settings.gameSpeed = parseFloat(value);
+        // ✅ 第一步：滑动条音效（实时反馈）
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
+        }
       });
       // 拖拽结束保存设置
       gameSpeed.addEventListener('change', () => {
@@ -2777,8 +2797,9 @@ class Game {
       autoSave.addEventListener('change', (e) => {
         this.settings.autoSave = e.target.checked;
         this.saveSettings();
-        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
-          this.audio.playMetalClick();
+        // ✅ 第一步：复选框音效
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
         }
       });
     }
@@ -2788,8 +2809,9 @@ class Game {
       difficultyScaling.addEventListener('change', (e) => {
         this.settings.difficultyScaling = e.target.checked;
         this.saveSettings();
-        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
-          this.audio.playMetalClick();
+        // ✅ 第一步：复选框音效
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
         }
       });
     }
@@ -2799,8 +2821,9 @@ class Game {
       showDamageNumbers.addEventListener('change', (e) => {
         this.settings.showDamageNumbers = e.target.checked;
         this.saveSettings();
-        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
-          this.audio.playMetalClick();
+        // ✅ 第一步：复选框音效
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
         }
       });
     }
@@ -2813,6 +2836,10 @@ class Game {
         document.getElementById('brightness-value').textContent = value + '%';
         this.settings.brightness = parseInt(value);
         this.applyDisplaySettings();
+        // ✅ 第一步：滑动条音效（实时反馈）
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
+        }
       });
       // 拖拽结束保存设置
       brightness.addEventListener('change', () => {
@@ -2830,6 +2857,10 @@ class Game {
         document.getElementById('contrast-value').textContent = value + '%';
         this.settings.contrast = parseInt(value);
         this.applyDisplaySettings();
+        // ✅ 第一步：滑动条音效（实时反馈）
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
+        }
       });
       // 拖拽结束保存设置
       contrast.addEventListener('change', () => {
@@ -2850,8 +2881,9 @@ class Game {
         if (fpsCounter) {
           fpsCounter.style.display = e.target.checked ? 'block' : 'none';
         }
-        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
-          this.audio.playMetalClick();
+        // ✅ 第一步：复选框音效
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
         }
       });
     }
@@ -2862,8 +2894,9 @@ class Game {
         this.settings.fullscreenMode = e.target.checked;
         this.toggleFullscreen(e.target.checked);
         this.saveSettings();
-        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
-          this.audio.playMetalClick();
+        // ✅ 第一步：复选框音效
+        if (this.settings.audioEnabled && this.audio && this.audio.play) {
+          this.audio.play('metalClick', { volume: 0.4, pitchVar: 0.1, forceCategory: 'ui' });
         }
       });
     }
@@ -3722,6 +3755,10 @@ class Game {
               return; // 阻止选择
             }
           }
+          // ✅ 第四步：角色选择音效
+          if (this.audio && typeof this.audio.playMetalClick === 'function') {
+            this.audio.playMetalClick();
+          }
           this.selectCharacter(charId);
         });
         
@@ -4071,6 +4108,11 @@ class Game {
     if (btnStart) {
       btnStart.addEventListener('click', async () => {
         try {
+          // ✅ 第一步：通用按钮音效
+          if (this.audio && this.audio.playUIOpen) {
+            this.audio.playUIOpen();
+          }
+          
           if (this.audio) {
             await this.audio.resume();
             this.audio.playRandomBgm(); // Changed from playBgm('dungeon_theme')
@@ -4125,6 +4167,10 @@ class Game {
 
     if (btnBestiary) {
       btnBestiary.addEventListener('click', () => {
+        // ✅ 第一步：通用按钮音效
+        if (this.audio && this.audio.playUIOpen) {
+          this.audio.playUIOpen();
+        }
         if (this.ui && this.ui.openBestiary) {
           this.ui.openBestiary();
         }
@@ -4137,6 +4183,10 @@ class Game {
       // Issue 1 Fix: 添加统一的菜单按钮样式类
       btnTalents.classList.add('menu-btn');
       btnTalents.addEventListener('click', () => {
+        // ✅ 第一步：通用按钮音效
+        if (this.audio && this.audio.playUIOpen) {
+          this.audio.playUIOpen();
+        }
         this.openTalentTree();
       });
     }
@@ -4145,6 +4195,10 @@ class Game {
     const btnLeaderboard = document.getElementById('btn-leaderboard');
     if (btnLeaderboard) {
       btnLeaderboard.addEventListener('click', () => {
+        // ✅ 第一步：通用按钮音效
+        if (this.audio && this.audio.playUIOpen) {
+          this.audio.playUIOpen();
+        }
         this.openLeaderboard();
       });
     }
@@ -4155,6 +4209,11 @@ class Game {
       btnDailyChallenge.addEventListener('click', async () => {
         try {
           console.log('[Game] Daily Challenge button clicked');
+          
+          // ✅ 第一步：通用按钮音效
+          if (this.audio && this.audio.playUIOpen) {
+            this.audio.playUIOpen();
+          }
           
           if (this.audio) {
             await this.audio.resume();
@@ -4177,12 +4236,20 @@ class Game {
     const btnAchievements = document.getElementById('btn-achievements');
     if (btnAchievements) {
       btnAchievements.addEventListener('click', () => {
+        // ✅ 第一步：通用按钮音效
+        if (this.audio && this.audio.playUIOpen) {
+          this.audio.playUIOpen();
+        }
         this.openAchievements();
       });
     }
 
     if (btnSettings) {
       btnSettings.addEventListener('click', () => {
+        // ✅ 第一步：通用按钮音效
+        if (this.audio && this.audio.playUIOpen) {
+          this.audio.playUIOpen();
+        }
         this.openSettings();
       });
     }
@@ -4298,6 +4365,13 @@ class Game {
    * 保存游戏状态并跳转到 game.html
    */
   startGameWithRedirect() {
+    // ✅ 第四步：开始冒险按钮音效
+    if (this.audio && typeof this.audio.playDoorOpen === 'function') {
+      this.audio.playDoorOpen();
+    } else if (this.audio && typeof this.audio.play === 'function') {
+      this.audio.play('doorOpen1', { volume: 0.7, forceCategory: 'gameplay' });
+    }
+    
     // 1. 显示加载界面（视觉反馈）
     this.loadingUI.show('正在进入世界...');
     this.loadingUI.setProgress(100); // 设为满，表示准备就绪

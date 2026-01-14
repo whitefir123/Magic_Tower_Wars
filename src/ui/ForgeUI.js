@@ -646,6 +646,10 @@ export class ForgeUI {
     const tabButtons = this.elements.overlay.querySelectorAll('.forge-tab-btn');
     tabButtons.forEach(btn => {
       btn.addEventListener('click', () => {
+        // ✅ 第一步：标签页切换音效
+        if (AudioManager && typeof AudioManager.playBookFlip === 'function') {
+          AudioManager.playBookFlip();
+        }
         const mode = btn.dataset.mode;
         this.switchMode(mode);
       });
