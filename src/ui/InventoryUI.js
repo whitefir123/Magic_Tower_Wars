@@ -325,9 +325,22 @@ export class InventoryUI {
     const itemName = item.nameZh || item.name;
 
     if (action === 'use') {
-      // 装备/使用：布料/物品摩擦感
-      if (AudioManager && typeof AudioManager.playCloth === 'function') {
-        AudioManager.playCloth();
+      // 根据物品类型区分金属类装备与布料/其他
+      const type = item.type || '';
+      const upperType = typeof type === 'string' ? type.toUpperCase() : '';
+      const isEquipmentType = ['WEAPON', 'HELM', 'ARMOR', 'BOOTS', 'RING', 'AMULET'].includes(upperType);
+      const armorType = item.armorType || item.material || '';
+      const upperArmorType = typeof armorType === 'string' ? armorType.toUpperCase() : '';
+      const isClothArmor = upperArmorType === 'CLOTH' || (Array.isArray(item.tags) && item.tags.includes('cloth'));
+      const isMetalEquip = isEquipmentType && !isClothArmor;
+
+      // 使用/装备：金属类播放金属声，其他播放布料音效
+      if (AudioManager) {
+        if (isMetalEquip && typeof AudioManager.play === 'function') {
+          AudioManager.play('metalClick', { volume: 0.5 });
+        } else if (typeof AudioManager.playCloth === 'function') {
+          AudioManager.playCloth();
+        }
       }
       console.log('Using item:', itemName);
       
@@ -718,11 +731,19 @@ export class InventoryUI {
             game.player.swapInventory(data.index, idx);
             this.update(game.player);
             if (game.ui) game.ui.updateStats(game.player);
+            // 背包内拖拽整理后的放下音效
+            if (AudioManager && typeof AudioManager.play === 'function') {
+              AudioManager.play('beltHandle1', { volume: 0.5, pitchVar: 0.1 });
+            }
           } else if (data.source === 'equip') {
             // 从装备栏卸下
             if (game.player.unequipToSlot(data.slot, idx)) {
               this.update(game.player);
               if (game.ui) game.ui.updateStats(game.player);
+              // 从装备栏卸下并放入背包的放下音效
+              if (AudioManager && typeof AudioManager.play === 'function') {
+                AudioManager.play('beltHandle1', { volume: 0.5, pitchVar: 0.1 });
+              }
             }
           }
         };
@@ -808,7 +829,13 @@ export class InventoryUI {
         // 设置拖拽（装备可拖拽，消耗品不可）
         if (!isConsumable) {
           slot.setAttribute('draggable', 'true');
-          slot.ondragstart = (ev) => setDragData(ev, { source: 'inv', index: idx, itemId: itemId });
+          slot.ondragstart = (ev) => {
+            setDragData(ev, { source: 'inv', index: idx, itemId: itemId });
+            // 从背包拿起装备时的布料摩擦音效
+            if (AudioManager && typeof AudioManager.play === 'function') {
+              AudioManager.play('cloth1', { volume: 0.4, pitchVar: 0.1 });
+            }
+          };
         } else {
           slot.removeAttribute('draggable');
         }
@@ -895,6 +922,10 @@ export class InventoryUI {
                   game.equipFromInventory(data.index);
                   this.update(game.player);
                   if (game.ui) game.ui.updateStats(game.player);
+                  // 从背包装备到空装备槽时的放下/扣紧音效
+                  if (AudioManager && typeof AudioManager.play === 'function') {
+                    AudioManager.play('beltHandle1', { volume: 0.5, pitchVar: 0.1 });
+                  }
                 }
               }
             };
@@ -950,6 +981,10 @@ export class InventoryUI {
                 game.equipFromInventory(data.index);
                 this.update(game.player);
                 if (game.ui) game.ui.updateStats(game.player);
+                // 用背包物品替换已装备物品时的放下/扣紧音效
+                if (AudioManager && typeof AudioManager.play === 'function') {
+                  AudioManager.play('beltHandle1', { volume: 0.5, pitchVar: 0.1 });
+                }
               }
             }
           };
@@ -1016,7 +1051,13 @@ export class InventoryUI {
           // FIX: 绑定提示框 - 传递物品对象或ID
           this.tooltipManager.bind(socket, itemOrId);
           socket.setAttribute('draggable', 'true');
-          socket.ondragstart = (ev) => setDragData(ev, { source: 'equip', slot: slotType, itemId: itemId });
+          socket.ondragstart = (ev) => {
+            setDragData(ev, { source: 'equip', slot: slotType, itemId: itemId });
+            // 从装备槽拿起物品时的布料摩擦音效
+            if (AudioManager && typeof AudioManager.play === 'function') {
+              AudioManager.play('cloth1', { volume: 0.4, pitchVar: 0.1 });
+            }
+          };
           
           // 左键单击装备槽显示操作菜单
           socket.onclick = (e) => {

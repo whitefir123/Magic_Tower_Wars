@@ -332,7 +332,9 @@ export class CombatSystem {
             game.totalXpGained = (game.totalXpGained || 0) + xp;
             const leveled = attacker.gainXp(xp);
             // 移除 XP 飘字
-            
+            if (leveled && game.audio && typeof game.audio.playLevelUp === 'function') {
+              game.audio.playLevelUp();
+            }
             if (leveled && game.roguelike && game.roguelike.triggerDraft) {
               game.roguelike.triggerDraft('ELITE', enemy, 'LEVEL_UP');
             }
@@ -464,7 +466,9 @@ export class CombatSystem {
                   game.totalXpGained = (game.totalXpGained || 0) + xp;
                   const leveled = source.gainXp(xp);
                   // 移除 XP 飘字
-                  
+                  if (leveled && game.audio && typeof game.audio.playLevelUp === 'function') {
+                    game.audio.playLevelUp();
+                  }
                   if (leveled && game.roguelike && game.roguelike.triggerDraft) {
                     game.roguelike.triggerDraft('ELITE', entity, 'LEVEL_UP');
                   }
@@ -612,7 +616,9 @@ export class CombatSystem {
                 game.totalXpGained = (game.totalXpGained || 0) + xp;
                 const leveled = source.gainXp(xp);
                 // 移除 XP 飘字
-                
+                if (leveled && game.audio && typeof game.audio.playLevelUp === 'function') {
+                  game.audio.playLevelUp();
+                }
                 if (leveled && game.roguelike && game.roguelike.triggerDraft) {
                   game.roguelike.triggerDraft('ELITE', nearestEnemy, 'LEVEL_UP');
                 }
