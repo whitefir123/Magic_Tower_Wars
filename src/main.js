@@ -1790,17 +1790,24 @@ class Game {
           }
         }
         
-        const targetX = pendingCombat.x; 
-        const targetY = pendingCombat.y; 
-        this.player.x = targetX; 
-        this.player.y = targetY; 
-        this.player.visualX = targetX*TILE_SIZE; 
-        this.player.visualY = targetY*TILE_SIZE; 
+        // const targetX = pendingCombat.x; // 不需要移动到目标位置
+        // const targetY = pendingCombat.y; 
+        
+        // 修改：击杀后停留在原地，不进入怪物的格子
+        // this.player.x = targetX; // 删除此行
+        // this.player.y = targetY; // 删除此行
+        
+        // 重置视觉位置为玩家当前格子（原地）
+        this.player.visualX = this.player.x * TILE_SIZE; 
+        this.player.visualY = this.player.y * TILE_SIZE; 
+        
+        // 确保目标位置也重置为原地，停止移动动画
         this.player.destX = this.player.visualX; 
         this.player.destY = this.player.visualY; 
+        
         this.player.pendingCombat = null; 
         this.player.isMoving = false;
-        // ✅ FIX: Post-kill movement bug - Add delay to prevent immediate movement into empty tile
+        // 保留击杀后的输入延迟，防止误操作
         this.player.postKillDelay = Date.now() + 150; // 150ms grace period after kill
       }
       else if (res === 'BOUNCE') { this.player.cancelCombatSlide(); this.player.isMoving = true; }
