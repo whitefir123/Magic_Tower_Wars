@@ -309,6 +309,26 @@ export class SettingsUI {
       this.elements.overlay = overlay;
     }
     
+    // 新手引导重置按钮事件监听器（在 SettingsUI 中设置）
+    const resetTutorialBtn = this.elements.overlay.querySelector('#reset-tutorial-btn');
+    if (resetTutorialBtn) {
+      resetTutorialBtn.addEventListener('click', () => {
+        // FIX: 通过 this.game 访问系统
+        if (this.game && this.game.metaSaveSystem) {
+          this.game.metaSaveSystem.resetTutorial();
+          
+          if (this.game.ui && this.game.ui.logMessage) {
+            this.game.ui.logMessage('引导已重置', 'info');
+          }
+          
+          // 如果引导系统已初始化，也重置它
+          if (this.game.tutorial) {
+            this.game.tutorial.reset();
+          }
+        }
+      });
+    }
+    
     console.log('✓ SettingsUI DOM elements initialized:', {
       overlay: !!this.elements.overlay
     });

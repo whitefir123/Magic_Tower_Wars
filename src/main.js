@@ -2828,6 +2828,7 @@ class Game {
     const resetTutorialBtn = document.getElementById('reset-tutorial-btn');
     if (resetTutorialBtn) {
       resetTutorialBtn.addEventListener('click', () => {
+        // FIX: 通过 this.game 访问系统（虽然这里 this 已经是 Game 实例，但保持一致性）
         if (this.metaSaveSystem) {
           this.metaSaveSystem.resetTutorial();
           if (this.ui && this.ui.logMessage) {
