@@ -1522,7 +1522,8 @@ export class MapSystem {
         }
         if (this.grid[y][x] === TILE.DOOR) {
           const doorMidY = (y + 0.5) * TILE_SIZE;
-          list.push({ y: doorMidY, type: 'door', x: x * TILE_SIZE, z: 1 });
+          // 添加 gy: y 以记录真实网格位置
+          list.push({ y: doorMidY, type: 'door', x: x * TILE_SIZE, gy: y, z: 1 });
         }
       }
     }
@@ -1662,7 +1663,13 @@ export class MapSystem {
       else if (e.type === 'door') {
         // 绘制门
         if (doorImg) {
-          this._draw64(ctx, doorImg, e.x / TILE_SIZE, e.y / TILE_SIZE);
+          // 修复：使用保存的网格坐标 gy，并向上微调 8 像素(-0.25格)以修正视觉位置
+          const yOffset = -8;
+          const drawX = e.x;
+          const drawY = e.gy * TILE_SIZE + yOffset;
+          
+          // 绘制为标准 TILE_SIZE 大小 (32x32)
+          ctx.drawImage(doorImg, drawX, drawY, TILE_SIZE, TILE_SIZE);
         }
       }
     });
