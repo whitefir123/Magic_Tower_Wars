@@ -4,6 +4,24 @@ import { createStandardizedItem, createDynamicConsumable } from './data/items.js
 import { getSetConfig } from './data/sets.js';
 import { Sprite, FloatingText } from './utils.js';
 
+// 视觉特效配置：飘字位置修正
+const FLOATING_TEXT_CONFIG = {
+  PLAYER: {
+    baseY: -32, // 基础高度，头顶上方
+    // 基于朝向的精细修正 (0:下, 1:上, 2:左, 3:右)
+    dirOffset: {
+      0: { x: -4, y: 4 },  // 正面/下：修正原本"偏右上"的问题，向左下微调
+      1: { x: 0, y: 0 },   // 背面/上：默认居中
+      2: { x: 6, y: 0 },   // 朝左：身体视觉偏右，飘字向右修
+      3: { x: -6, y: 0 }   // 朝右：身体视觉偏左，飘字向左修
+    }
+  },
+  MONSTER: {
+    baseY: -25, // 怪物基础高度
+    defaultX: 0 // 怪物默认 X 修正
+  }
+};
+
 export class Entity {
   constructor(x, y) {
     this.x = x; this.y = y;
@@ -820,9 +838,10 @@ export class Monster extends Entity {
    * @returns {{x: number, y: number}} 飘字的基准坐标
    */
   getFloatingTextPosition() {
+    const config = FLOATING_TEXT_CONFIG.MONSTER;
     return {
-      x: this.visualX + (TILE_SIZE / 2), // 怪物默认居中
-      y: this.visualY + VISUAL_CONFIG.MONSTER_TEXT_OFFSET_Y
+      x: this.visualX + (TILE_SIZE / 2) + config.defaultX,
+      y: this.visualY + config.baseY
     };
   }
   
@@ -2763,23 +2782,16 @@ export class Player extends Entity {
    * @returns {{x: number, y: number}} 飘字的基准坐标
    */
   getFloatingTextPosition() {
-    // 获取方向：2=左, 3=右
+    const config = FLOATING_TEXT_CONFIG.PLAYER;
+    // 获取方向 (0:下, 1:上, 2:左, 3:右)，默认为 0
     const direction = this.sprite?.direction ?? 0;
     
-    // 根据方向计算 X 偏移
-    let dirOffsetX = 0;
-    if (direction === 3) {
-      // 向右：使用配置的偏移值
-      dirOffsetX = VISUAL_CONFIG.PLAYER_TEXT_OFFSET_X;
-    } else if (direction === 2) {
-      // 向左：取反偏移值
-      dirOffsetX = -VISUAL_CONFIG.PLAYER_TEXT_OFFSET_X;
-    }
-    // 其他方向（上下）：dirOffsetX = 0
+    // 获取当前方向的偏移配置，如果不存在则使用默认值 { x: 0, y: 0 }
+    const offset = config.dirOffset[direction] || { x: 0, y: 0 };
     
     return {
-      x: this.visualX + (TILE_SIZE / 2) + dirOffsetX,
-      y: this.visualY + VISUAL_CONFIG.PLAYER_TEXT_OFFSET_Y
+      x: this.visualX + (TILE_SIZE / 2) + offset.x,
+      y: this.visualY + config.baseY + offset.y
     };
   }
 }
