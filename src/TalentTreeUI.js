@@ -486,69 +486,75 @@ export class TalentTreeUI {
      * 显示工具提示
      */
     showTooltip(node, isUnlocked, isReachable, canAfford, event) {
+        // 1. 标题区域
         let html = `
             <div style="margin-bottom: 8px;">
-                <div style="font-size: 18px; color: ${this.getNodeTypeColor(node.type)}; font-weight: bold;">
+                <div style="font-size: 18px; color: ${this.getNodeTypeColor(node.type)}; font-weight: bold; letter-spacing: 0.5px;">
                     ${node.name}
                 </div>
-                <div style="font-size: 12px; color: #aaa; margin-top: 4px;">
+                <div style="font-size: 12px; color: #795548; margin-top: 4px;">
                     ${node.type}
                 </div>
             </div>
-            <div style="margin: 10px 0; padding: 8px 0; border-top: 1px solid #555; border-bottom: 1px solid #555; color: #ddd;">
+            <div style="margin: 10px 0; padding: 8px 0; border-top: 1px solid rgba(62, 39, 35, 0.2); border-bottom: 1px solid rgba(62, 39, 35, 0.2); color: #5d4037; line-height: 1.5;">
                 ${node.description}
             </div>
         `;
         
-        // 属性加成
+        // 2. 属性加成
         if (node.stats && Object.keys(node.stats).length > 0) {
             html += '<div style="margin: 8px 0;">';
             Object.entries(node.stats).forEach(([key, value]) => {
                 const statName = this.getStatName(key);
-                const color = value > 0 ? '#0f0' : '#f00';
+                // ✅ 修改：数值颜色改为 深绿色(正) / 深红色(负)
+                const valueColor = value > 0 ? '#1b5e20' : '#b71c1c';
                 
-                // ✅ 格式化数值：百分比属性显示为百分比，其他显示为数值
                 let displayValue = value;
-                // 检查是否为百分比属性（rate, percent, pen, dodge, dmg, speed）
                 if (key.includes('rate') || key.includes('percent') || key.includes('pen') || key.includes('dodge') || key.includes('dmg') || key.includes('speed')) {
-                    // 百分比属性：转换为百分比显示
-                    // 注意：如果值已经大于1（如 crit_dmg: 50），则直接显示为百分比；否则乘以100
                     if (Math.abs(value) >= 1 && (key.includes('dmg') || key.includes('speed'))) {
-                        // crit_dmg 和 atk_speed 可能存储为整数（如 50 表示 50%）
                         displayValue = (value > 0 ? '+' : '') + value + '%';
                     } else {
-                        // 其他百分比属性（如 0.05 表示 5%）
                         displayValue = (value > 0 ? '+' : '') + Math.round(value * 100) + '%';
                     }
                 } else {
-                    // 普通数值属性：直接显示
                     displayValue = (value > 0 ? '+' : '') + value;
                 }
                 
-                html += `<div style="color: ${color}; font-size: 14px;">${statName}: ${displayValue}</div>`;
+                // 属性名使用较浅的棕色 #6d4c41，数值加粗
+                html += `<div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin-bottom: 2px;">
+                            <span style="color: #6d4c41;">${statName}</span>
+                            <span style="color: ${valueColor}; font-weight: 700;">${displayValue}</span>
+                         </div>`;
             });
             html += '</div>';
         }
         
-        // 关键石效果
+        // 3. 关键石效果 (背景调深一点的橙色半透明)
         if (node.keystoneEffect) {
-            html += `<div style="margin: 8px 0; padding: 8px; background: rgba(255, 170, 0, 0.2); border-left: 3px solid #ffaa00; color: #ffaa00;">
-                <strong>关键石效果</strong>
+            html += `<div style="margin: 8px 0; padding: 8px; background: rgba(230, 81, 0, 0.1); border: 1px solid rgba(230, 81, 0, 0.3); border-radius: 4px; color: #e65100;">
+                <strong style="display:block; margin-bottom:4px;">★ 关键石效果</strong>
+                <span style="font-size: 0.9em;">此处显示具体效果描述...</span>
             </div>`;
         }
         
-        // 状态信息
-        html += '<div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #555; font-size: 13px;">';
+        // 4. 底部状态栏
+        html += '<div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(62, 39, 35, 0.2); font-size: 13px;">';
         if (isUnlocked) {
-            html += '<div style="color: #0f0;">✓ 已解锁</div>';
+            html += '<div style="color: #1b5e20; font-weight: bold;">✓ 已解锁</div>';
         } else {
-            html += `<div style="color: ${canAfford ? '#ffd700' : '#f00'};">消耗: ${node.cost} 灵魂水晶</div>`;
+            // 消耗显示：如果不足显示为深红色，否则为深金色/深橙色
+            const costColor = canAfford ? '#bf360c' : '#b71c1c'; 
+            html += `<div style="color: ${costColor}; display: flex; align-items: center; gap: 4px;">
+                <span>消耗: ${node.cost} 灵魂水晶</span>
+                ${!canAfford ? '<span style="font-weight:bold;">(不足)</span>' : ''}
+            </div>`;
+            
             if (!isReachable) {
-                html += '<div style="color: #f00; margin-top: 4px;">⚠️ 需要先解锁前置节点</div>';
+                html += '<div style="color: #b71c1c; margin-top: 4px;">⚠️ 需要先解锁前置节点</div>';
             } else if (!canAfford) {
-                html += '<div style="color: #f00; margin-top: 4px;">⚠️ 灵魂水晶不足</div>';
+                // 已在上面显示
             } else {
-                html += '<div style="color: #0f0; margin-top: 4px;">✓ 点击解锁</div>';
+                html += '<div style="color: #1b5e20; margin-top: 4px; font-weight:bold;">✓ 点击解锁</div>';
             }
         }
         html += '</div>';
@@ -581,12 +587,12 @@ export class TalentTreeUI {
      */
     getNodeTypeColor(type) {
         const colors = {
-            [TALENT_NODE_TYPES.ROOT]: '#ffd700',
-            [TALENT_NODE_TYPES.SMALL]: '#5a8fd5',
-            [TALENT_NODE_TYPES.MEDIUM]: '#7a5fd5',
-            [TALENT_NODE_TYPES.KEYSTONE]: '#ffaa00'
+            [TALENT_NODE_TYPES.ROOT]: '#bcaaa4',   // 根节点：浅棕灰
+            [TALENT_NODE_TYPES.SMALL]: '#3e2723',  // ✅ 修改：深棕色（用于标题）
+            [TALENT_NODE_TYPES.MEDIUM]: '#673ab7', // 中节点：深紫色
+            [TALENT_NODE_TYPES.KEYSTONE]: '#e65100' // 关键石：深橙色
         };
-        return colors[type] || '#fff';
+        return colors[type] || '#3e2723';
     }
     
     /**
