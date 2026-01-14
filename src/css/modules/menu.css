@@ -573,8 +573,10 @@
   position: absolute;
   top: 70px;  /* 根据面板背景图调整位置 */
   right: 50px;
-  width: 140px;
-  height: 48px;
+  width: 110px;
+  height: 70px;
+  margin-top: 492px;
+  margin-bottom: 492px;
   background: none;
   border: none;
   cursor: pointer;
@@ -598,6 +600,11 @@
 .btn-return-text {
   position: relative;
   z-index: 2; /* 文字在顶层 */
+  width: 105px;
+  height: 90px;
+  padding: 0;
+  margin-top: 0;
+  margin-bottom: 0;
   font-family: var(--font-header);
   color: #e0d6c8;
   font-size: 1.1rem;
