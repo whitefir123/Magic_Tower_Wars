@@ -1378,7 +1378,7 @@ export class Player extends Entity {
     // 脚步声计时器（用于控制脚步声播放频率）
     this.footstepTimer = 0;
     // 将脚步声间隔从 400ms 调整为 250ms，使移动反馈更紧凑
-    this.footstepInterval = 180; // 每250ms播放一次脚步声
+    this.footstepInterval = 250; // 每250ms播放一次脚步声
     
     // ========== 命运符文系统 2.1：初始化符文状态容器 ==========
     this.runeState = {
@@ -2569,9 +2569,14 @@ export class Player extends Entity {
       
       leveled = true;
       
-      // 显示升级消息
-      if (window.game && window.game.ui) {
-        window.game.ui.logMessage('升级！全属性 +1', 'gain');
+      // 显示升级消息 + 播放升级音效
+      if (window.game) {
+        if (window.game.ui) {
+          window.game.ui.logMessage('升级！全属性 +1', 'gain');
+        }
+        if (window.game.audio && window.game.audio.playLevelUp) {
+          window.game.audio.playLevelUp();
+        }
       }
     } 
     if (window.game && window.game.ui) window.game.ui.updateStats(this); 

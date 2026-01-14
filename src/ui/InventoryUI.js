@@ -5,6 +5,7 @@ import { ICON_GRID_COLS, ICON_GRID_ROWS, EQUIPMENT_DB } from '../constants.js';
 import { globalTooltipManager } from '../utils/TooltipManager.js';
 import { getSetConfig } from '../data/sets.js';
 import { ITEM_QUALITY } from '../data/loot.js';
+import AudioManager from '../audio/AudioManager.js';
 
 /**
  * InventoryUI - 背包和装备界面管理器
@@ -292,6 +293,12 @@ export class InventoryUI {
     
     // 如果是取消操作，直接关闭菜单
     if (action === 'cancel') {
+      // UI 取消音效（优先用“合书”）
+      if (AudioManager && typeof AudioManager.playBookClose === 'function') {
+        AudioManager.playBookClose();
+      } else if (AudioManager && typeof AudioManager.playMetalClick === 'function') {
+        AudioManager.playMetalClick();
+      }
       this.hideActionMenu();
       return;
     }
@@ -318,6 +325,10 @@ export class InventoryUI {
     const itemName = item.nameZh || item.name;
 
     if (action === 'use') {
+      // 装备/使用：布料/物品摩擦感
+      if (AudioManager && typeof AudioManager.playCloth === 'function') {
+        AudioManager.playCloth();
+      }
       console.log('Using item:', itemName);
       
       if (isFromEquipment) {
@@ -343,6 +354,12 @@ export class InventoryUI {
         game.equipFromInventory(slotIndex);
       }
     } else if (action === 'discard') {
+      // 丢弃：皮革落地（若不可用则退回布料音效）
+      if (AudioManager && typeof AudioManager.play === 'function') {
+        AudioManager.play('leatherDrop');
+      } else if (AudioManager && typeof AudioManager.playCloth === 'function') {
+        AudioManager.playCloth();
+      }
       console.log('Discarding item:', itemName);
       
       if (isFromEquipment) {
@@ -496,6 +513,9 @@ export class InventoryUI {
    */
   open() {
     console.log('🎒 Opening inventory...');
+    if (AudioManager && typeof AudioManager.playCloth === 'function') {
+      AudioManager.playCloth();
+    }
     
     if (!this.elements.overlay) {
       console.log('🎒 Initializing DOM elements...');
@@ -548,6 +568,9 @@ export class InventoryUI {
    */
   close() {
     console.log('🎒 Closing inventory...');
+    if (AudioManager && typeof AudioManager.playCloth === 'function') {
+      AudioManager.playCloth();
+    }
     
     if (this.elements.overlay) {
       // 使用平滑过渡隐藏
@@ -764,6 +787,9 @@ export class InventoryUI {
           e.preventDefault();
           e.stopPropagation();
           console.log('Inventory slot clicked:', idx, itemId);
+          if (AudioManager && typeof AudioManager.playMetalClick === 'function') {
+            AudioManager.playMetalClick();
+          }
           this.showActionMenu(e, itemId, idx, slot);
         };
         
@@ -997,6 +1023,9 @@ export class InventoryUI {
             e.preventDefault();
             e.stopPropagation();
             console.log('Equipment socket clicked:', slotType, itemId);
+            if (AudioManager && typeof AudioManager.playMetalClick === 'function') {
+              AudioManager.playMetalClick();
+            }
             this.showActionMenu(e, itemId, null, socket);
           };
           

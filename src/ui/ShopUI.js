@@ -1,6 +1,8 @@
 // ShopUI.js - 商店界面
 // 独立管理商店UI的所有渲染和交互逻辑
 
+import AudioManager from '../audio/AudioManager.js';
+
 /**
  * ShopUI - 商店界面管理器
  * 负责渲染商店、价格显示、购买逻辑等
@@ -172,6 +174,10 @@ export class ShopUI {
     }
 
     if (this.elements.overlay) {
+      // 打开商店：金币/交易提示
+      if (AudioManager && typeof AudioManager.playCoins === 'function') {
+        AudioManager.playCoins({ forceCategory: 'ui' });
+      }
       // 暂停游戏
       const game = window.game;
       if (game) {
@@ -220,6 +226,10 @@ export class ShopUI {
    */
   close() {
     if (this.elements.overlay) {
+      // 关闭商店：合书/收起
+      if (AudioManager && typeof AudioManager.playBookClose === 'function') {
+        AudioManager.playBookClose();
+      }
       // 使用平滑过渡隐藏
       this.elements.overlay.classList.remove('overlay-fade-in');
       this.elements.overlay.classList.add('overlay-fade-out');
@@ -375,6 +385,10 @@ export class ShopUI {
     
     // 检查金币是否足够
     if ((game.player.stats.gold ?? 0) < actualPrice) {
+      // 购买失败：锁扣/拒绝反馈
+      if (AudioManager && typeof AudioManager.play === 'function') {
+        AudioManager.play('metalLatch');
+      }
       if (game.ui && game.ui.logMessage) {
         game.ui.logMessage('金币不足！', 'info');
       }
@@ -383,6 +397,11 @@ export class ShopUI {
     
     // 扣除金币（使用实际价格）
     game.player.stats.gold -= actualPrice;
+
+    // 购买成功：金币声
+    if (AudioManager && typeof AudioManager.playCoins === 'function') {
+      AudioManager.playCoins({ forceCategory: 'ui' });
+    }
     
     // 应用购买效果
     if (type === 'atk') {

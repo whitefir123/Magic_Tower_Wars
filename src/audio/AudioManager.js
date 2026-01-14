@@ -45,14 +45,25 @@ export class AudioManager {
         knifeSlice1: 'assets/audio/sfx/knifeSlice.ogg',  // 普通攻击
         knifeSlice2: 'assets/audio/sfx/knifeSlice2.ogg', // 普通攻击变体
         drawKnife: 'assets/audio/sfx/drawKnife1.ogg',
-        // 通用受击音效（攻击/受击统一使用）
+        // 通用受击音效（为兼容保留老key）
         hitHurt: 'assets/audio/sfx/Hit_hurt 23.wav',
+
+        // COMBAT - Split keys to prevent throttling collisions
+        // 玩家打中敌人
+        attackImpact: 'assets/audio/sfx/Hit_hurt 23.wav',
+        // 敌人打中玩家
+        playerHit: 'assets/audio/sfx/Hit_hurt 23.wav',
         
         // 战斗 - 受击 (金属盔甲声)
         metalPot1: 'assets/audio/sfx/metalPot1.ogg',
         metalPot2: 'assets/audio/sfx/metalPot2.ogg',
         metalPot3: 'assets/audio/sfx/metalPot3.ogg',
         
+        // UI / EVENTS - 交互提示与事件反馈
+        levelUp: 'assets/audio/sfx/handleCoins2.ogg',   // 升级提示音（减速播放营造铃声感）
+        questComplete: 'assets/audio/sfx/bookFlip2.ogg',// 任务完成
+        die: 'assets/audio/sfx/metalLatch.ogg',         // 玩家死亡的沉重提示
+
         // 物品/装备
         cloth1: 'assets/audio/sfx/cloth1.ogg',
         beltHandle1: 'assets/audio/sfx/beltHandle1.ogg',
@@ -278,13 +289,14 @@ export class AudioManager {
     audio.volume = Math.min(1.0, baseVolume * categoryVolume * this.masterVolume);
     audio.loop = options.loop || false;
     
-    // 音调
+    // 音调 / 播放速度
     const pitchVar = options.pitchVar || 0;
+    const baseRate = options.playbackRate || 1.0;
     if (pitchVar > 0) {
-      const randomPitch = 1.0 + (Math.random() * 2 - 1) * pitchVar;
+      const randomPitch = baseRate + (Math.random() * 2 - 1) * pitchVar;
       audio.playbackRate = Math.max(0.5, Math.min(2.0, randomPitch));
     } else {
-      audio.playbackRate = 1.0;
+      audio.playbackRate = baseRate;
     }
     
     // 播放
@@ -448,8 +460,8 @@ export class AudioManager {
   }
   
   playAttack() {
-    // 使用新的通用受击音效
-    return this.play('hitHurt', { 
+    // 玩家攻击命中的清脆打击声（稍微升高音调）
+    return this.play('attackImpact', { 
       volume: 0.7, 
       pitchVar: 0.1, 
       forceCategory: 'gameplay' 
@@ -457,13 +469,17 @@ export class AudioManager {
   }
   
   playCrit() {
-    // 暴击使用更重的音效
-    return this.play('chop', { volume: 0.8, pitchVar: 0.1, forceCategory: 'gameplay' });
+    // 暴击使用更重的音效（稍微降低播放速度）
+    return this.play('attackImpact', { 
+      volume: 0.9, 
+      playbackRate: 0.8, 
+      forceCategory: 'gameplay' 
+    });
   }
   
   playHit() {
-    // 使用新的通用受击音效
-    return this.play('hitHurt', { 
+    // 玩家被击中的受击声，使用独立key避免与攻击音效互相节流
+    return this.play('playerHit', { 
       volume: 0.6, 
       pitchVar: 0.1, 
       forceCategory: 'gameplay' 
@@ -491,6 +507,33 @@ export class AudioManager {
   playBookClose() { return this.play('bookClose', { volume: 0.5 }); }
   
   playMetalClick() { return this.play('metalClick', { volume: 0.4 }); }
+  
+  playLevelUp() {
+    // 使用金币声减速播放，营造“升级铃声”
+    return this.play('levelUp', { 
+      volume: 0.8, 
+      playbackRate: 0.5, 
+      forceCategory: 'ui' 
+    });
+  }
+
+  playQuestComplete() {
+    // 略微加快翻书声，突出完成反馈
+    return this.play('questComplete', { 
+      volume: 0.7, 
+      playbackRate: 1.2, 
+      forceCategory: 'ui' 
+    });
+  }
+
+  playPlayerDeath() {
+    // 低速金属闩锁声，营造沉重死亡反馈
+    return this.play('die', { 
+      volume: 1.0, 
+      playbackRate: 0.5, 
+      forceCategory: 'gameplay' 
+    });
+  }
   
   // 兼容旧接口
   playMeleeHit() { return this.playHit(); }

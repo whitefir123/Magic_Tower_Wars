@@ -4928,8 +4928,10 @@ class Game {
     //   this.ui.hideHUD();
     // }
     
-    // 4. 音效（占位，可根据需要添加）
-    // if (this.audio) this.audio.stopMusic();
+    // 4. 音效：播放死亡提示音效（保留BGM，避免突兀静音）
+    if (this.audio && this.audio.playPlayerDeath) {
+      this.audio.playPlayerDeath();
+    }
   }
 
   // END GAME

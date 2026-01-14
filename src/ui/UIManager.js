@@ -14,6 +14,7 @@ import { QuestUI } from './QuestUI.js';
 import { globalTooltipManager } from '../utils/TooltipManager.js';
 import { DailyChallengeSystem } from '../systems/DailyChallengeSystem.js';
 import { supabaseService } from '../services/SupabaseService.js';
+import AudioManager from '../audio/AudioManager.js';
 
 /**
  * UIManager - 主 UI 管理器
@@ -795,6 +796,10 @@ export class UIManager {
           }
 
           if (onCooldown) {
+            // 冷却中：锁扣/拒绝音效（与抖动反馈一致）
+            if (AudioManager && typeof AudioManager.play === 'function') {
+              AudioManager.play('metalLatch');
+            }
             // 添加拒绝操作的视觉反馈：抖动动画
             slot.classList.add('shake');
             setTimeout(() => slot.classList.remove('shake'), 200);
@@ -828,6 +833,12 @@ export class UIManager {
             
             // 调用主动技能
             if (player.castActiveSkill) {
+              // 成功施放开始：更锋利的起手声
+              if (AudioManager && typeof AudioManager.play === 'function') {
+                AudioManager.play('drawKnife');
+              } else if (AudioManager && typeof AudioManager.playMetalClick === 'function') {
+                AudioManager.playMetalClick();
+              }
               player.castActiveSkill();
             } else {
               console.error('❌ [UIManager] player.castActiveSkill is not a function');
@@ -835,6 +846,10 @@ export class UIManager {
           } else if (skillType === 'ULT') {
             // 调用终极技能
             if (window.game && window.game.activateUltimate) {
+              // 成功施放开始：清脆点击（与技能栏 UI 反馈一致）
+              if (AudioManager && typeof AudioManager.playMetalClick === 'function') {
+                AudioManager.playMetalClick();
+              }
               window.game.activateUltimate();
             } else if (player.castUltimateSkill) {
               // 如果没有 game.activateUltimate，直接调用 player 方法（需要手动检查）
@@ -854,6 +869,10 @@ export class UIManager {
                 return;
               }
               
+              // 成功施放开始：清脆点击（与技能栏 UI 反馈一致）
+              if (AudioManager && typeof AudioManager.playMetalClick === 'function') {
+                AudioManager.playMetalClick();
+              }
               player.castUltimateSkill();
               player.stats.rage = 0;
               if (window.game && window.game.ui) {
