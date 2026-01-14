@@ -2027,7 +2027,7 @@ class Game {
           const floatingText = this.floatingTextPool.create(x * TILE_SIZE, y * TILE_SIZE - 10, `+${goldAmount}G`, '#ffd700');
           this.floatingTexts.push(floatingText);
         }
-        this.ui.logMessage(`发现了 ${goldAmount} 金币！`, 'gain');
+        this.ui.logMessage(`发现了 <span style="color: #ffd700;">${goldAmount} 金币</span>！`, 'gain');
         
         // Play coin sound (游戏内逻辑)
         if (this.audio) this.audio.playCoins({ forceCategory: 'gameplay' });
@@ -3258,7 +3258,7 @@ class Game {
         const goldAmount = Math.floor((baseAmount + Math.random() * (maxAmount - baseAmount)) * rarityMultiplier);
         
         this.player.stats.gold = (this.player.stats.gold || 0) + goldAmount;
-        this.ui.logMessage(`宝箱打开！获得 ${goldAmount} 金币 [${rarity.name}]`, 'gain');
+        this.ui.logMessage(`宝箱打开！获得 <span style="color: #ffd700;">${goldAmount} 金币</span> [${rarity.name}]`, 'gain');
         
         // Show floating text with rarity color
         if (this.settings && this.settings.showDamageNumbers !== false) {
@@ -3329,7 +3329,7 @@ class Game {
             // 如果所有遗物都已拥有，掉落金币作为替代
             const goldAmount = 500 + Math.floor(Math.random() * 500);
             this.player.stats.gold = (this.player.stats.gold || 0) + goldAmount;
-            this.ui.logMessage(`宝箱打开！获得 ${goldAmount} 金币（已拥有所有遗物）`, 'gain');
+            this.ui.logMessage(`宝箱打开！获得 <span style="color: #ffd700;">${goldAmount} 金币</span>（已拥有所有遗物）`, 'gain');
             return;
           }
           
