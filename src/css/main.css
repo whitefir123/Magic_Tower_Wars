@@ -22,7 +22,6 @@
 @import './modules/settings.css';
 @import './modules/achievements.css';
 @import './modules/patchnotes.css';
-@import './modules/tutorial.css';
 
 @import './_legacy.css'; /* 暂时保留旧代码，逐步移除 */
 

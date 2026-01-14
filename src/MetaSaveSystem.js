@@ -33,10 +33,6 @@ export class MetaSaveSystem {
                 floorStartTime: null,            // 当前层开始时间
                 lastFloorClearTime: null         // 上次清层时间
             },
-            tutorial: {                          // 新手引导系统数据
-                enabled: true,                   // 引导是否启用
-                completedSteps: []                // 已完成的步骤ID列表，如 ['MOVE', 'ATTACK']
-            },
             lastPlayed: Date.now()              // 最后游玩时间
         };
     }
@@ -279,59 +275,6 @@ export class MetaSaveSystem {
     resetFloorStats() {
         // 不再需要重置 trapTriggersThisFloor（已迁移到 sessionStats）
         // 保留此方法以防其他地方调用
-    }
-
-    /**
-     * 检查引导步骤是否已完成
-     * @param {string} stepId - 引导步骤ID
-     * @returns {boolean}
-     */
-    isTutorialStepCompleted(stepId) {
-        if (!this.data.tutorial) {
-            this.data.tutorial = { enabled: true, completedSteps: [] };
-        }
-        return this.data.tutorial.completedSteps.includes(stepId);
-    }
-
-    /**
-     * 完成引导步骤
-     * @param {string} stepId - 引导步骤ID
-     */
-    completeTutorialStep(stepId) {
-        if (!this.data.tutorial) {
-            this.data.tutorial = { enabled: true, completedSteps: [] };
-        }
-        
-        if (!this.data.tutorial.completedSteps.includes(stepId)) {
-            this.data.tutorial.completedSteps.push(stepId);
-            this.save();
-            console.log(`MetaSaveSystem: 完成引导步骤 ${stepId}`);
-        }
-    }
-
-    /**
-     * 检查引导系统是否启用
-     * @returns {boolean}
-     */
-    isTutorialEnabled() {
-        if (!this.data.tutorial) {
-            this.data.tutorial = { enabled: true, completedSteps: [] };
-        }
-        return this.data.tutorial.enabled !== false; // 默认为 true
-    }
-
-    /**
-     * 重置新手引导（清除所有已完成的步骤）
-     */
-    resetTutorial() {
-        if (!this.data.tutorial) {
-            this.data.tutorial = { enabled: true, completedSteps: [] };
-        }
-        
-        this.data.tutorial.completedSteps = [];
-        this.data.tutorial.enabled = true;
-        this.save();
-        console.log('MetaSaveSystem: 新手引导已重置');
     }
 }
 

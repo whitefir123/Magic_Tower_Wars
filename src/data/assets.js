@@ -25,7 +25,6 @@ export const CRITICAL_ASSETS = {
   UI_BG_BESTIARY: { url: "https://i.postimg.cc/ncJBncyb/bookbackground1.png" },
   UI_BTN_BESTIARY: { url: "https://i.postimg.cc/zXZS3kRx/anniu4.png" },
   UI_ICONS_STATS: { url: "https://i.postimg.cc/pLd9d9kZ/shuxingtubiao1.png" },
-  UI_TUTORIAL_BG: { url: "https://i.postimg.cc/yNVxS3Qh/tishikuang2.png", type: 'image' },
   
   // 状态效果图标（占位符）
   ICON_STATUS_BURN: { url: "", color: '#ff6b00' },
