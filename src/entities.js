@@ -407,6 +407,27 @@ export class Entity {
     };
     return colorMap[statusType] || '#ffffff';
   }
+  
+  /**
+   * 获取飘字位置
+   * 基于 Sprite 的实际渲染高度动态计算，使飘字显示在实体视觉头顶正上方
+   * @returns {{x: number, y: number}} 飘字的基准坐标
+   */
+  getFloatingTextPosition() {
+    // 获取 Sprite 高度
+    const spriteHeight = this.sprite ? (this.sprite.destHeight || TILE_SIZE) : TILE_SIZE;
+    
+    // 计算视觉顶部偏移（脚底到头顶的距离）
+    const spriteTopOffset = spriteHeight - TILE_SIZE;
+    
+    // 设置飘字的基础悬浮高度（位于头顶上方 25px，略高于状态图标）
+    const floatHeight = 25;
+    
+    return {
+      x: this.visualX + (TILE_SIZE / 2), // 默认水平居中
+      y: this.visualY - spriteTopOffset - floatHeight
+    };
+  }
 }
 
 export class Monster extends Entity {
@@ -815,17 +836,6 @@ export class Monster extends Entity {
     return `${affixName}${baseName}`;
   }
   
-  /**
-   * 获取飘字位置
-   * @returns {{x: number, y: number}} 飘字的基准坐标
-   */
-  getFloatingTextPosition() {
-    const config = VISUAL_CONFIG.FLOATING_TEXT?.MONSTER || { baseY: -25, defaultX: 0 };
-    return {
-      x: this.visualX + (TILE_SIZE / 2) + config.defaultX,
-      y: this.visualY + config.baseY
-    };
-  }
   
   // Trigger teleport effect
   triggerTeleport() {
@@ -2761,19 +2771,29 @@ export class Player extends Entity {
   
   /**
    * 获取飘字位置
+   * 继承父类的动态高度计算，并针对玩家持剑动作进行水平（X轴）微调
    * @returns {{x: number, y: number}} 飘字的基准坐标
    */
   getFloatingTextPosition() {
-    const config = VISUAL_CONFIG.FLOATING_TEXT?.PLAYER || { baseY: -32, dirOffset: {} };
-    // 获取方向 (0:下, 1:上, 2:左, 3:右)，默认为 0
+    // 调用父类方法获取基准坐标
+    const basePos = super.getFloatingTextPosition();
+    
+    // 根据方向计算 xOffset（针对持剑动作的视觉重心矫正）
+    let xOffset = 0;
     const direction = this.sprite?.direction ?? 0;
     
-    // 获取当前方向的偏移配置，如果不存在则使用默认值 { x: 0, y: 0 }
-    const offset = config.dirOffset?.[direction] || { x: 0, y: 0 };
+    if (direction === 2) {
+      // 方向 2 (左)：持剑导致视觉中心偏左，需向右微调
+      xOffset = 4;
+    } else if (direction === 3) {
+      // 方向 3 (右)：持剑导致视觉中心偏右，需向左微调
+      xOffset = -4;
+    }
+    // 其他方向 (0 下, 1 上)：xOffset = 0
     
     return {
-      x: this.visualX + (TILE_SIZE / 2) + offset.x,
-      y: this.visualY + config.baseY + offset.y
+      x: basePos.x + xOffset,
+      y: basePos.y // 保持父类计算的准确高度
     };
   }
 }
