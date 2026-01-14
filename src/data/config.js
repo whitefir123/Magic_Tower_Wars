@@ -202,14 +202,32 @@ export const FLOOR_ZONES = [
  * 用于控制飘字系统等视觉效果的参数
  */
 export const VISUAL_CONFIG = {
-  // 玩家飘字偏移
+  // 玩家飘字偏移（保留用于向后兼容，新代码应使用 FLOATING_TEXT.PLAYER）
   PLAYER_TEXT_OFFSET_X: -5,  // 向左修正
   PLAYER_TEXT_OFFSET_Y: -20,  // 提高一点，避免挡脸
   
-  // 怪物飘字偏移
+  // 怪物飘字偏移（保留用于向后兼容，新代码应使用 FLOATING_TEXT.MONSTER）
   MONSTER_TEXT_OFFSET_Y: -10,
   
   // 是否启用微小的垂直随机偏移（防止完全重叠，仅保留 Y 轴微小随机）
-  ENABLE_MICRO_SCATTER: true
+  ENABLE_MICRO_SCATTER: true,
+  
+  // 飘字高级配置：基于视觉中心的偏移系统
+  FLOATING_TEXT: {
+    PLAYER: {
+      baseY: -32, // 基础高度，头顶上方
+      // 基于朝向的精细修正 (0:下, 1:上, 2:左, 3:右)
+      dirOffset: {
+        0: { x: -12, y: 10 }, // 正面/下：大幅向左(-x)和向下(+y)修正，抵消偏右上
+        1: { x: 0, y: 0 },    // 背面/上：默认居中
+        2: { x: 8, y: 0 },    // 朝左：身体视觉偏右，飘字向右修
+        3: { x: -8, y: 0 }    // 朝右：身体视觉偏左，飘字向左修
+      }
+    },
+    MONSTER: {
+      baseY: -25, // 怪物基础高度
+      defaultX: 0 // 怪物默认 X 修正
+    }
+  }
 };
 
