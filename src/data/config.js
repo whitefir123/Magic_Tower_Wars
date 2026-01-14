@@ -203,7 +203,7 @@ export const FLOOR_ZONES = [
  */
 export const VISUAL_CONFIG = {
   // 玩家飘字偏移（保留用于向后兼容，新代码应使用 FLOATING_TEXT.PLAYER）
-  PLAYER_TEXT_OFFSET_X: -5,  // 向左修正
+  PLAYER_TEXT_OFFSET_X: -25,  // 向左修正
   PLAYER_TEXT_OFFSET_Y: -20,  // 提高一点，避免挡脸
   
   // 怪物飘字偏移（保留用于向后兼容，新代码应使用 FLOATING_TEXT.MONSTER）

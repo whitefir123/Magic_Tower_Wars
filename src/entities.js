@@ -416,7 +416,7 @@ export class Entity {
    */
   getFloatingTextPosition() {
     // X轴：严格基于地块中心，不要添加任何额外的偏移量
-    const x = this.visualX + (TILE_SIZE / 2);
+    const x = this.visualX + (TILE_SIZE / 2) - 20;
 
     // Y轴：动态获取 Sprite 的高度
     let spriteHeight = TILE_SIZE;
@@ -427,7 +427,7 @@ export class Entity {
     const spriteTopOffset = spriteHeight - TILE_SIZE;
 
     // 基准高度设为头顶上方 30px (状态图标通常在 -15px，飘字位于其上方)
-    const floatHeight = 30;
+    const floatHeight = 10;
     const y = this.visualY - spriteTopOffset - floatHeight;
 
     return { x, y };
