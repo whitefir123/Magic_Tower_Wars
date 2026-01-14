@@ -820,7 +820,7 @@ export class Monster extends Entity {
    * @returns {{x: number, y: number}} 飘字的基准坐标
    */
   getFloatingTextPosition() {
-    const config = VISUAL_CONFIG.FLOATING_TEXT.MONSTER;
+    const config = VISUAL_CONFIG.FLOATING_TEXT?.MONSTER || { baseY: -25, defaultX: 0 };
     return {
       x: this.visualX + (TILE_SIZE / 2) + config.defaultX,
       y: this.visualY + config.baseY
@@ -2764,12 +2764,12 @@ export class Player extends Entity {
    * @returns {{x: number, y: number}} 飘字的基准坐标
    */
   getFloatingTextPosition() {
-    const config = VISUAL_CONFIG.FLOATING_TEXT.PLAYER;
+    const config = VISUAL_CONFIG.FLOATING_TEXT?.PLAYER || { baseY: -32, dirOffset: {} };
     // 获取方向 (0:下, 1:上, 2:左, 3:右)，默认为 0
     const direction = this.sprite?.direction ?? 0;
     
     // 获取当前方向的偏移配置，如果不存在则使用默认值 { x: 0, y: 0 }
-    const offset = config.dirOffset[direction] || { x: 0, y: 0 };
+    const offset = config.dirOffset?.[direction] || { x: 0, y: 0 };
     
     return {
       x: this.visualX + (TILE_SIZE / 2) + offset.x,
