@@ -11,13 +11,15 @@
   max-height: 80vh; /* ✅ v2.0: 限制最大高度，防止溢出屏幕 */
   overflow-y: auto; /* ✅ v2.0: 内容过多时显示滚动条 */
   overflow-x: hidden;
-  background: rgba(10,10,12,0.95); 
-  border: 1px solid #8b7355; 
-  border-left: 4px solid #d4af37; 
+  background-image: url('https://i.postimg.cc/mkszT7tr/tishikuang2.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+  border: none;
   color: #ddd; 
   font-family: var(--font-body); 
   font-size: .95rem; 
-  padding: 10px 12px; 
+  padding: 20px 20px; 
   pointer-events: none; 
   box-shadow: 0 10px 30px rgba(0,0,0,0.7); 
   display: none; /* 默认隐藏 */
