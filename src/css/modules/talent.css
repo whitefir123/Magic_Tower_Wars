@@ -193,6 +193,19 @@
 /* 天赋树工具提示增强 */
 .talent-tooltip {
   animation: tooltipFadeIn 0.2s ease-out;
+  
+  /* ✅ 新增：自定义背景图片样式 */
+  background: url('https://i.postimg.cc/mkszT7tr/tishikuang2.png') no-repeat center center;
+  background-size: 100% 100%; /* 拉伸以适应内容 */
+  border: none; /* 移除默认边框 */
+  
+  /* 调整内边距以避开图片边缘的装饰 */
+  padding: 20px 24px; 
+  
+  color: #ddd;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
 }
 
 @keyframes tooltipFadeIn {

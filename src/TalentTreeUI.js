@@ -191,18 +191,13 @@ export class TalentTreeUI {
         // 创建工具提示 - 位于最上层 (z-index: 10000)
         this.tooltip = document.createElement('div');
         this.tooltip.className = 'talent-tooltip';
+        // ✅ FIX: 移除内联视觉样式，交由 CSS 控制背景图片
         this.tooltip.style.cssText = `
             position: absolute;
             display: none;
-            background: rgba(0, 0, 0, 0.95);
-            border: 2px solid #ffd700;
-            border-radius: 8px;
-            padding: 15px;
-            color: #fff;
             max-width: 300px;
             pointer-events: none;
             z-index: 10000;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
         `;
         this.overlay.appendChild(this.tooltip);
         
