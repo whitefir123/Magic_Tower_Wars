@@ -1988,12 +1988,12 @@ export class CombatSystem {
           critIcon = 6; // 暴击图标索引
         } else {
           damageText = `${skillName}！-${dmgToMon}`;
-          damageColor = '#ff6b6b';
+          damageColor = '#8B0000';
         }
       } else if (skillUsed && ultSkillId) {
         const ultName = player.skills?.ULT?.name || ultSkillId;
         damageText = `${ultName}! -${dmgToMon}`;
-        damageColor = incomingElement === ELEMENTS.CRYO ? '#00bfff' : '#ff6b6b';
+        damageColor = incomingElement === ELEMENTS.CRYO ? '#00bfff' : '#8B0000';
       } else if (isCrit) { 
         damageText = `暴击 -${dmgToMon}`; 
         damageColor = '#FF2424'; // 深红色

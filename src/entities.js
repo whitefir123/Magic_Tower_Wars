@@ -693,7 +693,7 @@ export class Monster extends Entity {
       dotType = 'BURN';
       const damagePercent = statusDef.damagePercent || 0.02;
       damage = Math.max(1, Math.floor(this.stats.maxHp * damagePercent));
-      color = '#ff6b6b';
+      color = '#8B0000';
     } else if (type === 'FREEZE_DOT') {
       dotType = 'FREEZE_DOT';
       const damagePercent = statusDef.damagePercent || 0.03;
@@ -1436,7 +1436,7 @@ export class Player extends Entity {
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
         const pos = this.getFloatingTextPosition();
         const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
-        const burnText = window.game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${damage}`, '#ff6b6b');
+        const burnText = window.game.floatingTextPool.create(pos.x, pos.y + microScatterY, `-${damage}`, '#8B0000');
         window.game.floatingTexts.push(burnText);
       }
     } else if (type === 'FREEZE_DOT') {
@@ -2510,7 +2510,7 @@ export class Player extends Entity {
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
         const pos = this.getFloatingTextPosition();
         const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
-        const scorchText = window.game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, '火球术!', '#ff6b6b');
+        const scorchText = window.game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, '火球术!', '#8B0000');
         window.game.floatingTexts.push(scorchText);
       }
     }
