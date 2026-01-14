@@ -169,12 +169,24 @@ export class GamblerUI {
 
     // 标准旋转按钮
     if (this.elements.standardBtn) {
-      this.elements.standardBtn.addEventListener('click', () => this.spin('STANDARD'));
+      this.elements.standardBtn.addEventListener('click', () => {
+        const game = window.game;
+        if (game && game.audio && typeof game.audio.playGamble === 'function') {
+          game.audio.playGamble();
+        }
+        this.spin('STANDARD');
+      });
     }
 
     // 豪赌旋转按钮
     if (this.elements.highRollerBtn) {
-      this.elements.highRollerBtn.addEventListener('click', () => this.spin('HIGH_ROLLER'));
+      this.elements.highRollerBtn.addEventListener('click', () => {
+        const game = window.game;
+        if (game && game.audio && typeof game.audio.playGamble === 'function') {
+          game.audio.playGamble();
+        }
+        this.spin('HIGH_ROLLER');
+      });
     }
 
     // 离开按钮

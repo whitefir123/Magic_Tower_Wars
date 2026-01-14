@@ -32,6 +32,9 @@ export class AudioManager {
         // 门
         doorOpen1: 'assets/audio/sfx/doorOpen_1.ogg',
         doorOpen2: 'assets/audio/sfx/doorOpen_2.ogg',
+        doorClose2: 'assets/audio/sfx/doorClose_2.ogg',
+        doorClose3: 'assets/audio/sfx/doorClose_3.ogg',
+        doorClose4: 'assets/audio/sfx/doorClose_4.ogg',
         doorClose1: 'assets/audio/sfx/doorClose_1.ogg',
         
         // 脚步声
@@ -39,12 +42,20 @@ export class AudioManager {
         footstep2: 'assets/audio/sfx/footstep01.ogg',
         footstep3: 'assets/audio/sfx/footstep02.ogg',
         footstep4: 'assets/audio/sfx/footstep03.ogg',
+        footstep5: 'assets/audio/sfx/footstep04.ogg',
+        footstep6: 'assets/audio/sfx/footstep05.ogg',
+        footstep7: 'assets/audio/sfx/footstep06.ogg',
+        footstep8: 'assets/audio/sfx/footstep07.ogg',
+        footstep9: 'assets/audio/sfx/footstep08.ogg',
+        footstep10: 'assets/audio/sfx/footstep09.ogg',
         
         // 战斗 - 攻击 / 受击
         chop: 'assets/audio/sfx/chop.ogg', // 暴击/重击
         knifeSlice1: 'assets/audio/sfx/knifeSlice.ogg',  // 普通攻击
         knifeSlice2: 'assets/audio/sfx/knifeSlice2.ogg', // 普通攻击变体
         drawKnife: 'assets/audio/sfx/drawKnife1.ogg',
+        drawKnife2: 'assets/audio/sfx/drawKnife2.ogg',
+        drawKnife3: 'assets/audio/sfx/drawKnife3.ogg',
         // 通用受击音效（为兼容保留老key）
         hitHurt: 'assets/audio/sfx/Hit_hurt 23.wav',
 
@@ -69,10 +80,21 @@ export class AudioManager {
         beltHandle1: 'assets/audio/sfx/beltHandle1.ogg',
         beltHandle2: 'assets/audio/sfx/beltHandle2.ogg',
         leatherDrop: 'assets/audio/sfx/dropLeather.ogg',
+        handleSmallLeather: 'assets/audio/sfx/handleSmallLeather.ogg',
+        handleSmallLeather2: 'assets/audio/sfx/handleSmallLeather2.ogg',
         
         // 机关/环境
         metalLatch: 'assets/audio/sfx/metalLatch.ogg',
-        creak1: 'assets/audio/sfx/creak1.ogg'
+        creak1: 'assets/audio/sfx/creak1.ogg',
+        creak2: 'assets/audio/sfx/creak2.ogg',
+        creak3: 'assets/audio/sfx/creak3.ogg',
+
+        // UI / 书本扩展
+        bookFlip1: 'assets/audio/sfx/bookFlip1.ogg',
+        bookFlip3: 'assets/audio/sfx/bookFlip3.ogg',
+        bookPlace1: 'assets/audio/sfx/bookPlace1.ogg',
+        bookPlace2: 'assets/audio/sfx/bookPlace2.ogg',
+        bookPlace3: 'assets/audio/sfx/bookPlace3.ogg'
       }
     };
     
@@ -454,7 +476,19 @@ export class AudioManager {
   // ================= 快捷播放方法 (Sound Mapping) =================
   
   playFootstep() {
-    const steps = ['footstep', 'footstep2', 'footstep3', 'footstep4'];
+    // 使用 00-09 共 10 个脚步声变体，增加行走听感的丰富度
+    const steps = [
+      'footstep',
+      'footstep2',
+      'footstep3',
+      'footstep4',
+      'footstep5',
+      'footstep6',
+      'footstep7',
+      'footstep8',
+      'footstep9',
+      'footstep10'
+    ];
     const sound = steps[Math.floor(Math.random() * steps.length)];
     return this.play(sound, { volume: 0.3, pitchVar: 0.15, forceCategory: 'gameplay' });
   }
@@ -487,8 +521,16 @@ export class AudioManager {
   }
   
   playDoorOpen() {
+    // 开门使用两种变体，并轻微随机音调
     const sound = Math.random() < 0.5 ? 'doorOpen1' : 'doorOpen2';
     return this.play(sound, { volume: 0.7, forceCategory: 'gameplay' });
+  }
+
+  playDoorClose() {
+    // 关门/机关关闭，使用多种门闩与木门关合声
+    const sounds = ['doorClose1', 'doorClose2', 'doorClose3', 'doorClose4'];
+    const sound = sounds[Math.floor(Math.random() * sounds.length)];
+    return this.play(sound, { volume: 0.8, pitchVar: 0.08, forceCategory: 'gameplay' });
   }
   
   playCoins(options = {}) {
@@ -497,12 +539,24 @@ export class AudioManager {
   }
   
   playCloth() {
-    const sounds = ['beltHandle1', 'beltHandle2', 'cloth1', 'leatherDrop'];
+    const sounds = [
+      'beltHandle1',
+      'beltHandle2',
+      'cloth1',
+      'leatherDrop',
+      'handleSmallLeather',
+      'handleSmallLeather2'
+    ];
     const sound = sounds[Math.floor(Math.random() * sounds.length)];
     return this.play(sound, { volume: 0.4, forceCategory: 'gameplay' });
   }
   
-  playBookFlip() { return this.play('bookFlip', { volume: 0.5 }); }
+  playBookFlip() {
+    // 混合多种翻书与放置变体，让 UI 操作更自然
+    const sounds = ['bookFlip', 'bookFlip1', 'bookFlip3'];
+    const sound = sounds[Math.floor(Math.random() * sounds.length)];
+    return this.play(sound, { volume: 0.5, forceCategory: 'ui' });
+  }
   playBookOpen() { return this.play('bookOpen', { volume: 0.6 }); }
   playBookClose() { return this.play('bookClose', { volume: 0.5 }); }
   
@@ -538,6 +592,121 @@ export class AudioManager {
   // 兼容旧接口
   playMeleeHit() { return this.playHit(); }
   playLevelStart() { return this.play('metalLatch', { volume: 0.6 }); }
+
+  // ================= 语义化高级接口 =================
+
+  /**
+   * 楼梯 / 上下楼：使用更沉重的脚步声
+   */
+  playStairs() {
+    const steps = [
+      'footstep',
+      'footstep2',
+      'footstep3',
+      'footstep4',
+      'footstep5',
+      'footstep6',
+      'footstep7',
+      'footstep8',
+      'footstep9',
+      'footstep10'
+    ];
+    const sound = steps[Math.floor(Math.random() * steps.length)];
+    return this.play(sound, {
+      volume: 0.5,
+      playbackRate: 0.7,
+      pitchVar: 0.0,
+      forceCategory: 'gameplay'
+    });
+  }
+
+  /**
+   * 铁匠铺：随机敲击金属盆，模拟打铁声
+   */
+  playForge() {
+    const sounds = ['metalPot1', 'metalPot2', 'metalPot3'];
+    const sound = sounds[Math.floor(Math.random() * sounds.length)];
+    return this.play(sound, {
+      volume: 0.9,
+      pitchVar: 0.1,
+      playbackRate: 0.95,
+      forceCategory: 'gameplay'
+    });
+  }
+
+  /**
+   * 赌博：金币拨弄声
+   */
+  playGamble() {
+    return this.playCoins({
+      volume: 0.6,
+      pitchVar: 0.08,
+      forceCategory: 'ui'
+    });
+  }
+
+  /**
+   * 天赋解锁：更清脆的金属按键声
+   */
+  playTalentUnlock() {
+    return this.play('metalClick', {
+      volume: 0.7,
+      playbackRate: 1.5,
+      pitchVar: 0,
+      forceCategory: 'ui'
+    });
+  }
+
+  /**
+   * 通用 UI 打开
+   */
+  playUIOpen() {
+    const sounds = ['bookOpen', 'cloth1'];
+    const sound = sounds[Math.random() < 0.5 ? 0 : 1];
+    return this.play(sound, {
+      volume: 0.6,
+      pitchVar: 0.05,
+      forceCategory: 'ui'
+    });
+  }
+
+  /**
+   * 通用 UI 关闭
+   */
+  playUIClose() {
+    const sounds = ['bookClose', 'bookPlace1'];
+    const sound = sounds[Math.random() < 0.5 ? 0 : 1];
+    return this.play(sound, {
+      volume: 0.6,
+      pitchVar: 0.03,
+      forceCategory: 'ui'
+    });
+  }
+
+  /**
+   * UI / 逻辑错误提示
+   */
+  playError() {
+    return this.play('metalLatch', {
+      volume: 0.7,
+      playbackRate: 0.6,
+      pitchVar: 0,
+      forceCategory: 'ui'
+    });
+  }
+
+  /**
+   * 物品落地
+   */
+  playItemDrop() {
+    const sounds = ['bookPlace1', 'leatherDrop'];
+    const sound = sounds[Math.random() < 0.5 ? 0 : 1];
+    return this.play(sound, {
+      volume: 0.6,
+      pitchVar: 0.05,
+      forceCategory: 'gameplay'
+    });
+  }
   
   static getInstance() {
     if (!AudioManager.instance) {

@@ -1,6 +1,8 @@
 // ForgeUI.js - 铁匠铺界面
 // 独立管理铁匠铺UI的所有渲染和交互逻辑
 
+import AudioManager from '../audio/AudioManager.js';
+
 /**
  * ForgeUI - 铁匠铺界面管理器
  * 负责渲染铁匠铺、装备强化、品质重铸等
@@ -665,6 +667,11 @@ export class ForgeUI {
       this.player = game.player;
     }
 
+    // 打开铁匠铺时播放柔和的 UI 打开音效
+    if (AudioManager && typeof AudioManager.playUIOpen === 'function') {
+      AudioManager.playUIOpen();
+    }
+
     this.elements.overlay.classList.remove('hidden');
     this.elements.overlay.style.display = 'flex';
     this.isOpen = true;
@@ -687,6 +694,11 @@ export class ForgeUI {
       this.elements.overlay.classList.add('hidden');
       this.elements.overlay.style.display = 'none';
       this.isOpen = false;
+
+      // 关闭铁匠铺时播放 UI 关闭音效
+      if (AudioManager && typeof AudioManager.playUIClose === 'function') {
+        AudioManager.playUIClose();
+      }
 
       // 恢复游戏
       const game = window.game;
@@ -1394,6 +1406,11 @@ export class ForgeUI {
   handleEnhance() {
     if (!this.selectedItem || !this.player) return;
 
+    // 强化/锻造按钮点击时，播放锻造音效
+    if (AudioManager && typeof AudioManager.playForge === 'function') {
+      AudioManager.playForge();
+    }
+
     const result = this.blacksmithSystem.enhanceItem(this.selectedItem, this.player);
 
     if (result.success) {
@@ -1420,6 +1437,11 @@ export class ForgeUI {
    */
   handleReforge() {
     if (!this.selectedItem || !this.player) return;
+
+    // 重铸按钮点击时，播放锻造音效
+    if (AudioManager && typeof AudioManager.playForge === 'function') {
+      AudioManager.playForge();
+    }
 
     const result = this.blacksmithSystem.reforgeItem(this.selectedItem, this.player);
 

@@ -629,11 +629,30 @@ export class TalentTreeUI {
         
         const saveData = this.game.metaSaveSystem.data;
         const unlockedIds = saveData.unlockedTalentIds || ['root'];
+    const audio = this.game && this.game.audio;
         
         // 双重检查
-        if (unlockedIds.includes(nodeId)) return;
-        if (!isNodeReachable(nodeId, unlockedIds)) return;
-        if (saveData.soulCrystals < node.cost) return;
+    if (unlockedIds.includes(nodeId)) {
+        // 已解锁仍被点击，给出轻微错误提示
+        if (audio && typeof audio.playError === 'function') {
+            audio.playError();
+        }
+        return;
+    }
+    if (!isNodeReachable(nodeId, unlockedIds)) {
+        // 前置未解锁
+        if (audio && typeof audio.playError === 'function') {
+            audio.playError();
+        }
+        return;
+    }
+    if (saveData.soulCrystals < node.cost) {
+        // 灵魂水晶不足
+        if (audio && typeof audio.playError === 'function') {
+            audio.playError();
+        }
+        return;
+    }
         
         // 立即扣除水晶，防止连点
         saveData.soulCrystals -= node.cost;
@@ -746,17 +765,13 @@ export class TalentTreeUI {
         // 找到目标节点的DOM元素并添加爆发动画
         const targetNodeEl = this.nodeElements.get(targetNodeId);
         if (targetNodeEl) {
-            // 节点爆发阶段：播放音效
+            // 节点爆发阶段：播放专用天赋解锁音效
             if (this.game && this.game.audio) {
-                if (this.game.audio.playMetalClick) {
-                    // 使用金属点击音效，音量稍高以配合爆发效果
-                    this.game.audio.playMetalClick();
-                } else if (this.game.audio.play) {
-                    // 备用方案：直接调用 play 方法
-                    this.game.audio.play('metalPot', { 
-                        volume: 0.4,
-                        waitForLoad: false 
-                    });
+                const audio = this.game.audio;
+                if (typeof audio.playTalentUnlock === 'function') {
+                    audio.playTalentUnlock();
+                } else if (typeof audio.playMetalClick === 'function') {
+                    audio.playMetalClick();
                 }
             }
             

@@ -325,21 +325,39 @@ export class InventoryUI {
     const itemName = item.nameZh || item.name;
 
     if (action === 'use') {
-      // 根据物品类型区分金属类装备与布料/其他
-      const type = item.type || '';
-      const upperType = typeof type === 'string' ? type.toUpperCase() : '';
-      const isEquipmentType = ['WEAPON', 'HELM', 'ARMOR', 'BOOTS', 'RING', 'AMULET'].includes(upperType);
-      const armorType = item.armorType || item.material || '';
-      const upperArmorType = typeof armorType === 'string' ? armorType.toUpperCase() : '';
-      const isClothArmor = upperArmorType === 'CLOTH' || (Array.isArray(item.tags) && item.tags.includes('cloth'));
-      const isMetalEquip = isEquipmentType && !isClothArmor;
+      const isConsumable = item.type === 'CONSUMABLE';
 
-      // 使用/装备：金属类播放金属声，其他播放布料音效
       if (AudioManager) {
-        if (isMetalEquip && typeof AudioManager.play === 'function') {
-          AudioManager.play('metalClick', { volume: 0.5 });
-        } else if (typeof AudioManager.playCloth === 'function') {
-          AudioManager.playCloth();
+        if (isConsumable) {
+          // 消耗品：根据类型区分是金币类还是普通药水/卷轴
+          const id = item.itemId || item.id || (typeof itemId === 'string' ? itemId : '');
+          const name = item.nameZh || item.name || '';
+          const upperId = typeof id === 'string' ? id.toUpperCase() : '';
+          const isCoinLike =
+            (upperId && (upperId.includes('GOLD') || upperId.includes('COIN'))) ||
+            (typeof name === 'string' && name.includes('金币'));
+
+          if (isCoinLike && typeof AudioManager.playCoins === 'function') {
+            AudioManager.playCoins({ forceCategory: 'ui' });
+          } else if (typeof AudioManager.playCloth === 'function') {
+            // 药水/卷轴等消耗品
+            AudioManager.playCloth();
+          }
+        } else {
+          // 装备：根据材质区分金属类与布甲/皮甲
+          const type = item.type || '';
+          const upperType = typeof type === 'string' ? type.toUpperCase() : '';
+          const isEquipmentType = ['WEAPON', 'HELM', 'ARMOR', 'BOOTS', 'RING', 'AMULET'].includes(upperType);
+          const armorType = item.armorType || item.material || '';
+          const upperArmorType = typeof armorType === 'string' ? armorType.toUpperCase() : '';
+          const isClothArmor = upperArmorType === 'CLOTH' || (Array.isArray(item.tags) && item.tags.includes('cloth'));
+          const isMetalEquip = isEquipmentType && !isClothArmor;
+
+          if (isMetalEquip && typeof AudioManager.play === 'function') {
+            AudioManager.play('metalClick', { volume: 0.5 });
+          } else if (typeof AudioManager.playCloth === 'function') {
+            AudioManager.playCloth();
+          }
         }
       }
       console.log('Using item:', itemName);
@@ -367,9 +385,9 @@ export class InventoryUI {
         game.equipFromInventory(slotIndex);
       }
     } else if (action === 'discard') {
-      // 丢弃：皮革落地（若不可用则退回布料音效）
-      if (AudioManager && typeof AudioManager.play === 'function') {
-        AudioManager.play('leatherDrop');
+      // 丢弃：统一使用物品落地语义化音效
+      if (AudioManager && typeof AudioManager.playItemDrop === 'function') {
+        AudioManager.playItemDrop();
       } else if (AudioManager && typeof AudioManager.playCloth === 'function') {
         AudioManager.playCloth();
       }

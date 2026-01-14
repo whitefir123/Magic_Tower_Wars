@@ -1475,6 +1475,10 @@ class Game {
         this.ui.logMessage('一股强大的邪恶力量封锁了楼梯... 必须先击败领主！', 'warning');
         return true; // 处理了楼梯检查（虽然被阻止）
       }
+    // 触发上下楼梯传送时播放更沉重的脚步声
+    if (this.audio && typeof this.audio.playStairs === 'function') {
+      this.audio.playStairs();
+    }
       this.nextLevel();
       return true; // 处理了下楼
     }
@@ -2651,6 +2655,9 @@ class Game {
       // 拖拽结束保存设置
       bgmVolume.addEventListener('change', () => {
         this.saveSettings();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2665,7 +2672,9 @@ class Game {
       // 拖拽结束播放预览音效并保存设置
       sfxVolume.addEventListener('change', () => {
         this.saveSettings();
-        if (this.settings.audioEnabled) this.audio.playAttack();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2680,7 +2689,9 @@ class Game {
       // 拖拽结束播放预览音效并保存设置
       uiSfxVolume.addEventListener('change', () => {
         this.saveSettings();
-        if (this.settings.audioEnabled) this.audio.playCoins();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2691,6 +2702,9 @@ class Game {
         this.settings.audioEnabled = e.target.checked;
         this.audio.updateVolumes(this.settings);
         this.saveSettings();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2702,6 +2716,9 @@ class Game {
         btn.classList.add('active');
         this.settings.graphicsQuality = btn.getAttribute('data-quality');
         this.saveSettings();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     });
 
@@ -2710,6 +2727,9 @@ class Game {
       particleEffects.addEventListener('change', (e) => {
         this.settings.particleEffects = e.target.checked;
         this.saveSettings();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2718,6 +2738,9 @@ class Game {
       screenShake.addEventListener('change', (e) => {
         this.settings.screenShake = e.target.checked;
         this.saveSettings();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2726,6 +2749,9 @@ class Game {
       bloomEffect.addEventListener('change', (e) => {
         this.settings.bloomEffect = e.target.checked;
         this.saveSettings();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2740,6 +2766,9 @@ class Game {
       // 拖拽结束保存设置
       gameSpeed.addEventListener('change', () => {
         this.saveSettings();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2748,6 +2777,9 @@ class Game {
       autoSave.addEventListener('change', (e) => {
         this.settings.autoSave = e.target.checked;
         this.saveSettings();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2756,6 +2788,9 @@ class Game {
       difficultyScaling.addEventListener('change', (e) => {
         this.settings.difficultyScaling = e.target.checked;
         this.saveSettings();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2764,6 +2799,9 @@ class Game {
       showDamageNumbers.addEventListener('change', (e) => {
         this.settings.showDamageNumbers = e.target.checked;
         this.saveSettings();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2779,6 +2817,9 @@ class Game {
       // 拖拽结束保存设置
       brightness.addEventListener('change', () => {
         this.saveSettings();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2793,6 +2834,9 @@ class Game {
       // 拖拽结束保存设置
       contrast.addEventListener('change', () => {
         this.saveSettings();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2806,6 +2850,9 @@ class Game {
         if (fpsCounter) {
           fpsCounter.style.display = e.target.checked ? 'block' : 'none';
         }
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
@@ -2815,6 +2862,9 @@ class Game {
         this.settings.fullscreenMode = e.target.checked;
         this.toggleFullscreen(e.target.checked);
         this.saveSettings();
+        if (this.settings.audioEnabled && this.audio && this.audio.playMetalClick) {
+          this.audio.playMetalClick();
+        }
       });
     }
 
