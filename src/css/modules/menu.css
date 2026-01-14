@@ -568,6 +568,59 @@
   margin-top: -24px;
 }
 
+/* Return Button inside Character Details */
+.btn-return-to-menu {
+  position: absolute;
+  top: 70px;  /* 根据面板背景图调整位置 */
+  right: 50px;
+  width: 140px;
+  height: 48px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 20;
+  transition: transform 0.2s ease;
+}
+
+.btn-return-to-menu img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: 1; /* 图片在底层 */
+}
+
+.btn-return-text {
+  position: relative;
+  z-index: 2; /* 文字在顶层 */
+  font-family: var(--font-header);
+  color: #e0d6c8;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: none; /* 让点击穿透到 button */
+}
+
+.btn-return-to-menu:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+.btn-return-to-menu:hover .btn-return-text {
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.btn-return-to-menu:active {
+  transform: translateY(1px);
+}
+
 /* ========================================================================
    RIGHT PANEL: RUN CONFIGURATION
    ======================================================================== */
