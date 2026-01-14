@@ -30,6 +30,7 @@ export class AchievementUI {
     init() {
         this.createDOMElements();
         this.setupEventListeners();
+        this.injectStyles();
         console.log('[AchievementUI] 成就UI已初始化');
     }
     
@@ -80,6 +81,80 @@ export class AchievementUI {
         notification.className = 'achievement-notification hidden';
         canvasWrapper.appendChild(notification);
         this.elements.notification = notification;
+    }
+    
+    /**
+     * 注入样式
+     */
+    injectStyles() {
+        // 检查是否已存在样式
+        if (document.getElementById('achievement-ui-styles')) {
+            return;
+        }
+
+        const style = document.createElement('style');
+        style.id = 'achievement-ui-styles';
+        style.textContent = `
+            /* 成就解锁通知样式（优化版，参考 QuestUI 的 quest-toast） */
+            .achievement-notification {
+                position: fixed;
+                top: 20%;
+                left: 50%;
+                transform: translateX(-50%);
+                min-width: 380px;
+                max-width: 80%;
+                min-height: 90px;
+                padding: 16px 60px;
+                background-image: url('https://i.postimg.cc/263YdzcK/achievementkuang1.png');
+                background-size: 100% 100%;
+                background-repeat: no-repeat;
+                background-position: center;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                box-sizing: border-box;
+                color: #fff;
+                text-shadow: 1px 1px 2px #000;
+                z-index: 10000;
+                pointer-events: none;
+                border: none;
+                border-radius: 0;
+            }
+
+            .achievement-notification.hidden {
+                display: none;
+            }
+
+            .achievement-notification-header {
+                font-size: 0.9rem;
+                color: #ffe066;
+                letter-spacing: 2px;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                opacity: 0.9;
+                text-shadow: 0 0 4px #000, 0 0 10px #000;
+            }
+
+            .achievement-notification-title {
+                font-size: 1.8rem;
+                color: #ffe066;
+                font-weight: bold;
+                margin-bottom: 8px;
+                text-shadow: 0 0 4px #000, 0 0 10px #000;
+                letter-spacing: 1px;
+            }
+
+            .achievement-notification-description {
+                font-size: 1rem;
+                color: #ffffff;
+                line-height: 1.4;
+                text-shadow: 0 0 4px #000, 0 0 10px #000;
+            }
+        `;
+
+        document.head.appendChild(style);
     }
     
     /**
