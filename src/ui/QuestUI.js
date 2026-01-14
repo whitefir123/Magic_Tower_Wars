@@ -5,6 +5,8 @@
  * 负责渲染任务列表、详情、进度条等
  */
 
+import { EQUIPMENT_DB } from '../constants.js';
+
 export class QuestUI {
   constructor(game) {
     this.game = game;
@@ -1190,7 +1192,9 @@ export class QuestUI {
       }
       if (reward.items && Array.isArray(reward.items)) {
         reward.items.forEach(itemId => {
-          rewardItems.push(itemId); // 可以进一步获取物品名称
+          const itemDef = EQUIPMENT_DB[itemId];
+          const itemName = itemDef ? (itemDef.nameZh || itemDef.name) : itemId;
+          rewardItems.push(itemName);
         });
       }
 

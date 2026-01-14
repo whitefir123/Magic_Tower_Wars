@@ -193,10 +193,22 @@ export class RoguelikeSystem {
       
       // 生成描述文本（替换占位符）
       let description = rune.description || '';
-      description = description.replace(/\{\{value\}\}/g, value);
       
       // 特殊占位符替换
-      if (rune.id === 'glass_cannon') {
+      // 修复攻速符文的数值显示 (显示实际增加值，而非倍率)
+      if (rune.id === 'swiftness') {
+        // 基础值 0.10
+        const displayVal = (value * 0.10).toFixed(2);
+        description = description.replace(/\{\{value\}\}/g, displayVal);
+      } else if (rune.id === 'zeal') {
+        // 基础值 0.25
+        const displayVal = (value * 0.25).toFixed(2);
+        description = description.replace(/\{\{value\}\}/g, displayVal);
+      } else if (rune.id === 'godspeed') {
+        // 基础值 0.50
+        const displayVal = (value * 0.50).toFixed(2);
+        description = description.replace(/\{\{value\}\}/g, displayVal);
+      } else if (rune.id === 'glass_cannon') {
         description = description.replace(/\{\{hpLoss\}\}/g, '30');
       } else if (rune.id === 'greed') {
         description = description.replace(/\{\{damageIncrease\}\}/g, '30');
@@ -211,6 +223,11 @@ export class RoguelikeSystem {
       } else if (rune.id === 'multicast') {
         description = description.replace(/\{\{value\}\}/g, '25');
       }
+      
+      // 默认替换：对于没有特殊处理的符文，使用通用 value 替换剩余的 {{value}}
+      // 注意：已经在上面特殊处理的符文（swiftness、zeal、godspeed、thunder、vampire、execute、multicast）
+      // 不会再次匹配，因为它们的 {{value}} 已经被替换掉了
+      description = description.replace(/\{\{value\}\}/g, value);
       
       return {
         rune,
