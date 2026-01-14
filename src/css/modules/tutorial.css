@@ -1,0 +1,78 @@
+/**
+ * tutorial.css
+ * 新手引导系统样式
+ */
+
+#tutorial-overlay {
+  position: fixed;
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20000;
+  pointer-events: none; /* 不阻挡游戏交互 */
+  display: none;
+}
+
+#tutorial-overlay.hidden {
+  display: none;
+}
+
+.tutorial-box {
+  width: 400px;
+  min-height: 80px;
+  padding: 20px 30px;
+  background-image: url('https://i.postimg.cc/yNVxS3Qh/tishikuang2.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+#tutorial-text {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+  text-shadow: 
+    2px 2px 4px rgba(0, 0, 0, 0.8),
+    0 0 8px rgba(255, 215, 0, 0.5);
+  margin: 0;
+  line-height: 1.5;
+  font-family: var(--font-body, 'Arial', sans-serif);
+}
+
+/* 高亮动画效果 */
+.ui-highlight {
+  animation: highlight-pulse 1.5s ease-in-out infinite;
+  position: relative;
+}
+
+@keyframes highlight-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5),
+                0 0 20px rgba(255, 215, 0, 0.3),
+                0 0 30px rgba(255, 215, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8),
+                0 0 40px rgba(255, 215, 0, 0.5),
+                0 0 60px rgba(255, 215, 0, 0.3);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .tutorial-box {
+    width: 90%;
+    max-width: 400px;
+    padding: 15px 20px;
+    min-height: 60px;
+  }
+
+  #tutorial-text {
+    font-size: 14px;
+  }
+}

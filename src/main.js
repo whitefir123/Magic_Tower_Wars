@@ -30,6 +30,7 @@ import { SettingsUI } from './ui/SettingsUI.js';
 import { FLOOR_ZONES } from './data/config.js';
 import { VisualEffectsSystem } from './systems/VisualEffectsSystem.js';
 import { MenuVisuals } from './ui/MenuVisuals.js';
+import { TutorialSystem } from './systems/TutorialSystem.js';
 
 class Game {
   constructor() {
@@ -186,6 +187,9 @@ class Game {
         this.menuVisuals.init();
       }, 100); // 短暂延迟确保所有元素都已创建
     }
+
+    // 初始化新手引导系统
+    this.tutorial = null; // 延迟初始化，等待游戏开始
 
     window.game = this; // Expose globally for UI onclick
     
@@ -385,6 +389,11 @@ class Game {
         e.preventDefault();
         if (this.player && this.player.castActiveSkill) {
           this.player.castActiveSkill();
+          
+          // 新手引导：完成技能步骤
+          if (this.tutorial) {
+            this.tutorial.completeStep('SKILL');
+          }
         }
         return;
       }
@@ -1264,6 +1273,12 @@ class Game {
         // 攻击冷却完成，触发攻击
         this.player.startCombatSlide(monster);
         this.player.lastAttackTime = now;
+        
+        // 新手引导：完成攻击步骤
+        if (this.tutorial) {
+          this.tutorial.completeStep('ATTACK');
+        }
+        
         return true;
       } else {
         // 攻击冷却中，不执行任何操作，但算处理了输入
@@ -1347,6 +1362,11 @@ class Game {
     // 执行移动
     this.player.startMove(nx, ny);
     
+    // 新手引导：完成移动步骤
+    if (this.tutorial) {
+      this.tutorial.completeStep('MOVE');
+    }
+    
     // 拾取物品（必须在移动后执行）
     let it = this.map.getItemAt(nx, ny);
     if (!it) it = this.map.getItemAt(this.player.x, this.player.y);
@@ -1364,6 +1384,11 @@ class Game {
           this.player.equip(it.itemId);
           this.map.removeItem(it);
           if (this.audio) this.audio.playCloth();
+          
+          // 新手引导：完成装备步骤（直接装备）
+          if (this.tutorial) {
+            this.tutorial.completeStep('EQUIP');
+          }
         } else {
           const added = this.player.addToInventory(it.itemId);
           if (added) {
@@ -1373,6 +1398,16 @@ class Game {
               this.ui.logMessage(`已添加 ${itemName} 到背包`, 'gain');
             }
             if (this.audio) this.audio.playCloth();
+            
+            // 新手引导：检查是否有装备在背包中
+            if (this.tutorial && def && def.type && ['WEAPON', 'ARMOR', 'HELMET', 'BOOTS', 'RING'].includes(def.type)) {
+              this.tutorial.check('itemAdded', { item: it.itemId });
+            }
+            
+            // 新手引导：完成拾取步骤
+            if (this.tutorial) {
+              this.tutorial.completeStep('LOOT');
+            }
           } else {
             this.ui.logMessage('背包已满！', 'info');
           }
@@ -1635,6 +1670,45 @@ class Game {
     // Reveal tiles around player (fog of war) - use player's vision radius
     const visionRadius = this.player.getVisionRadius ? this.player.getVisionRadius() : 4;
     this.map.computeFOV(this.player.x, this.player.y, visionRadius);
+    
+    // 新手引导：检查视野内的怪物、物品、楼梯
+    if (this.tutorial && this.gameStarted) {
+      const visibleMonsters = this.map.monsters.filter(m => {
+        const mx = m.x || m.tileX || 0;
+        const my = m.y || m.tileY || 0;
+        return this.map.visible && this.map.visible[my] && this.map.visible[my][mx];
+      });
+      
+      const visibleItems = this.map.items.filter(item => {
+        const ix = item.x || item.tileX || 0;
+        const iy = item.y || item.tileY || 0;
+        return this.map.visible && this.map.visible[iy] && this.map.visible[iy][ix];
+      });
+      
+      const visibleStairs = [];
+      for (let y = 0; y < this.map.height; y++) {
+        for (let x = 0; x < this.map.width; x++) {
+          if (this.map.visible && this.map.visible[y] && this.map.visible[y][x]) {
+            if (this.map.grid[y][x] === TILE.STAIRS_DOWN || this.map.grid[y][x] === TILE.STAIRS_UP) {
+              visibleStairs.push({ x, y, tileX: x, tileY: y });
+            }
+          }
+        }
+      }
+      
+      if (visibleMonsters.length > 0) {
+        this.tutorial.check('fovUpdate', { monsters: visibleMonsters });
+      }
+      if (visibleItems.length > 0) {
+        this.tutorial.check('fovUpdate', { items: visibleItems });
+      }
+      if (visibleStairs.length > 0) {
+        this.tutorial.check('fovUpdate', { stairs: visibleStairs });
+      }
+      
+      // 检查技能状态
+      this.tutorial.check('playerUpdate');
+    }
     
     // Update trap reset timers
     this.map.objects.forEach(obj => {
@@ -2750,6 +2824,23 @@ class Game {
       });
     }
 
+    // 新手引导重置按钮
+    const resetTutorialBtn = document.getElementById('reset-tutorial-btn');
+    if (resetTutorialBtn) {
+      resetTutorialBtn.addEventListener('click', () => {
+        if (this.metaSaveSystem) {
+          this.metaSaveSystem.resetTutorial();
+          if (this.ui && this.ui.logMessage) {
+            this.ui.logMessage('引导已重置', 'info');
+          }
+          // 如果引导系统已初始化，也重置它
+          if (this.tutorial) {
+            this.tutorial.reset();
+          }
+        }
+      });
+    }
+
     // Display settings
     const brightness = document.getElementById('brightness');
     if (brightness) {
@@ -3172,6 +3263,11 @@ class Game {
     if (prevItem) this.player.inventory[slotIdx] = prevItem;
     if (this.ui && this.ui.renderInventory) this.ui.renderInventory(this.player);
     this.ui.updateStats(this.player);
+    
+    // 新手引导：完成装备步骤（从背包装备）
+    if (this.tutorial) {
+      this.tutorial.completeStep('EQUIP');
+    }
   }
 
   // ULTIMATE
@@ -3183,6 +3279,11 @@ class Game {
     }
     
     if (this.player.stats.rage < 100) return; // not ready
+    
+    // 新手引导：完成技能步骤（在必杀技释放时）
+    if (this.tutorial) {
+      this.tutorial.completeStep('SKILL');
+    }
     this.player.stats.rage = 0; this.ui.updateStats(this.player);
     
     // Activate character-specific ultimate
@@ -4515,6 +4616,11 @@ class Game {
       this.inputStack = [];
       this.gameStarted = true;
       
+      // 初始化新手引导系统
+      if (!this.tutorial) {
+        this.tutorial = new TutorialSystem(this);
+      }
+      
       // 每日挑战模式：隐藏保存/读取按钮
       this.updateSaveLoadButtonsVisibility();
       
@@ -4524,6 +4630,13 @@ class Game {
       
       // Initialize skill bar
       this.ui.initSkillBar(this.player);
+      
+      // 触发新手引导：移动引导
+      if (this.tutorial) {
+        setTimeout(() => {
+          this.tutorial.check('gameStart');
+        }, 500); // 延迟500ms，确保UI已渲染
+      }
       
       // 等待游玩界面的所有资源加载完毕
       await this.waitForGameplayScreenResourcesLoaded();

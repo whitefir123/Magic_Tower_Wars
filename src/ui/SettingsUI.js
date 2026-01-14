@@ -177,6 +177,13 @@ export class SettingsUI {
                 <span class="checkbox-text">显示伤害数字</span>
               </label>
             </div>
+
+            <div class="settings-item">
+              <div class="item-label">
+                <span class="label-text">新手引导</span>
+              </div>
+              <button class="btn-core btn-system" id="reset-tutorial-btn" style="margin-top: 10px;">重置引导</button>
+            </div>
           </div>
 
           <!-- Display Settings -->
