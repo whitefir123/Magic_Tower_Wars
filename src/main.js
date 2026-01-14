@@ -356,6 +356,23 @@ class Game {
     };
 
     window.addEventListener('keydown', (e) => {
+      // 1. 输入框防冲突检查：如果正在输入文本，直接忽略所有快捷键
+      const tagName = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : '';
+      if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // 2. 背包快捷键 (B)：在暂停检查之前处理，这样即使暂停也能通过 B 关闭背包
+      if (e.code === 'KeyB' || (e.key && e.key.toLowerCase && e.key.toLowerCase() === 'b')) {
+        e.preventDefault();
+        if (this.ui && this.ui.inventoryUI && this.ui.inventoryUI.isOpen) {
+          this.closeInventory();
+        } else {
+          this.openInventory();
+        }
+        return;
+      }
+
       // FIX: 如果游戏暂停（UI打开），阻止所有游戏输入
       if (this.isPaused) {
         // 只允许关闭UI的快捷键（如ESC）
