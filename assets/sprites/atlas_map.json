@@ -1,0 +1,60 @@
+{"frames": {
+
+"door1.png":
+{
+	"frame": {"x":2051,"y":1,"w":2000,"h":2000},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":2000,"h":2000},
+	"sourceSize": {"w":2000,"h":2000}
+},
+"downstairs1.png":
+{
+	"frame": {"x":2051,"y":2003,"w":2000,"h":2000},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":2000,"h":2000},
+	"sourceSize": {"w":2000,"h":2000}
+},
+"floor1.png":
+{
+	"frame": {"x":2003,"y":4005,"w":1800,"h":1800},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":1800,"h":1800},
+	"sourceSize": {"w":1800,"h":1800}
+},
+"miwu1.png":
+{
+	"frame": {"x":1,"y":4053,"w":2000,"h":1091},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":2000,"h":1091},
+	"sourceSize": {"w":2000,"h":1091}
+},
+"upstairs1.png":
+{
+	"frame": {"x":1,"y":2051,"w":2000,"h":2000},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":2000,"h":2000},
+	"sourceSize": {"w":2000,"h":2000}
+},
+"wall2.png":
+{
+	"frame": {"x":1,"y":1,"w":2048,"h":2048},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":2048,"h":2048},
+	"sourceSize": {"w":2048,"h":2048}
+}},
+"meta": {
+	"app": "https://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "atlas_map.png",
+	"format": "RGBA8888",
+	"size": {"w":4052,"h":5806},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:fb7c435c11f8358e51028f43b3b7ca63:972880336ff3f1cc1a73399222a59d36:170b87ed6a95195e8c974f3f5c76c689$"
+}
+}
