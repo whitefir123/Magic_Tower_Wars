@@ -40,11 +40,13 @@ export class AudioManager {
         footstep3: 'assets/audio/sfx/footstep02.ogg',
         footstep4: 'assets/audio/sfx/footstep03.ogg',
         
-        // 战斗 - 攻击
+        // 战斗 - 攻击 / 受击
         chop: 'assets/audio/sfx/chop.ogg', // 暴击/重击
         knifeSlice1: 'assets/audio/sfx/knifeSlice.ogg',  // 普通攻击
         knifeSlice2: 'assets/audio/sfx/knifeSlice2.ogg', // 普通攻击变体
         drawKnife: 'assets/audio/sfx/drawKnife1.ogg',
+        // 通用受击音效（攻击/受击统一使用）
+        hitHurt: 'assets/audio/sfx/Hit_hurt 23.wav',
         
         // 战斗 - 受击 (金属盔甲声)
         metalPot1: 'assets/audio/sfx/metalPot1.ogg',
@@ -446,9 +448,12 @@ export class AudioManager {
   }
   
   playAttack() {
-    // 随机选择挥刀音效
-    const sound = Math.random() < 0.5 ? 'knifeSlice1' : 'knifeSlice2';
-    return this.play(sound, { volume: 0.6, pitchVar: 0.1, forceCategory: 'gameplay' });
+    // 使用新的通用受击音效
+    return this.play('hitHurt', { 
+      volume: 0.7, 
+      pitchVar: 0.1, 
+      forceCategory: 'gameplay' 
+    });
   }
   
   playCrit() {
@@ -457,10 +462,12 @@ export class AudioManager {
   }
   
   playHit() {
-    // 受击使用金属碰撞声
-    const pots = ['metalPot1', 'metalPot2', 'metalPot3'];
-    const sound = pots[Math.floor(Math.random() * pots.length)];
-    return this.play(sound, { volume: 0.5, pitchVar: 0.1, forceCategory: 'gameplay' });
+    // 使用新的通用受击音效
+    return this.play('hitHurt', { 
+      volume: 0.6, 
+      pitchVar: 0.1, 
+      forceCategory: 'gameplay' 
+    });
   }
   
   playDoorOpen() {
