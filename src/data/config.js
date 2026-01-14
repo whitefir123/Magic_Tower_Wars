@@ -203,13 +203,13 @@ export const FLOOR_ZONES = [
  */
 export const VISUAL_CONFIG = {
   // 玩家飘字偏移
-  PLAYER_TEXT_OFFSET_X: -5,  // 用户后续会微调，建议尝试 -5
-  PLAYER_TEXT_OFFSET_Y: -15,
+  PLAYER_TEXT_OFFSET_X: -5,  // 向左修正
+  PLAYER_TEXT_OFFSET_Y: -20,  // 提高一点，避免挡脸
   
   // 怪物飘字偏移
   MONSTER_TEXT_OFFSET_Y: -10,
   
-  // 是否启用微小的垂直随机偏移（防止完全重叠）
+  // 是否启用微小的垂直随机偏移（防止完全重叠，仅保留 Y 轴微小随机）
   ENABLE_MICRO_SCATTER: true
 };
 

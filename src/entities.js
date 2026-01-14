@@ -2763,8 +2763,22 @@ export class Player extends Entity {
    * @returns {{x: number, y: number}} 飘字的基准坐标
    */
   getFloatingTextPosition() {
+    // 获取方向：2=左, 3=右
+    const direction = this.sprite?.direction ?? 0;
+    
+    // 根据方向计算 X 偏移
+    let dirOffsetX = 0;
+    if (direction === 3) {
+      // 向右：使用配置的偏移值
+      dirOffsetX = VISUAL_CONFIG.PLAYER_TEXT_OFFSET_X;
+    } else if (direction === 2) {
+      // 向左：取反偏移值
+      dirOffsetX = -VISUAL_CONFIG.PLAYER_TEXT_OFFSET_X;
+    }
+    // 其他方向（上下）：dirOffsetX = 0
+    
     return {
-      x: this.visualX + (TILE_SIZE / 2) + VISUAL_CONFIG.PLAYER_TEXT_OFFSET_X,
+      x: this.visualX + (TILE_SIZE / 2) + dirOffsetX,
       y: this.visualY + VISUAL_CONFIG.PLAYER_TEXT_OFFSET_Y
     };
   }

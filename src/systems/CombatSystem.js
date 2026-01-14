@@ -162,9 +162,11 @@ export class CombatSystem {
       
       // 显示伤害数字
       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-        const pos = monster.getFloatingTextPosition();
-        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
-        game.floatingTextPool.create(pos.x, pos.y + microScatterY, `⚡${actualDmg}`, '#00ffff');
+        const { x, y } = (monster.getFloatingTextPosition ? monster.getFloatingTextPosition() : {x: monster.visualX, y: monster.visualY});
+        // 如果开启微调，仅在 Y 轴添加微小随机
+        const finalY = y + (VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0);
+        const chainText = game.floatingTextPool.create(x, finalY, `⚡${actualDmg}`, '#00ffff');
+        game.floatingTexts.push(chainText);
       }
       
       // 触发受击逻辑
@@ -2285,9 +2287,12 @@ export class CombatSystem {
               
               // 显示浮动文字
               if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
+                const { x, y } = (monster.getFloatingTextPosition ? monster.getFloatingTextPosition() : {x: monster.visualX, y: monster.visualY});
+                // 如果开启微调，仅在 Y 轴添加微小随机
+                const finalY = y - 20 + (VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0);
                 const bonusText = game.floatingTextPool.create(
-                  monster.visualX + TILE_SIZE / 2,
-                  monster.visualY - 30,
+                  x,
+                  finalY,
                   `吸收了 ${monster.nickname || '冒险者'} 的力量！${statName} +${value}`,
                   '#ffaa00'
                 );
@@ -2507,9 +2512,12 @@ export class CombatSystem {
            color = '#ff8c00';
         }
         
+        const { x, y } = (player.getFloatingTextPosition ? player.getFloatingTextPosition() : {x: player.visualX, y: player.visualY});
+        // 如果开启微调，仅在 Y 轴添加微小随机
+        const finalY = y + (game.settings.showDamageNumbers ? (VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0) : 0);
         const damageText = game.floatingTextPool.create(
-          player.visualX + TILE_SIZE / 2, 
-          player.visualY - 10, 
+          x, 
+          finalY, 
           dmgText, 
           color,
           critIcon, // 传递图标索引（数字6）或null
