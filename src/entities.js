@@ -411,22 +411,26 @@ export class Entity {
   /**
    * 获取飘字位置
    * 基于 Sprite 的实际渲染高度动态计算，使飘字显示在实体视觉头顶正上方
+   * 与状态图标的精准定位保持一致
    * @returns {{x: number, y: number}} 飘字的基准坐标
    */
   getFloatingTextPosition() {
-    // 获取 Sprite 高度
-    const spriteHeight = this.sprite ? (this.sprite.destHeight || TILE_SIZE) : TILE_SIZE;
-    
-    // 计算视觉顶部偏移（脚底到头顶的距离）
+    // X轴：严格基于地块中心，不要添加任何额外的偏移量
+    const x = this.visualX + (TILE_SIZE / 2);
+
+    // Y轴：动态获取 Sprite 的高度
+    let spriteHeight = TILE_SIZE;
+    if (this.sprite && this.sprite.destHeight) {
+      spriteHeight = this.sprite.destHeight;
+    }
+    // 计算脚底到头顶的距离偏移
     const spriteTopOffset = spriteHeight - TILE_SIZE;
-    
-    // 设置飘字的基础悬浮高度（位于头顶上方 25px，略高于状态图标）
-    const floatHeight = 25;
-    
-    return {
-      x: this.visualX + (TILE_SIZE / 2), // 默认水平居中
-      y: this.visualY - spriteTopOffset - floatHeight
-    };
+
+    // 基准高度设为头顶上方 30px (状态图标通常在 -15px，飘字位于其上方)
+    const floatHeight = 30;
+    const y = this.visualY - spriteTopOffset - floatHeight;
+
+    return { x, y };
   }
 }
 
@@ -2769,33 +2773,6 @@ export class Player extends Entity {
     return Array.from(this.relics.values());
   }
   
-  /**
-   * 获取飘字位置
-   * 继承父类的动态高度计算，并针对玩家持剑动作进行水平（X轴）微调
-   * @returns {{x: number, y: number}} 飘字的基准坐标
-   */
-  getFloatingTextPosition() {
-    // 调用父类方法获取基准坐标
-    const basePos = super.getFloatingTextPosition();
-    
-    // 根据方向计算 xOffset（针对持剑动作的视觉重心矫正）
-    let xOffset = 0;
-    const direction = this.sprite?.direction ?? 0;
-    
-    if (direction === 2) {
-      // 方向 2 (左)：持剑导致视觉中心偏左，需向右微调
-      xOffset = 4;
-    } else if (direction === 3) {
-      // 方向 3 (右)：持剑导致视觉中心偏右，需向左微调
-      xOffset = -4;
-    }
-    // 其他方向 (0 下, 1 上)：xOffset = 0
-    
-    return {
-      x: basePos.x + xOffset,
-      y: basePos.y // 保持父类计算的准确高度
-    };
-  }
 }
 
 /**
