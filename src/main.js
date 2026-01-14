@@ -3992,22 +3992,19 @@ class Game {
   setupAudioResume() {
     if (!this.audio) return;
     
-    // 一次性事件监听器：在用户首次点击或按键时解锁音频
     const resumeAudio = async (event) => {
       if (this.audio && !this.audio.audioContextResumed) {
         await this.audio.resume();
-        // 尝试播放 BGM（如果用户已启用音频）
+        // Updated: Use random BGM rotation
         if (this.settings && this.settings.audioEnabled !== false) {
-          this.audio.playBgm('dungeon_theme');
+          this.audio.playRandomBgm();
         }
-        // 移除事件监听器（只需要解锁一次）
         document.removeEventListener('click', resumeAudio);
         document.removeEventListener('keydown', resumeAudio);
         document.removeEventListener('touchstart', resumeAudio);
       }
     };
     
-    // 监听多种用户交互事件
     document.addEventListener('click', resumeAudio, { once: true });
     document.addEventListener('keydown', resumeAudio, { once: true });
     document.addEventListener('touchstart', resumeAudio, { once: true });
@@ -4024,10 +4021,9 @@ class Game {
     if (btnStart) {
       btnStart.addEventListener('click', async () => {
         try {
-          // 确保音频上下文已解锁并启动 BGM
           if (this.audio) {
             await this.audio.resume();
-            this.audio.playBgm('dungeon_theme');
+            this.audio.playRandomBgm(); // Changed from playBgm('dungeon_theme')
           }
           
           // 显示角色选择界面（内部已使用 performTransition 处理加载层）
@@ -4110,10 +4106,9 @@ class Game {
         try {
           console.log('[Game] Daily Challenge button clicked');
           
-          // 确保音频上下文已解锁并启动 BGM
           if (this.audio) {
             await this.audio.resume();
-            this.audio.playBgm('dungeon_theme');
+            this.audio.playRandomBgm(); // Changed from playBgm('dungeon_theme')
           }
           
           // 进入每日挑战模式选择界面（内部已使用 performTransition 处理加载层）

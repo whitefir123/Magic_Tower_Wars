@@ -1,14 +1,6 @@
 // AudioManager.js - 游戏音效管理器
-// 支持音效池、音调变化、音量控制等功能
+// 支持音效池、音调变化、音量控制及随机BGM轮播
 
-/**
- * 音效管理器单例类
- * 功能：
- * - 预加载音频文件
- * - 音效池：允许同一音效快速连续播放
- * - 音调变化：为音效添加随机音调变化，避免机械感
- * - 音量控制：从 Game.settings 读取音量设置
- */
 export class AudioManager {
   constructor() {
     if (AudioManager.instance) {
@@ -17,166 +9,147 @@ export class AudioManager {
     
     AudioManager.instance = this;
     
-    // 音频文件映射表
+    // 1. 注册音频文件路径
+    // 注意：路径基于项目根目录
     this.audioFiles = {
-      // 背景音乐（BGM，长音频）
+      // 背景音乐 (MP3) - 播放列表
       bgm: {
-        dungeon_theme: 'public/assets/audio/bgm/dungeon_theme.ogg',
+        shadowed_labyrinth: 'assets/audio/bgm/Shadowed Labyrinth.mp3',
+        shadows_abyss: 'assets/audio/bgm/Shadows of the Abyss.mp3',
+        whispers_depths: 'assets/audio/bgm/Whispers in the Depths.mp3'
       },
-      // 关键音效（UI相关，启动时加载）
+      // 关键 UI 音效 (UI相关，启动时优先加载)
       critical: {
-        bookFlip: 'public/assets/audio/sfx/bookFlip2.ogg',
-        bookOpen: 'public/assets/audio/sfx/bookOpen.ogg',
-        handleCoins: 'public/assets/audio/sfx/handleCoins.ogg',
-        cloth: 'public/assets/audio/sfx/cloth1.ogg',
+        bookFlip: 'assets/audio/sfx/bookFlip2.ogg',
+        bookOpen: 'assets/audio/sfx/bookOpen.ogg',
+        bookClose: 'assets/audio/sfx/bookClose.ogg',
+        handleCoins: 'assets/audio/sfx/handleCoins.ogg',
+        handleCoins2: 'assets/audio/sfx/handleCoins2.ogg',
+        metalClick: 'assets/audio/sfx/metalClick.ogg',
       },
-      // 游戏内音效（按需加载）
+      // 游戏内战斗与环境音效 (按需加载)
       gameplay: {
-        doorOpen: 'public/assets/audio/sfx/doorOpen_1.ogg',
-        footstep: 'public/assets/audio/sfx/footstep00.ogg',
-        footstep2: 'public/assets/audio/sfx/footstep01.ogg',
-        footstep3: 'public/assets/audio/sfx/footstep02.ogg',
-        footstep4: 'public/assets/audio/sfx/footstep03.ogg',
-        footstep5: 'public/assets/audio/sfx/footstep04.ogg',
-        footstep6: 'public/assets/audio/sfx/footstep05.ogg',
-        footstep7: 'public/assets/audio/sfx/footstep06.ogg',
-        footstep8: 'public/assets/audio/sfx/footstep07.ogg',
-        footstep9: 'public/assets/audio/sfx/footstep08.ogg',
-        footstep10: 'public/assets/audio/sfx/footstep09.ogg',
-        chop: 'public/assets/audio/sfx/chop.ogg',
-        metalPot: 'public/assets/audio/sfx/metalPot1.ogg',
-        drawKnife: 'public/assets/audio/sfx/drawKnife1.ogg',
+        // 门
+        doorOpen1: 'assets/audio/sfx/doorOpen_1.ogg',
+        doorOpen2: 'assets/audio/sfx/doorOpen_2.ogg',
+        doorClose1: 'assets/audio/sfx/doorClose_1.ogg',
+        
+        // 脚步声
+        footstep: 'assets/audio/sfx/footstep00.ogg',
+        footstep2: 'assets/audio/sfx/footstep01.ogg',
+        footstep3: 'assets/audio/sfx/footstep02.ogg',
+        footstep4: 'assets/audio/sfx/footstep03.ogg',
+        
+        // 战斗 - 攻击
+        chop: 'assets/audio/sfx/chop.ogg', // 暴击/重击
+        knifeSlice1: 'assets/audio/sfx/knifeSlice.ogg',  // 普通攻击
+        knifeSlice2: 'assets/audio/sfx/knifeSlice2.ogg', // 普通攻击变体
+        drawKnife: 'assets/audio/sfx/drawKnife1.ogg',
+        
+        // 战斗 - 受击 (金属盔甲声)
+        metalPot1: 'assets/audio/sfx/metalPot1.ogg',
+        metalPot2: 'assets/audio/sfx/metalPot2.ogg',
+        metalPot3: 'assets/audio/sfx/metalPot3.ogg',
+        
+        // 物品/装备
+        cloth1: 'assets/audio/sfx/cloth1.ogg',
+        beltHandle1: 'assets/audio/sfx/beltHandle1.ogg',
+        beltHandle2: 'assets/audio/sfx/beltHandle2.ogg',
+        leatherDrop: 'assets/audio/sfx/dropLeather.ogg',
+        
+        // 机关/环境
+        metalLatch: 'assets/audio/sfx/metalLatch.ogg',
+        creak1: 'assets/audio/sfx/creak1.ogg'
       }
     };
     
-    // 合并所有音频文件（向后兼容）
+    // BGM 播放列表配置
+    this.bgmPlaylist = ['shadowed_labyrinth', 'shadows_abyss', 'whispers_depths'];
+    this.currentBgmIndex = -1;
+
+    // 音频上下文状态
+    this.audioContextResumed = false;
+    
+    // 音效池
+    this.soundPools = {};
+    this.poolSize = 5; 
+    
+    // 加载状态
+    this.criticalLoaded = false; 
+    this.loadingKeys = new Set();
+    this.loadPromises = {};       
+    
+    // 音频节流机制
+    this.lastPlayTimes = {}; 
+    this.throttleDelay = 50; 
+    
+    // 向后兼容状态
+    this.loaded = false;
+    this.loadProgress = 0;
+    
+    // 音量设置
+    this.masterVolume = 1.0;
+    this.sfxVolume = 1.0;
+    this.bgmVolume = 1.0; 
+    this.uiVolume = 1.0;   
+    
+    // BGM 控制
+    this.currentBgm = null;      
+    this.currentBgmKey = null;   
+    
+    // 合并所有音频文件查找表
     this.allAudioFiles = {
       ...this.audioFiles.bgm,
       ...this.audioFiles.critical,
       ...this.audioFiles.gameplay
     };
-    
-    // 音频上下文状态（用于处理浏览器自动播放限制）
-    this.audioContextResumed = false;
-    
-    // 音效池：为每个音效创建多个 Audio 实例
-    this.soundPools = {};
-    this.poolSize = 5; // 每个音效的实例数量
-    
-    // 加载状态
-    this.criticalLoaded = false;  // 关键音效是否已加载
-    this.loadingKeys = new Set();  // 正在加载的音效键名
-    this.loadPromises = {};       // 每个音效的加载 Promise
-    
-    // ✅ FIX: 音频节流机制 - 防止同一音效快速重复播放（避免"音频爆炸"）
-    this.lastPlayTimes = {}; // 记录每个音效的最后播放时间
-    this.throttleDelay = 50; // 同一音效的最小播放间隔（毫秒）
-    
-    // 加载状态（向后兼容）
-    this.loaded = false;
-    this.loadProgress = 0;
-    
-    // 音量设置（从 Game.settings 读取）
-    this.masterVolume = 1.0;
-    this.sfxVolume = 1.0;
-    this.bgmVolume = 1.0;  // 背景音乐音量
-    this.uiVolume = 1.0;   // UI 音效音量
-    
-    // BGM 控制
-    this.currentBgm = null;      // 当前播放的 BGM Audio 对象
-    this.currentBgmKey = null;   // 当前播放的 BGM 键名
-    
+
     console.log('[AudioManager] 实例已创建');
   }
   
   /**
-   * 预加载关键音频文件（UI相关音效）
-   * @returns {Promise<void>}
+   * 预加载关键音频文件
    */
   async preloadCritical() {
     console.log('[AudioManager] 开始预加载关键音频文件...');
-    
     const keys = Object.keys(this.audioFiles.critical);
-    const totalFiles = keys.length;
     let loadedFiles = 0;
     
-    // 为每个关键音效创建音效池
     for (const key of keys) {
-      const url = this.audioFiles.critical[key];
-      await this._loadAudioKey(key, url);
-      
+      await this._loadAudioKey(key, this.audioFiles.critical[key]);
       loadedFiles++;
-      this.loadProgress = (loadedFiles / totalFiles) * 100;
-      console.log(`[AudioManager] 关键音频加载进度: ${Math.round(this.loadProgress)}%`);
+      this.loadProgress = (loadedFiles / keys.length) * 100;
     }
     
     this.criticalLoaded = true;
-    this.loaded = true; // 向后兼容
+    this.loaded = true;
     console.log('[AudioManager] 关键音频文件加载完成！');
   }
   
   /**
-   * 预加载所有音频文件（向后兼容，不推荐使用）
-   * @returns {Promise<void>}
+   * 预加载所有音频文件（不推荐使用，建议按需加载）
    */
   async preload() {
-    console.log('[AudioManager] 开始预加载所有音频文件...');
-    
-    // 先加载关键音效
     await this.preloadCritical();
-    
-    // 然后加载游戏内音效
-    const keys = Object.keys(this.audioFiles.gameplay);
-    const totalFiles = keys.length;
-    let loadedFiles = 0;
-    
-    for (const key of keys) {
-      const url = this.audioFiles.gameplay[key];
-      await this._loadAudioKey(key, url);
-      
-      loadedFiles++;
-      this.loadProgress = 50 + (loadedFiles / totalFiles) * 50; // 50-100%
-      console.log(`[AudioManager] 游戏音频加载进度: ${Math.round(this.loadProgress)}%`);
-    }
-    
-    console.log('[AudioManager] 所有音频文件加载完成！');
+    await this.preloadGameplayAudio();
   }
   
   /**
    * 内部方法：加载单个音效键
-   * @param {string} key - 音效键名
-   * @param {string} url - 音频文件URL
-   * @returns {Promise<void>}
    */
   async _loadAudioKey(key, url) {
-    // 如果已加载，直接返回
-    if (this.soundPools[key] && this.soundPools[key].length > 0) {
-      return;
-    }
+    if (this.soundPools[key] && this.soundPools[key].length > 0) return;
+    if (this.loadingKeys.has(key)) return this.loadPromises[key];
     
-    // 如果正在加载，等待加载完成
-    if (this.loadingKeys.has(key)) {
-      return this.loadPromises[key];
-    }
-    
-    // 开始加载
     this.loadingKeys.add(key);
     this.soundPools[key] = [];
     
     const loadPromise = (async () => {
-      // 创建多个实例
       for (let i = 0; i < this.poolSize; i++) {
         const audio = new Audio(url);
         audio.preload = 'auto';
-        
-        // 预加载音频
         try {
-          await new Promise((resolve, reject) => {
-            audio.addEventListener('canplaythrough', resolve, { once: true });
-            audio.addEventListener('error', reject, { once: true });
-            audio.load();
-          });
-          
+          audio.load();
           this.soundPools[key].push({
             audio,
             playing: false,
@@ -186,7 +159,6 @@ export class AudioManager {
           console.warn(`[AudioManager] 加载音频失败: ${key} (${url})`, error);
         }
       }
-      
       this.loadingKeys.delete(key);
       delete this.loadPromises[key];
     })();
@@ -196,52 +168,29 @@ export class AudioManager {
   }
   
   /**
-   * 按需加载游戏内音效（当首次播放时自动加载）
-   * @param {string} key - 音效键名
-   * @returns {Promise<void>}
+   * 按需加载
    */
   async _ensureAudioLoaded(key) {
-    // 检查是否已加载
-    if (this.soundPools[key] && this.soundPools[key].length > 0) {
-      return;
-    }
+    if (this.soundPools[key] && this.soundPools[key].length > 0) return;
     
-    // 检查是否在关键音效中
-    if (this.audioFiles.critical[key]) {
-      const url = this.audioFiles.critical[key];
+    // 查找 URL
+    let url = this.audioFiles.critical[key] || this.audioFiles.gameplay[key] || this.audioFiles.bgm[key] || this.allAudioFiles[key];
+    
+    if (url) {
+      // console.log(`[AudioManager] 按需加载: ${key}`);
       await this._loadAudioKey(key, url);
-      return;
+    } else {
+      console.warn(`[AudioManager] 音效未找到定义: ${key}`);
     }
-    
-    // 检查是否在游戏内音效中
-    if (this.audioFiles.gameplay[key]) {
-      const url = this.audioFiles.gameplay[key];
-      console.log(`[AudioManager] 按需加载游戏音效: ${key}`);
-      await this._loadAudioKey(key, url);
-      return;
-    }
-    
-    // 向后兼容：检查合并后的映射
-    if (this.allAudioFiles[key]) {
-      const url = this.allAudioFiles[key];
-      console.log(`[AudioManager] 按需加载音效: ${key}`);
-      await this._loadAudioKey(key, url);
-      return;
-    }
-    
-    console.warn(`[AudioManager] 音效不存在: ${key}`);
   }
   
   /**
-   * 后台预加载游戏内音效（可选，用于提前加载常用音效）
-   * @param {Array<string>} keys - 要预加载的音效键名数组（可选，默认加载所有）
-   * @returns {Promise<void>}
+   * 后台预加载游戏内音效
    */
   async preloadGameplayAudio(keys = null) {
     const keysToLoad = keys || Object.keys(this.audioFiles.gameplay);
-    console.log(`[AudioManager] 开始后台预加载游戏音效: ${keysToLoad.length} 个`);
+    console.log(`[AudioManager] 后台预加载游戏音效: ${keysToLoad.length} 个`);
     
-    // 并行加载，但不阻塞
     const loadPromises = keysToLoad.map(key => {
       if (this.audioFiles.gameplay[key]) {
         return this._loadAudioKey(key, this.audioFiles.gameplay[key]).catch(err => {
@@ -251,102 +200,56 @@ export class AudioManager {
       return Promise.resolve();
     });
     
-    await Promise.all(loadPromises);
+    await Promise.allSettled(loadPromises);
     console.log('[AudioManager] 游戏音效后台预加载完成');
   }
   
   /**
-   * 播放音效（支持按需加载）
-   * @param {string} key - 音效键名
-   * @param {object} options - 播放选项
-   * @param {number} options.volume - 音量 (0-1)，默认 1.0
-   * @param {number} options.pitchVar - 音调变化范围 (例如 0.1 表示 0.9-1.1)，默认 0
-   * @param {boolean} options.loop - 是否循环播放，默认 false
-   * @param {boolean} options.waitForLoad - 是否等待加载完成再播放，默认 false（不阻塞）
-   * @param {string} options.forceCategory - 强制指定音效分类 ('ui' 或 'gameplay')，覆盖默认分类逻辑
-   * @returns {HTMLAudioElement|null} - 返回播放的 Audio 元素，如果播放失败则返回 null
+   * 播放音效
    */
   play(key, options = {}) {
     const waitForLoad = options.waitForLoad === true;
     
-    // 如果音效已加载，直接播放（同步路径，最快）
+    // 已加载则直接播放
     if (this.soundPools[key] && this.soundPools[key].length > 0) {
       return this._playFromPool(key, options);
     }
     
-    // 如果音效未加载，按需加载
-    if (waitForLoad) {
-      // 同步等待加载（不推荐，会阻塞）
-      console.warn(`[AudioManager] 同步等待音效加载: ${key}，这可能会阻塞`);
-      // 注意：这里不能真正同步等待，因为 _ensureAudioLoaded 是异步的
-      // 所以 fallback 到异步加载
-      this._ensureAudioLoaded(key).then(() => {
-        this._playFromPool(key, options);
-      }).catch(err => {
-        console.warn(`[AudioManager] 加载音效失败: ${key}`, err);
-      });
-      return null;
-    } else {
-      // 异步加载，不阻塞（推荐）
-      this._ensureAudioLoaded(key).then(() => {
-        this._playFromPool(key, options);
-      }).catch(err => {
-        console.warn(`[AudioManager] 异步加载音效失败: ${key}`, err);
-      });
-      return null; // 立即返回，音效将在加载完成后播放
-    }
+    // 未加载则异步加载后播放
+    this._ensureAudioLoaded(key).then(() => {
+      this._playFromPool(key, options);
+    }).catch(err => {
+      console.warn(`[AudioManager] 异步播放失败: ${key}`, err);
+    });
+    
+    return null;
   }
   
   /**
-   * 内部方法：从音效池播放音效
-   * @param {string} key - 音效键名
-   * @param {object} options - 播放选项
-   * @returns {HTMLAudioElement|null}
+   * 内部方法：从音效池播放
    */
   _playFromPool(key, options = {}) {
-    // 检查音效是否存在
-    if (!this.soundPools[key] || this.soundPools[key].length === 0) {
-      return null;
-    }
+    if (!this.soundPools[key] || this.soundPools[key].length === 0) return null;
+    if (this.masterVolume === 0) return null;
     
-    // ✅ FIX: 音频节流 - 检查是否在节流时间内
+    // 节流
     const now = Date.now();
     const lastPlayTime = this.lastPlayTimes[key] || 0;
-    const timeSinceLastPlay = now - lastPlayTime;
+    if (now - lastPlayTime < this.throttleDelay) return null;
     
-    // 如果距离上次播放时间太短，跳过本次播放（防止音频爆炸）
-    if (timeSinceLastPlay < this.throttleDelay) {
-      return null; // 静默跳过，不播放
-    }
-    
-    // 从 Game.settings 读取音量设置（如果存在）
+    // 更新设置
     const game = window.game;
     if (game && game.settings) {
       this.updateVolumes(game.settings);
     }
     
-    // 如果音频被禁用，直接返回
-    if (this.masterVolume === 0) {
-      return null;
-    }
-    
-    // ✅ FIX: 更新最后播放时间
     this.lastPlayTimes[key] = now;
     
-    // 从音效池中获取可用的实例
+    // 获取可用实例
     const pool = this.soundPools[key];
-    let soundInstance = null;
-    
-    // 优先使用未播放的实例
-    for (const instance of pool) {
-      if (!instance.playing) {
-        soundInstance = instance;
-        break;
-      }
-    }
-    
-    // 如果所有实例都在播放，使用最早播放的实例
+    let soundInstance = pool.find(i => !i.playing);
     if (!soundInstance) {
+      // 如果都忙，使用最早播放的
       soundInstance = pool.reduce((oldest, current) => 
         current.lastPlayTime < oldest.lastPlayTime ? current : oldest
       );
@@ -354,213 +257,160 @@ export class AudioManager {
     
     const audio = soundInstance.audio;
     
-    // 停止当前播放（如果正在播放）
+    // 重置
     audio.pause();
     audio.currentTime = 0;
     
-    // 设置音量：根据音效类型应用不同的音量乘数
+    // 设置音量
     const baseVolume = options.volume !== undefined ? options.volume : 1.0;
-    // 判断音效类型：优先使用 forceCategory，否则按默认逻辑（critical 使用 uiVolume，gameplay 使用 sfxVolume）
     let categoryVolume;
+    
     if (options.forceCategory === 'ui') {
       categoryVolume = this.uiVolume;
     } else if (options.forceCategory === 'gameplay') {
       categoryVolume = this.sfxVolume;
     } else {
-      // 默认逻辑：critical 使用 uiVolume，gameplay 使用 sfxVolume
       categoryVolume = this.audioFiles.critical[key] ? this.uiVolume : this.sfxVolume;
     }
-    audio.volume = Math.min(1.0, baseVolume * categoryVolume * this.masterVolume);
     
-    // 设置循环
+    audio.volume = Math.min(1.0, baseVolume * categoryVolume * this.masterVolume);
     audio.loop = options.loop || false;
     
-    // 音调变化（通过 playbackRate 实现）
+    // 音调
     const pitchVar = options.pitchVar || 0;
     if (pitchVar > 0) {
       const randomPitch = 1.0 + (Math.random() * 2 - 1) * pitchVar;
-      audio.playbackRate = Math.max(0.5, Math.min(2.0, randomPitch)); // 限制在 0.5-2.0 范围内
+      audio.playbackRate = Math.max(0.5, Math.min(2.0, randomPitch));
     } else {
       audio.playbackRate = 1.0;
     }
     
-    // 播放音效
+    // 播放
     try {
-      audio.play().catch(error => {
-        console.warn(`[AudioManager] 播放失败: ${key}`, error);
-      });
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {});
+      }
       
       soundInstance.playing = true;
       soundInstance.lastPlayTime = Date.now();
       
-      // 播放结束后重置状态
-      audio.addEventListener('ended', () => {
+      audio.onended = () => {
         soundInstance.playing = false;
-      }, { once: true });
+        audio.onended = null; // 清理引用
+      };
       
       return audio;
     } catch (error) {
-      console.warn(`[AudioManager] 播放异常: ${key}`, error);
       return null;
     }
   }
   
-  /**
-   * 停止指定音效
-   * @param {string} key - 音效键名
-   */
   stop(key) {
     if (!this.soundPools[key]) return;
-    
-    const pool = this.soundPools[key];
-    for (const instance of pool) {
+    this.soundPools[key].forEach(instance => {
       instance.audio.pause();
       instance.audio.currentTime = 0;
       instance.playing = false;
-    }
+    });
   }
   
-  /**
-   * 停止所有音效
-   */
   stopAll() {
-    for (const key of Object.keys(this.soundPools)) {
-      this.stop(key);
-    }
+    Object.keys(this.soundPools).forEach(key => this.stop(key));
   }
   
-  /**
-   * 更新音量设置
-   * @param {Object} settings - 游戏设置对象
-   */
   updateVolumes(settings) {
-    if (!settings) {
-      console.warn('[AudioManager] updateVolumes called with invalid settings');
-      return;
-    }
-    
-    // 主音量开关
+    if (!settings) return;
     this.masterVolume = settings.audioEnabled !== false ? 1.0 : 0.0;
-    
-    // 独立通道音量 (0-100 -> 0.0-1.0)，处理边界情况
-    const bgmVol = settings.bgmVolume;
-    const sfxVol = settings.sfxVolume;
-    const uiVol = settings.uiSfxVolume;
-    
-    this.bgmVolume = (typeof bgmVol === 'number' && !isNaN(bgmVol) && bgmVol >= 0 && bgmVol <= 100) 
-      ? bgmVol / 100 
-      : 1.0;
-    this.sfxVolume = (typeof sfxVol === 'number' && !isNaN(sfxVol) && sfxVol >= 0 && sfxVol <= 100) 
-      ? sfxVol / 100 
-      : 1.0;
-    this.uiVolume = (typeof uiVol === 'number' && !isNaN(uiVol) && uiVol >= 0 && uiVol <= 100) 
-      ? uiVol / 100 
-      : 1.0;
+    this.bgmVolume = (settings.bgmVolume ?? 100) / 100;
+    this.sfxVolume = (settings.sfxVolume ?? 100) / 100;
+    this.uiVolume = (settings.uiSfxVolume ?? 100) / 100;
 
-    // 实时更新当前播放的 BGM 音量
     if (this.currentBgm) {
       this.currentBgm.volume = Math.max(0, Math.min(1, this.bgmVolume * this.masterVolume));
     }
   }
   
-  /**
-   * 恢复音频上下文（处理浏览器自动播放限制）
-   * 在用户首次交互时调用，解锁音频播放
-   */
   resume() {
-    if (this.audioContextResumed) {
-      return Promise.resolve();
-    }
-    
+    if (this.audioContextResumed) return Promise.resolve();
     this.audioContextResumed = true;
     
-    // 创建一个静音的 Audio 实例并播放，以解锁音频上下文
-    const unlockAudio = () => {
-      const audio = new Audio();
-      audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
-      audio.volume = 0;
-      audio.play().then(() => {
-        audio.pause();
-        audio.remove();
-        console.log('[AudioManager] Audio context resumed');
-      }).catch(err => {
-        console.warn('[AudioManager] Failed to resume audio context:', err);
-      });
-    };
+    // 播放无声片段解锁 AudioContext
+    const audio = new Audio();
+    audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+    audio.volume = 0;
+    return audio.play().then(() => {
+      audio.remove();
+      console.log('[AudioManager] Audio context resumed');
+    }).catch(e => console.warn('Unlock failed', e));
+  }
+  
+  setMasterVolume(v) { this.masterVolume = Math.max(0, Math.min(1, v)); }
+  setSfxVolume(v) { this.sfxVolume = Math.max(0, Math.min(1, v)); }
+  
+  /**
+   * 随机播放 BGM (播放列表轮播)
+   */
+  playRandomBgm() {
+    if (!this.audioContextResumed) this.resume();
+    if (this.masterVolume === 0) return;
     
-    // 尝试立即解锁
-    unlockAudio();
-    
-    return Promise.resolve();
-  }
-  
-  /**
-   * 设置主音量
-   * @param {number} volume - 音量 (0-1)
-   */
-  setMasterVolume(volume) {
-    this.masterVolume = Math.max(0, Math.min(1, volume));
-  }
-  
-  /**
-   * 设置音效音量
-   * @param {number} volume - 音量 (0-1)
-   */
-  setSfxVolume(volume) {
-    this.sfxVolume = Math.max(0, Math.min(1, volume));
-  }
-  
-  /**
-   * 播放背景音乐 (独占, 循环)
-   * @param {string} key - 音效键名
-   */
-  playBgm(key) {
-    // 确保音频上下文已解锁
-    if (!this.audioContextResumed) {
-      this.resume();
+    // 如果已经在播放且没暂停，不打断
+    if (this.currentBgm && !this.currentBgm.paused) return;
+
+    // 随机选择下一首，避免重复
+    let nextIndex;
+    if (this.bgmPlaylist.length > 1) {
+        let attempts = 0;
+        do {
+            nextIndex = Math.floor(Math.random() * this.bgmPlaylist.length);
+            attempts++;
+        } while (nextIndex === this.currentBgmIndex && attempts < 5);
+    } else {
+        nextIndex = 0;
     }
     
-    if (this.masterVolume === 0) return; // 静音时不开始播放，但保留逻辑需要时可优化
+    this.currentBgmIndex = nextIndex;
+    const nextKey = this.bgmPlaylist[nextIndex];
+    
+    // 播放选中的曲目，loop=false 以便触发 ended 事件切歌
+    this.playBgm(nextKey, false);
+  }
+  
+  /**
+   * 播放指定 BGM
+   */
+  playBgm(key, loop = true) {
+    if (this.masterVolume === 0) return;
     if (this.currentBgmKey === key && this.currentBgm && !this.currentBgm.paused) return;
 
-    // 停止当前 BGM
     this.stopBgm();
-
-    // 保存请求的 key，用于防御性检查
     const requestedKey = key;
 
-    // 异步加载并播放
     this._ensureAudioLoaded(key).then(() => {
-        // 防御性检查：确保加载完成时，请求的 key 依然是 currentBgmKey（防止加载期间切歌导致的竞态问题）
-        if (this.currentBgmKey !== null && this.currentBgmKey !== requestedKey) {
-          // 加载期间已经切换了 BGM，放弃本次播放
-          console.log(`[AudioManager] BGM load cancelled: ${requestedKey} (switched to ${this.currentBgmKey})`);
-          return;
-        }
-        
-        // 再次检查（防止加载期间切换了BGM）
-        if (this.currentBgm && this.currentBgmKey !== requestedKey) {
-          this.stopBgm();
-          return;
-        }
-        
-        // 查找音频 URL（优先查找 BGM，然后 gameplay，最后 critical）
-        let url = this.audioFiles.bgm[requestedKey] || this.audioFiles.gameplay[requestedKey] || this.audioFiles.critical[requestedKey] || this.allAudioFiles[requestedKey];
-        
-        if (!url) {
-            console.warn(`[AudioManager] BGM not found: ${requestedKey}`);
-            return;
-        }
+        if (this.currentBgmKey !== null && this.currentBgmKey !== requestedKey) return;
+
+        let url = this.allAudioFiles[requestedKey];
+        if (!url) return;
 
         const audio = new Audio(url);
-        audio.loop = true;
+        audio.loop = loop;
         audio.volume = this.bgmVolume * this.masterVolume;
+        
+        // 自动切歌逻辑
+        if (!loop) {
+            audio.addEventListener('ended', () => {
+                console.log('[AudioManager] BGM 播放结束，切换下一首...');
+                this.currentBgm = null;
+                this.currentBgmKey = null;
+                this.playRandomBgm();
+            }, { once: true });
+        }
         
         const playPromise = audio.play();
         if (playPromise !== undefined) {
             playPromise.catch(error => {
-                console.warn(`[AudioManager] BGM autoplay prevented: ${error}`);
-                // 播放失败时清理状态
+                console.warn(`[AudioManager] BGM 自动播放被拦截: ${error}`);
                 if (this.currentBgmKey === requestedKey) {
                   this.currentBgm = null;
                   this.currentBgmKey = null;
@@ -568,165 +418,77 @@ export class AudioManager {
             });
         }
         
-        // 再次确认状态（防止竞态）
         if (this.currentBgmKey === null || this.currentBgmKey === requestedKey) {
           this.currentBgm = audio;
           this.currentBgmKey = requestedKey;
-          console.log(`[AudioManager] Playing BGM: ${requestedKey}`);
+          console.log(`[AudioManager] 正在播放 BGM: ${requestedKey}`);
         }
-    }).catch(error => {
-        console.warn(`[AudioManager] BGM load failed: ${key}`, error);
-        // 加载失败时清理状态
-        if (this.currentBgmKey === requestedKey) {
-          this.currentBgm = null;
-          this.currentBgmKey = null;
-        }
-    });
+    }).catch(e => console.warn('BGM Load Error', e));
   }
   
-  /**
-   * 停止背景音乐
-   */
   stopBgm() {
     if (this.currentBgm) {
         this.currentBgm.pause();
         this.currentBgm.currentTime = 0;
+        // 移除旧的监听器
+        this.currentBgm.onended = null;
         this.currentBgm = null;
         this.currentBgmKey = null;
     }
   }
   
-  /**
-   * 播放脚步声（随机从多个变体中选择）
-   */
+  // ================= 快捷播放方法 (Sound Mapping) =================
+  
   playFootstep() {
-    const footsteps = ['footstep', 'footstep2', 'footstep3', 'footstep4', 'footstep5', 
-                      'footstep6', 'footstep7', 'footstep8', 'footstep9', 'footstep10'];
-    const randomFootstep = footsteps[Math.floor(Math.random() * footsteps.length)];
-    return this.play(randomFootstep, { 
-      volume: 0.3, 
-      pitchVar: 0.15,
-      waitForLoad: false // 不阻塞，异步加载
-    });
+    const steps = ['footstep', 'footstep2', 'footstep3', 'footstep4'];
+    const sound = steps[Math.floor(Math.random() * steps.length)];
+    return this.play(sound, { volume: 0.3, pitchVar: 0.15, forceCategory: 'gameplay' });
   }
   
-  /**
-   * 播放攻击音效（带随机音调）
-   */
   playAttack() {
-    return this.play('chop', { 
-      volume: 0.6, 
-      pitchVar: 0.1,
-      waitForLoad: false
-    });
+    // 随机选择挥刀音效
+    const sound = Math.random() < 0.5 ? 'knifeSlice1' : 'knifeSlice2';
+    return this.play(sound, { volume: 0.6, pitchVar: 0.1, forceCategory: 'gameplay' });
   }
   
-  /**
-   * 播放暴击音效（音调更高、音量更大）
-   */
   playCrit() {
-    return this.play('chop', { 
-      volume: 0.9, 
-      pitchVar: 0.2, // 更高的音调变化范围
-      waitForLoad: false
-    });
+    // 暴击使用更重的音效
+    return this.play('chop', { volume: 0.8, pitchVar: 0.1, forceCategory: 'gameplay' });
   }
   
-  /**
-   * 播放受击音效
-   */
   playHit() {
-    return this.play('metalPot', { 
-      volume: 0.5, 
-      pitchVar: 0.1,
-      waitForLoad: false
-    });
+    // 受击使用金属碰撞声
+    const pots = ['metalPot1', 'metalPot2', 'metalPot3'];
+    const sound = pots[Math.floor(Math.random() * pots.length)];
+    return this.play(sound, { volume: 0.5, pitchVar: 0.1, forceCategory: 'gameplay' });
   }
   
-  /**
-   * 播放开门音效
-   */
   playDoorOpen() {
-    return this.play('doorOpen', { 
-      volume: 0.7,
-      waitForLoad: false
-    });
+    const sound = Math.random() < 0.5 ? 'doorOpen1' : 'doorOpen2';
+    return this.play(sound, { volume: 0.7, forceCategory: 'gameplay' });
   }
   
-  /**
-   * 播放楼层开始音效（楼层切换时的重击/钟声）
-   */
-  playLevelStart() {
-    // Placeholder: 使用 metalPot 音效模拟沉重敲击感
-    return this.play('metalPot', { 
-      volume: 0.5, 
-      pitchVar: 0,
-      waitForLoad: false
-    });
-    // 说明：目前 play() 没有直接的音高控制接口，
-    // 这里将 pitchVar 设为 0，后续可以替换为专门的 level_start.ogg 资源。
-  }
-  
-  /**
-   * 播放金币音效
-   * @param {object} options - 播放选项（支持 forceCategory）
-   */
   playCoins(options = {}) {
-    return this.play('handleCoins', { 
-      volume: 0.5, 
-      pitchVar: 0.05,
-      ...options
-    });
+    const sound = Math.random() < 0.5 ? 'handleCoins' : 'handleCoins2';
+    return this.play(sound, { volume: 0.5, pitchVar: 0.05, ...options });
   }
   
-  /**
-   * 播放布料音效（背包/装备）
-   */
   playCloth() {
-    return this.play('cloth', { 
-      volume: 0.4 
-    });
+    const sounds = ['beltHandle1', 'beltHandle2', 'cloth1', 'leatherDrop'];
+    const sound = sounds[Math.floor(Math.random() * sounds.length)];
+    return this.play(sound, { volume: 0.4, forceCategory: 'gameplay' });
   }
   
-  /**
-   * 播放书页翻动音效（图鉴/菜单）
-   */
-  playBookFlip() {
-    return this.play('bookFlip', { 
-      volume: 0.5 
-    });
-  }
+  playBookFlip() { return this.play('bookFlip', { volume: 0.5 }); }
+  playBookOpen() { return this.play('bookOpen', { volume: 0.6 }); }
+  playBookClose() { return this.play('bookClose', { volume: 0.5 }); }
   
-  /**
-   * 播放打开书本音效（图鉴打开）
-   */
-  playBookOpen() {
-    return this.play('bookOpen', { 
-      volume: 0.6 
-    });
-  }
+  playMetalClick() { return this.play('metalClick', { volume: 0.4 }); }
   
-  /**
-   * 播放近战攻击音效（向后兼容）
-   */
-  playMeleeHit() {
-    return this.playHit();
-  }
+  // 兼容旧接口
+  playMeleeHit() { return this.playHit(); }
+  playLevelStart() { return this.play('metalLatch', { volume: 0.6 }); }
   
-  /**
-   * 播放金属点击音效（向后兼容）
-   */
-  playMetalClick() {
-    return this.play('metalPot', { 
-      volume: 0.3,
-      waitForLoad: false
-    });
-  }
-  
-  /**
-   * 获取单例实例
-   * @returns {AudioManager}
-   */
   static getInstance() {
     if (!AudioManager.instance) {
       AudioManager.instance = new AudioManager();
@@ -735,6 +497,5 @@ export class AudioManager {
   }
 }
 
-// 导出单例实例
 export default AudioManager.getInstance();
 
