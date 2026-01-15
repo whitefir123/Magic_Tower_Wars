@@ -1016,8 +1016,11 @@ export class MapSystem {
       paths = this._countVertexDisjointPaths(sx, sy, ex, ey, minPaths);
     }
     if (paths.length < minPaths) {
-      console.warn(`ensureMultiplePaths: 无法生成 ${minPaths} 条独立路径，仅生成 ${paths.length} 条`);
-    } else {
+      // 静默处理：在某些地图配置下可能无法生成足够的独立路径，这是可接受的
+      // 仅在调试模式下输出详细信息
+      if (window.DEBUG_MODE) {
+        console.log(`[MapSystem] ensureMultiplePaths: 生成了 ${paths.length}/${minPaths} 条独立路径`);
+      }
     }
   }
   

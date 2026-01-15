@@ -142,6 +142,10 @@ export class HUD {
 
     const maxMp = player.stats.maxMp ?? totals.maxMp ?? 0;
     const currentMp = player.stats.mp ?? 0;
+
+    // DEBUG: 确认数值是否正常
+    console.log(`[HUD] Updating MP: ${currentMp}/${maxMp}`);
+
     if (maxMp > 0) {
       const mpPercent = Math.max(0, Math.min(100, (currentMp / maxMp) * 100));
       this.updateStyleIfChanged('mp-fill', 'width', `${mpPercent}%`);
@@ -241,95 +245,53 @@ export class HUD {
   }
 
   /**
-   * 动态创建 MP 条，插入到怒气条下方
+   * 动态创建 MP 条，直接追加到 .hp-section 内部
    */
   createMpBar() {
-    console.log('[HUD] createMpBar 方法被调用');
+    console.log('[HUD] Creating MP Bar...');
     
-    // 1. 找到锚点元素（怒气条区域）
-    const rageSection = document.querySelector('.rage-section');
-    console.log('[HUD] 查找 .rage-section:', rageSection);
-    
-    // 2. 防止重复创建
-    if (document.getElementById('ui-mp')) {
-      console.log('[HUD] MP 条已存在，跳过创建');
+    // 1. 寻找最佳容器：.hp-section (这是一个 flex-column 容器)
+    const hpSection = document.querySelector('.hp-section');
+    if (!hpSection) {
+      console.error('[HUD] Fatal: .hp-section not found! Cannot create MP bar.');
       return;
     }
 
-    console.log('[HUD] 正在创建 MP 条...');
+    // 2. 防止重复创建
+    if (document.getElementById('ui-mp')) return;
 
-    // 3. 创建主容器
+    // 3. 创建结构
     const mpRow = document.createElement('div');
-    mpRow.className = 'mp-section'; // 对应 CSS 中的 .mp-section
+    mpRow.className = 'mp-section'; 
     mpRow.id = 'ui-mp';
-    // 确保容器有明确的高度，防止内容为空时高度塌陷
+    // 强制样式确保可见性
     mpRow.style.display = 'flex';
     mpRow.style.flexDirection = 'column';
-    mpRow.style.minHeight = '20px'; // 确保有最小高度
+    mpRow.style.width = '80%';
+    mpRow.style.margin = '4px auto 0 auto';
+    mpRow.style.zIndex = '15'; // 确保在最上层
 
-    // 4. 创建进度条背景容器
     const barContainer = document.createElement('div');
-    barContainer.className = 'mp-bar-bg'; // 对应 CSS 中的 .mp-bar-bg
-
-    // 5. 创建进度条填充层
+    barContainer.className = 'mp-bar-bg';
+    
     const barFill = document.createElement('div');
     barFill.id = 'mp-fill';
-    // 初始样式，实际由 CSS 控制，这里仅做兜底
-    barFill.style.width = '100%'; 
-    barFill.style.height = '100%';
-
-    // 6. 创建文本显示
+    
     const barText = document.createElement('div');
     barText.id = 'mp-text';
-    barText.className = 'mp-text'; // 对应 CSS 中的 .mp-text
-    barText.innerText = 'MP: 0/0';
+    barText.className = 'mp-text';
+    barText.innerText = 'MP: --/--';
 
-    // 7. 组装元素
-    barContainer.appendChild(barFill); // 填充层放入背景容器
-    mpRow.appendChild(barContainer);   // 背景容器放入主行
-    mpRow.appendChild(barText);        // 文本放入主行（在进度条下方）
+    // 4. 组装
+    barContainer.appendChild(barFill);
+    mpRow.appendChild(barContainer);
+    mpRow.appendChild(barText);
 
-    // 8. 插入到页面中 - 添加后备方案
-    let insertParent = null;
-    let insertBefore = null;
+    // 5. 关键修改：直接追加到 hp-section 内部的末尾
+    // 这样利用 flex 布局自动排在怒气条下方
+    hpSection.appendChild(mpRow);
     
-    if (rageSection && rageSection.parentNode) {
-      insertParent = rageSection.parentNode;
-      insertBefore = rageSection.nextSibling;
-      console.log('[HUD] 找到 .rage-section，将在其后插入 MP 条');
-    } else {
-      // 后备方案1：尝试找到 hpSection
-      const hpSection = document.querySelector('.hp-section');
-      if (hpSection && hpSection.parentNode) {
-        insertParent = hpSection.parentNode;
-        insertBefore = hpSection.nextSibling;
-        console.log('[HUD] 未找到 .rage-section，使用 .hp-section 作为锚点');
-      } else {
-        // 后备方案2：尝试找到 rightSidebar
-        const rightSidebar = document.getElementById('right-sidebar');
-        if (rightSidebar) {
-          insertParent = rightSidebar;
-          insertBefore = null; // 插入到末尾
-          console.log('[HUD] 未找到 .rage-section 和 .hp-section，使用 #right-sidebar 作为锚点');
-        } else {
-          // 后备方案3：直接插入到 body（临时调试）
-          insertParent = document.body;
-          insertBefore = null;
-          console.warn('[HUD] 未找到任何合适的锚点，将 MP 条插入到 body（临时调试）');
-        }
-      }
-    }
-    
-    if (insertParent) {
-      if (insertBefore) {
-        insertParent.insertBefore(mpRow, insertBefore);
-      } else {
-        insertParent.appendChild(mpRow);
-      }
-      console.log('[HUD] MP 条创建成功并已插入 DOM，父元素:', insertParent);
-    } else {
-      console.error('[HUD] 无法插入 MP 条：找不到任何可用的父元素');
-    }
+    console.log('[HUD] MP Bar successfully appended to .hp-section');
   }
 
   /**

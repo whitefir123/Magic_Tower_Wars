@@ -33,7 +33,7 @@ export class MenuVisuals {
     this.menuContainer = document.getElementById('main-menu');
     
     if (!this.menuContainer) {
-      console.warn('[MenuVisuals] main-menu 元素不存在，延迟初始化...');
+      // 静默处理：主菜单元素不存在是正常情况（例如在游戏内时）
       return false;
     }
     
