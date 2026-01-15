@@ -304,18 +304,22 @@ export class CombatSystem {
       
       // 检查是否死亡
       if (enemy.stats.hp <= 0) {
+        // ✅ 触发击杀后的特殊效果（如灵魂收割）
+        if (attacker === game.player) {
+          this.triggerOnKillEffects(game, attacker, enemy);
+        }
+        
         // ✅ v2.0: 处理闪电链击杀的完整奖励结算
         if (attacker === game.player && game.map) {
           const g = enemy.stats.goldYield || enemy.stats.gold || 0;
           const xp = enemy.stats.xpYield || enemy.stats.xp || 0;
           
-          // 给予金币奖励（应用 gold_rate 和点石成金）
+          // 给予金币奖励（应用 gold_rate，已包含点石成金加成）
           if (g > 0) {
-            // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate + 点石成金关键石
+            // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate（已包含点石成金的0.30加成）
             const attackerTotals = attacker.getTotalStats ? attacker.getTotalStats() : attacker.stats;
             const goldRate = attackerTotals.gold_rate || 0;
-            const hasGoldenTouch = attacker.activeKeystones && attacker.activeKeystones.includes('GOLDEN_TOUCH');
-            const goldMult = 1 + goldRate + (hasGoldenTouch ? 0.3 : 0);
+            const goldMult = 1 + goldRate;
             const finalGold = Math.floor(g * goldMult);
             
             attacker.stats.gold = (attacker.stats.gold || 0) + finalGold;
@@ -453,15 +457,22 @@ export class CombatSystem {
             } else {
               // ✅ FIX: 增强DoT击杀的奖励归属判定 - 只要sourceId === 'player'就给予奖励
               if (dot.sourceId === 'player' && game.player) {
+                // ✅ 触发击杀后的特殊效果（如灵魂收割）
+                this.triggerOnKillEffects(game, game.player, entity);
                 const source = game.player;
                 const g = entity.stats.goldYield || entity.stats.gold || 0;
                 const xp = entity.stats.xpYield || entity.stats.xp || 0;
                 
                 if (g > 0) {
-                  source.stats.gold = (source.stats.gold || 0) + g;
+                  // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate（已包含点石成金的0.30加成）
+                  const sourceTotals = source.getTotalStats ? source.getTotalStats() : source.stats;
+                  const goldRate = sourceTotals.gold_rate || 0;
+                  const goldMult = 1 + goldRate;
+                  const finalGold = Math.floor(g * goldMult);
+                  source.stats.gold = (source.stats.gold || 0) + finalGold;
                   if (game.settings && game.settings.showDamageNumbers !== false) {
                     const pos = entity.getFloatingTextPosition();
-                    const goldText = game.floatingTextPool.create(pos.x, pos.y - 16, `+${g} 金币`, '#ffd700');
+                    const goldText = game.floatingTextPool.create(pos.x, pos.y - 16, `+${finalGold} 金币`, '#ffd700');
                     game.floatingTexts.push(goldText);
                   }
                   if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -603,15 +614,24 @@ export class CombatSystem {
             // 只要sourceId是'player'，即使source引用丢失，也给予玩家奖励
             if (dot.sourceId === 'player' && game.player) {
               const source = game.player;
+              
+              // ✅ 触发击杀后的特殊效果（如灵魂收割）
+              this.triggerOnKillEffects(game, source, nearestEnemy);
+              
               const g = nearestEnemy.stats.goldYield || nearestEnemy.stats.gold || 0;
               const xp = nearestEnemy.stats.xpYield || nearestEnemy.stats.xp || 0;
               
               if (g > 0) {
-                source.stats.gold = (source.stats.gold || 0) + g;
+                // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate（已包含点石成金的0.30加成）
+                const sourceTotals = source.getTotalStats ? source.getTotalStats() : source.stats;
+                const goldRate = sourceTotals.gold_rate || 0;
+                const goldMult = 1 + goldRate;
+                const finalGold = Math.floor(g * goldMult);
+                source.stats.gold = (source.stats.gold || 0) + finalGold;
                 // ✅ FIX: 优化飘字显示重叠 - 金币和XP使用不同的高度偏移
                 if (game.settings && game.settings.showDamageNumbers !== false) {
                   const pos = nearestEnemy.getFloatingTextPosition();
-                  const goldText = game.floatingTextPool.create(pos.x, pos.y - 16, `+${g} 金币`, '#ffd700');
+                  const goldText = game.floatingTextPool.create(pos.x, pos.y - 16, `+${finalGold} 金币`, '#ffd700');
                   game.floatingTexts.push(goldText);
                 }
                 if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -683,14 +703,23 @@ export class CombatSystem {
             // ✅ FIX: 增强DoT击杀的奖励归属判定 - 只要sourceId === 'player'就给予奖励
             if (dot.sourceId === 'player' && game.player) {
               const source = game.player;
+              
+              // ✅ 触发击杀后的特殊效果（如灵魂收割）
+              this.triggerOnKillEffects(game, source, entity);
+              
               const g = entity.stats.goldYield || entity.stats.gold || 0;
               const xp = entity.stats.xpYield || entity.stats.xp || 0;
               
               if (g > 0) {
-                source.stats.gold = (source.stats.gold || 0) + g;
+                // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate（已包含点石成金的0.30加成）
+                const sourceTotals = source.getTotalStats ? source.getTotalStats() : source.stats;
+                const goldRate = sourceTotals.gold_rate || 0;
+                const goldMult = 1 + goldRate;
+                const finalGold = Math.floor(g * goldMult);
+                source.stats.gold = (source.stats.gold || 0) + finalGold;
                 if (game.settings && game.settings.showDamageNumbers !== false) {
                   const pos = entity.getFloatingTextPosition();
-                  const goldText = game.floatingTextPool.create(pos.x, pos.y - 16, `+${g} 金币`, '#ffd700');
+                  const goldText = game.floatingTextPool.create(pos.x, pos.y - 16, `+${finalGold} 金币`, '#ffd700');
                   game.floatingTexts.push(goldText);
                 }
                 if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -2104,6 +2133,9 @@ export class CombatSystem {
       
       // ✅ v2.0: Hook - onKill（击杀时）
       if (monster.stats.hp <= 0) {
+        // ✅ 触发击杀后的特殊效果（如灵魂收割）
+        this.triggerOnKillEffects(game, player, monster);
+        
         this.processHooks(player, monster, 'onKill', {
           damage: dmgToMon,
           isCrit,
@@ -2204,10 +2236,15 @@ export class CombatSystem {
         
         // ✅ FIX: 优化飘字显示重叠 - 金币和XP使用不同的高度偏移
         if (g > 0) {
-          player.stats.gold = (player.stats.gold || 0) + g;
+          // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate（已包含点石成金的0.30加成）
+          const playerTotals = player.getTotalStats ? player.getTotalStats() : player.stats;
+          const goldRate = playerTotals.gold_rate || 0;
+          const goldMult = 1 + goldRate;
+          const finalGold = Math.floor(g * goldMult);
+          player.stats.gold = (player.stats.gold || 0) + finalGold;
           if (game.settings && game.settings.showDamageNumbers !== false) {
             const pos = monster.getFloatingTextPosition();
-            const goldText = game.floatingTextPool.create(pos.x, pos.y - 16, `+${g} 金币`, '#ffd700');
+            const goldText = game.floatingTextPool.create(pos.x, pos.y - 16, `+${finalGold} 金币`, '#ffd700');
             game.floatingTexts.push(goldText);
           }
           if (game.audio) game.audio.playCoins({ forceCategory: 'gameplay' });
@@ -2573,6 +2610,42 @@ export class CombatSystem {
   }
 
   /**
+   * ✅ 触发击杀后的特殊效果（如灵魂收割）
+   * 集中处理所有击杀后的关键石效果
+   * @param {Object} game - 游戏对象
+   * @param {Entity} player - 玩家实体
+   * @param {Entity} monster - 被击杀的怪物
+   */
+  static triggerOnKillEffects(game, player, monster) {
+    if (!game || !player || !monster) return;
+    
+    // ========== 灵魂收割机制 (SOUL_REAPER) ==========
+    if (player.activeKeystones && Array.isArray(player.activeKeystones) && player.activeKeystones.includes('SOUL_REAPER')) {
+      // 恢复玩家10%最大生命值
+      const totals = player.getTotalStats ? player.getTotalStats() : player.stats;
+      const maxHp = totals.maxHp || player.stats.maxHp || 100;
+      const healAmount = Math.floor(maxHp * 0.10);
+      
+      if (healAmount > 0) {
+        player.heal(healAmount);
+        
+        // 显示浮动文字提示
+        if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
+          const pos = player.getFloatingTextPosition();
+          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+          const healText = game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, `+${healAmount} HP`, '#00ff88');
+          game.floatingTexts.push(healText);
+        }
+        
+        // 播放治疗音效
+        if (game.audio && typeof game.audio.play === 'function') {
+          game.audio.play('cloth3', { volume: 0.4, pitchVar: 0.1, forceCategory: 'gameplay' });
+        }
+      }
+    }
+  }
+
+  /**
    * 怪物死亡时的通用处理（供闪电链、顺劈等间接击杀调用）
    * 目前主要用于触发视觉特效，并安全移除怪物
    * @param {Entity} monster
@@ -2594,27 +2667,9 @@ export class CombatSystem {
       game.vfx.emitParticles(wx, wy, 'DEATH');
     }
     
-    // ========== 灵魂收割机制 ==========
-    // ✅ 检查玩家是否激活 SOUL_REAPER 关键石
-    if (attacker && attacker === game.player && game.player.activeKeystones && Array.isArray(game.player.activeKeystones)) {
-      if (game.player.activeKeystones.includes('SOUL_REAPER')) {
-        // 恢复玩家10%最大生命值
-        const totals = game.player.getTotalStats();
-        const maxHp = totals.maxHp || game.player.stats.maxHp || 100;
-        const healAmount = Math.floor(maxHp * 0.1);
-        
-        if (healAmount > 0) {
-          game.player.heal(healAmount);
-          
-          // 显示浮动文字提示
-          if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
-            const pos = game.player.getFloatingTextPosition();
-            const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
-            const healText = game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, `+${healAmount} HP`, '#00ff88');
-            game.floatingTexts.push(healText);
-          }
-        }
-      }
+    // ✅ 触发击杀后的特殊效果（如灵魂收割）
+    if (attacker && attacker === game.player) {
+      this.triggerOnKillEffects(game, attacker, monster);
     }
 
     // 目前保持逻辑最小侵入：只负责移除怪物，避免破坏既有掉落/经验结算流程

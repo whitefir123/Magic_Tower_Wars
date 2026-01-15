@@ -340,6 +340,18 @@ export const TALENT_TREE_DATA = {
         keystoneEffect: KEYSTONE_EFFECTS.SOUL_REAPER,
         requirements: ['hybrid_1']
     },
+    'keystone_blood_magic': {
+        id: 'keystone_blood_magic',
+        x: 20,
+        y: -140, // 双子座另一颗亮星（左侧）
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '双子·血魔法',
+        description: '最大生命+20%，最大魔力-100%',
+        cost: 2000,
+        stats: { max_hp_percent: 0.20, max_mp_percent: -1.0 },
+        keystoneEffect: KEYSTONE_EFFECTS.BLOOD_MAGIC,
+        requirements: ['hybrid_1']
+    },
 
     // ========== 防御分支：大熊座 (Ursa Major) - 正左方延伸 ==========
     'def_1': {
@@ -430,7 +442,7 @@ export const TALENT_TREE_DATA = {
         name: '点石成金',
         description: '金币获取+30%，受到伤害+10%',
         cost: 1800,
-        stats: { gold_rate: 0.10 },
+        stats: { gold_rate: 0.30 },
         keystoneEffect: KEYSTONE_EFFECTS.GOLDEN_TOUCH,
         requirements: ['eco_medium']
     },
@@ -639,6 +651,7 @@ export function calculateTotalStats(unlockedIds) {
         p_atk_percent: 0, // ✅ 新增：物理攻击百分比
         cooldown_reduction: 0, // ✅ 新增：冷却缩减
         final_dmg_reduce: 0,   // ✅ 新增：最终减伤
+        max_hp_percent: 0,     // ✅ 新增：最大生命百分比
         max_mp_percent: 0,     // ✅ 新增：最大魔力百分比
         m_atk_percent: 0       // ✅ 新增：魔法攻击百分比
     };
