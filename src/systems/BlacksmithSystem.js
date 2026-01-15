@@ -132,37 +132,18 @@ export class BlacksmithSystem {
     const newQuality = this.rollQuality();
     item.quality = newQuality;
 
-    // ✅ FIX: 处理动态装备的品质调整
-    const isDynamicItem = item.uid && (item.uid.includes('PROCGEN') || item.meta);
+    // ✅ FIX: 重铸不再修改 baseStats，只修改 quality 和 tier
+    // baseStats 永远保持创建时的初始值（通常是 Common 或者是掉落时的原始值）
+    // 重铸只影响最终计算结果，不修改存档数据
+    // 品质倍率将在 recalculateDynamicItemStats 中动态计算
 
-    if (isDynamicItem && item.baseStats) {
-      // 获取旧品质和新品质的倍率
-      const oldMult = ITEM_QUALITY[oldQuality]?.multiplier || 1;
-      const newMult = ITEM_QUALITY[newQuality]?.multiplier || 1;
-      const ratio = newMult / oldMult;
-
-      // 调整 baseStats
-      for (const key in item.baseStats) {
-        if (typeof item.baseStats[key] === 'number') {
-          // 判断是否为百分比属性
-          if (key.includes('rate') || key.includes('dodge') || key.includes('pen') || key.includes('gold') || key.includes('lifesteal')) {
-            // 百分比属性保留2位小数
-            item.baseStats[key] = Math.round(item.baseStats[key] * ratio * 100) / 100;
-          } else {
-            // 整数属性向下取整
-            item.baseStats[key] = Math.floor(item.baseStats[key] * ratio);
-          }
-        }
-      }
-
-      // 更新 Tier
-      if (['LEGENDARY', 'MYTHIC'].includes(newQuality)) {
-        item.tier = 3;
-      } else if (['RARE', 'EPIC'].includes(newQuality)) {
-        item.tier = 2;
-      } else {
-        item.tier = 1;
-      }
+    // 更新 Tier（根据新品质）
+    if (['LEGENDARY', 'MYTHIC'].includes(newQuality)) {
+      item.tier = 3;
+    } else if (['RARE', 'EPIC'].includes(newQuality)) {
+      item.tier = 2;
+    } else {
+      item.tier = 1;
     }
 
     // 重新计算属性
@@ -264,12 +245,27 @@ export class BlacksmithSystem {
     // 第一步：读取底材
     const base = { ...item.baseStats };
     
-    // 第二步：应用强化倍率（+10% per level）
+    // ✅ FIX: 第二步：先应用品质倍率（重铸不再修改 baseStats，而是通过品质倍率动态计算）
+    const quality = item.quality || 'COMMON';
+    const qualityMultiplier = ITEM_QUALITY[quality]?.multiplier || 1.0;
+    
+    const qualityAdjustedBase = {};
+    for (const [stat, value] of Object.entries(base)) {
+      if (stat.includes('rate') || stat.includes('dodge') || stat.includes('pen') || stat.includes('gold') || stat.includes('lifesteal')) {
+        // 百分比属性保留2位小数
+        qualityAdjustedBase[stat] = Math.round(value * qualityMultiplier * 100) / 100;
+      } else {
+        // 整数属性向下取整
+        qualityAdjustedBase[stat] = Math.floor(value * qualityMultiplier);
+      }
+    }
+    
+    // ✅ FIX: 第三步：应用强化倍率（+10% per level）
     const enhanceLevel = item.enhanceLevel || 0;
     const enhanceMultiplier = 1 + (enhanceLevel * 0.1); // +10% per level
     
     const enhancedBase = {};
-    for (const [stat, value] of Object.entries(base)) {
+    for (const [stat, value] of Object.entries(qualityAdjustedBase)) {
       if (stat.includes('rate') || stat.includes('dodge') || stat.includes('pen') || stat.includes('gold') || stat.includes('lifesteal')) {
         // 百分比属性保留2位小数
         enhancedBase[stat] = Math.round(value * enhanceMultiplier * 100) / 100;
@@ -279,7 +275,7 @@ export class BlacksmithSystem {
       }
     }
     
-    // 第三步：重新应用前缀固定加成
+    // 第四步：重新应用前缀固定加成
     const prefixStats = item.meta?.prefixStats;
     if (prefixStats) {
       for (const [key, value] of Object.entries(prefixStats)) {
@@ -294,7 +290,7 @@ export class BlacksmithSystem {
       }
     }
     
-    // 第四步：重新应用后缀百分比加成
+    // 第五步：重新应用后缀百分比加成
     const suffixStats = item.meta?.suffixStats;
     if (suffixStats) {
       for (const [key, value] of Object.entries(suffixStats)) {
@@ -319,7 +315,48 @@ export class BlacksmithSystem {
       }
     }
     
-    // 第五步：更新最终属性（不修改 baseStats）
+    // ✅ FIX: 第六步：应用宝石属性加成
+    const sockets = item.meta?.sockets;
+    if (sockets && Array.isArray(sockets)) {
+      for (const socket of sockets) {
+        // 检查插槽是否已填充宝石
+        if (socket.status === 'FILLED' && socket.gemId) {
+          // 从数据库获取宝石数据
+          const gemDef = EQUIPMENT_DB[socket.gemId];
+          if (gemDef && gemDef.gemEffects) {
+            // 根据装备类型选择对应的 gemEffects
+            const isWeapon = item.type === 'WEAPON';
+            const gemEffect = isWeapon ? gemDef.gemEffects.weapon : gemDef.gemEffects.armor;
+            
+            if (gemEffect) {
+              // 累加宝石属性
+              for (const [statKey, statValue] of Object.entries(gemEffect)) {
+                // 跳过 infuseElement（这是机制属性，不是数值属性）
+                if (statKey === 'infuseElement') continue;
+                
+                // 初始化属性（如果不存在）
+                if (enhancedBase[statKey] === undefined) {
+                  enhancedBase[statKey] = 0;
+                }
+                
+                // 累加属性值
+                if (typeof statValue === 'number' && !isNaN(statValue)) {
+                  if (statKey.includes('rate') || statKey.includes('dodge') || statKey.includes('pen') || statKey.includes('gold') || statKey.includes('lifesteal')) {
+                    // 百分比属性保留2位小数
+                    enhancedBase[statKey] = Math.round((enhancedBase[statKey] + statValue) * 100) / 100;
+                  } else {
+                    // 整数属性直接累加
+                    enhancedBase[statKey] += statValue;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // 第七步：更新最终属性（不修改 baseStats）
     item.stats = enhancedBase;
   }
   
@@ -344,10 +381,57 @@ export class BlacksmithSystem {
     const enhanceLevel = item.enhanceLevel || 0;
     const enhanceMultiplier = 1 + (enhanceLevel * FORGE_CONFIG.ENHANCE.STAT_INCREASE);
     
-    // 计算最终属性
+    // 计算最终属性（品质倍率 × 强化倍率）
     item.stats = {};
     for (const [stat, value] of Object.entries(item.baseStats)) {
-      item.stats[stat] = Math.floor(value * qualityMultiplier * enhanceMultiplier);
+      if (stat.includes('rate') || stat.includes('dodge') || stat.includes('pen') || stat.includes('gold') || stat.includes('lifesteal')) {
+        // 百分比属性保留2位小数
+        item.stats[stat] = Math.round(value * qualityMultiplier * enhanceMultiplier * 100) / 100;
+      } else {
+        // 整数属性向下取整
+        item.stats[stat] = Math.floor(value * qualityMultiplier * enhanceMultiplier);
+      }
+    }
+    
+    // ✅ FIX: 应用宝石属性加成
+    const sockets = item.meta?.sockets;
+    if (sockets && Array.isArray(sockets)) {
+      for (const socket of sockets) {
+        // 检查插槽是否已填充宝石
+        if (socket.status === 'FILLED' && socket.gemId) {
+          // 从数据库获取宝石数据
+          const gemDef = EQUIPMENT_DB[socket.gemId];
+          if (gemDef && gemDef.gemEffects) {
+            // 根据装备类型选择对应的 gemEffects
+            const isWeapon = item.type === 'WEAPON';
+            const gemEffect = isWeapon ? gemDef.gemEffects.weapon : gemDef.gemEffects.armor;
+            
+            if (gemEffect) {
+              // 累加宝石属性
+              for (const [statKey, statValue] of Object.entries(gemEffect)) {
+                // 跳过 infuseElement（这是机制属性，不是数值属性）
+                if (statKey === 'infuseElement') continue;
+                
+                // 初始化属性（如果不存在）
+                if (item.stats[statKey] === undefined) {
+                  item.stats[statKey] = 0;
+                }
+                
+                // 累加属性值
+                if (typeof statValue === 'number' && !isNaN(statValue)) {
+                  if (statKey.includes('rate') || statKey.includes('dodge') || statKey.includes('pen') || statKey.includes('gold') || statKey.includes('lifesteal')) {
+                    // 百分比属性保留2位小数
+                    item.stats[statKey] = Math.round((item.stats[statKey] + statValue) * 100) / 100;
+                  } else {
+                    // 整数属性直接累加
+                    item.stats[statKey] += statValue;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 
@@ -569,6 +653,9 @@ export class BlacksmithSystem {
     // 从背包移除宝石
     inventory[gemIndex] = null;
 
+    // ✅ FIX: 重新计算装备属性（应用宝石加成）
+    this.recalculateStats(item);
+
     const gemName = gemItem.nameZh || gemItem.name || '宝石';
     const itemName = this.getItemDisplayName(item);
 
@@ -649,6 +736,9 @@ export class BlacksmithSystem {
     
     // 将宝石添加到背包
     inventory[emptySlot] = gemItem;
+
+    // ✅ FIX: 重新计算装备属性（移除宝石加成）
+    this.recalculateStats(item);
 
     const itemName = this.getItemDisplayName(item);
     const gemName = gemDef.nameZh || gemDef.name || '宝石';
