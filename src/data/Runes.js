@@ -978,12 +978,7 @@ export const RUNE_POOL = [
 
         attacker.stats.mp = newMp;
 
-        if (game && game.floatingTextPool && game.floatingTexts && game.settings && game.settings.showDamageNumbers !== false) {
-          const pos = attacker.getFloatingTextPosition ? attacker.getFloatingTextPosition() : { x: attacker.visualX, y: attacker.visualY };
-          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
-          const mpText = game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, `+${actualGain} MP`, '#3399FF');
-          game.floatingTexts.push(mpText);
-        }
+        // 不再显示MP获得飘字
 
         if (game && game.ui && game.ui.logMessage) {
           game.ui.logMessage(`灵魂虹吸：回复了 ${actualGain} 点魔力`, 'gain');

@@ -2857,13 +2857,7 @@ export class Player extends Entity {
       // 更新 UI
       if (window.game && window.game.ui) window.game.ui.updateStats(this);
       
-      // 显示回蓝数字（如果设置开启）
-      if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
-        const pos = this.getFloatingTextPosition();
-        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
-        const text = window.game.floatingTextPool.create(pos.x, pos.y - 5 + microScatterY, `+${actualGain} MP`, '#3399FF');
-        window.game.floatingTexts.push(text);
-      }
+      // 不再显示MP获得飘字
     }
   }
   takeDamage(amt) { 
