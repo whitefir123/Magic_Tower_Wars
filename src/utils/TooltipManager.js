@@ -467,23 +467,23 @@ export class TooltipManager {
 
     // ✅ 英雄联盟风格：技能类型和冷却时间分行显示
     const typeName = isUlt ? '终极技能' : (isPassive ? '被动技能' : '主动技能');
-    const typeColor = isUlt ? '#ad1457' : (isPassive ? '#0277bd' : '#01579b');
+    // 使用CSS控制颜色，这里不再硬编码颜色
     
-    content += `<div class="tt-skill-type-row" style="color: ${typeColor}; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;">
+    content += `<div class="tt-skill-type-row" style="font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;">
       ${typeName}
     </div>`;
 
     // ✅ 英雄联盟风格：冷却时间单独一行，使用醒目的颜色
     if (!isPassive && data.cd) {
       const cdSeconds = (data.cd / 1000).toFixed(1);
-      content += `<div class="tt-skill-cd-row" style="color: #d84315; font-size: 0.85rem; margin-bottom: 10px;">
-        <span style="color: #8d6e63;">冷却时间：</span><span style="font-weight: 600;">${cdSeconds} 秒</span>
+      content += `<div class="tt-skill-cd-row" style="font-size: 0.85rem; margin-bottom: 10px;">
+        <span style="color: #000000;">冷却时间：</span><span style="font-weight: 600; color: #333333;">${cdSeconds} 秒</span>
       </div>`;
     }
 
     // ✅ 英雄联盟风格：技能描述清晰，使用合适的行高和颜色
     if (data.desc) {
-      content += `<div class="tt-skill-desc" style="color: #5d4037; font-size: 0.9rem; line-height: 1.6; margin-bottom: 8px;">
+      content += `<div class="tt-skill-desc" style="font-size: 0.9rem; line-height: 1.6; margin-bottom: 8px;">
         ${data.desc}
       </div>`;
     } else {
