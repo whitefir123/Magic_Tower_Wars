@@ -320,45 +320,40 @@ export class BlacksmithSystem {
     
     // ✅ CRITICAL FIX: 第六步：应用宝石属性加成
     // 宝石属性在品质倍率和强化倍率之后应用，提供固定数值加成（不参与倍率计算）
-    const sockets = item.meta?.sockets;
-    if (sockets && Array.isArray(sockets)) {
-      for (const socket of sockets) {
-        // 检查插槽是否已填充宝石
+    if (item.meta && item.meta.sockets) {
+      item.meta.sockets.forEach(socket => {
         if (socket.status === 'FILLED' && socket.gemId) {
-          // 从数据库获取宝石数据
           const gemDef = EQUIPMENT_DB[socket.gemId];
           if (gemDef && gemDef.gemEffects) {
-            // 根据装备类型选择对应的 gemEffects
-            const isWeapon = item.type === 'WEAPON';
-            const gemEffect = isWeapon ? gemDef.gemEffects.weapon : gemDef.gemEffects.armor;
+            // 判断是武器还是防具/饰品
+            const effectType = item.type === 'WEAPON' ? 'weapon' : 'armor';
+            const effects = gemDef.gemEffects[effectType];
             
-            if (gemEffect) {
-              // 累加宝石属性
-              for (const [statKey, statValue] of Object.entries(gemEffect)) {
-                // 跳过 infuseElement（这是机制属性，不是数值属性，由 CombatSystem 处理）
-                if (statKey === 'infuseElement') continue;
+            if (effects) {
+              for (const [key, val] of Object.entries(effects)) {
+                if (key === 'infuseElement') continue; // 跳过非数值属性
                 
-                // 初始化属性（如果不存在）
-                if (enhancedBase[statKey] === undefined) {
-                  enhancedBase[statKey] = 0;
+                // 初始化或累加
+                if (enhancedBase[key] === undefined) {
+                  enhancedBase[key] = 0;
                 }
                 
-                // 累加属性值（宝石提供固定数值加成）
-                if (typeof statValue === 'number' && !isNaN(statValue)) {
+                // 累加属性值
+                if (typeof val === 'number' && !isNaN(val)) {
                   // 处理百分比属性（crit_rate, dodge, lifesteal 等）
-                  if (statKey.includes('rate') || statKey.includes('dodge') || statKey.includes('pen') || statKey.includes('gold') || statKey.includes('lifesteal')) {
+                  if (key.includes('rate') || key.includes('dodge') || key.includes('pen') || key.includes('gold') || key.includes('lifesteal')) {
                     // 百分比属性保留2位小数
-                    enhancedBase[statKey] = Math.round((enhancedBase[statKey] + statValue) * 100) / 100;
+                    enhancedBase[key] = Math.round((enhancedBase[key] + val) * 100) / 100;
                   } else {
-                    // 整数属性直接累加
-                    enhancedBase[statKey] += statValue;
+                    // 整数属性向下取整后累加
+                    enhancedBase[key] = Math.floor(enhancedBase[key] + val);
                   }
                 }
               }
             }
           }
         }
-      }
+      });
     }
     
     // 第七步：更新最终属性（不修改 baseStats）
@@ -403,45 +398,42 @@ export class BlacksmithSystem {
     
     // ✅ CRITICAL FIX: 应用宝石属性加成
     // 宝石属性在品质倍率和强化倍率之后应用，提供固定数值加成（不参与倍率计算）
-    const sockets = item.meta?.sockets;
-    if (sockets && Array.isArray(sockets)) {
-      for (const socket of sockets) {
-        // 检查插槽是否已填充宝石
+    if (item.meta && item.meta.sockets) {
+      item.meta.sockets.forEach(socket => {
         if (socket.status === 'FILLED' && socket.gemId) {
-          // 从数据库获取宝石数据
           const gemDef = EQUIPMENT_DB[socket.gemId];
           if (gemDef && gemDef.gemEffects) {
-            // 根据装备类型选择对应的 gemEffects
-            const isWeapon = item.type === 'WEAPON';
-            const gemEffect = isWeapon ? gemDef.gemEffects.weapon : gemDef.gemEffects.armor;
+            // 判断是武器还是防具/饰品
+            // 如果是 WEAPON，使用 gemEffects.weapon
+            // 如果是 ARMOR, HELM, BOOTS, RING, AMULET 等，使用 gemEffects.armor
+            const effectType = item.type === 'WEAPON' ? 'weapon' : 'armor';
+            const effects = gemDef.gemEffects[effectType];
             
-            if (gemEffect) {
-              // 累加宝石属性
-              for (const [statKey, statValue] of Object.entries(gemEffect)) {
-                // 跳过 infuseElement（这是机制属性，不是数值属性，由 CombatSystem 处理）
-                if (statKey === 'infuseElement') continue;
+            if (effects) {
+              for (const [key, val] of Object.entries(effects)) {
+                if (key === 'infuseElement') continue; // 跳过非数值属性
                 
-                // 初始化属性（如果不存在）
-                if (item.stats[statKey] === undefined) {
-                  item.stats[statKey] = 0;
+                // 初始化或累加
+                if (item.stats[key] === undefined) {
+                  item.stats[key] = 0;
                 }
                 
-                // 累加属性值（宝石提供固定数值加成）
-                if (typeof statValue === 'number' && !isNaN(statValue)) {
+                // 累加属性值
+                if (typeof val === 'number' && !isNaN(val)) {
                   // 处理百分比属性（crit_rate, dodge, lifesteal 等）
-                  if (statKey.includes('rate') || statKey.includes('dodge') || statKey.includes('pen') || statKey.includes('gold') || statKey.includes('lifesteal')) {
+                  if (key.includes('rate') || key.includes('dodge') || key.includes('pen') || key.includes('gold') || key.includes('lifesteal')) {
                     // 百分比属性保留2位小数
-                    item.stats[statKey] = Math.round((item.stats[statKey] + statValue) * 100) / 100;
+                    item.stats[key] = Math.round((item.stats[key] + val) * 100) / 100;
                   } else {
-                    // 整数属性直接累加
-                    item.stats[statKey] += statValue;
+                    // 整数属性向下取整后累加
+                    item.stats[key] = Math.floor(item.stats[key] + val);
                   }
                 }
               }
             }
           }
         }
-      }
+      });
     }
   }
 
