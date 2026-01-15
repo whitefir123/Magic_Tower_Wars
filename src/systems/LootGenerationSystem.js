@@ -791,6 +791,11 @@ export class LootGenerator {
 
 // 导出单例
 export const lootGenerator = new LootGenerator();
+// ✅ FIX: 立即将单例注册到全局对象，确保其他模块（如 items.js）可以通过 window.__lootGenerator 访问
+// 这解决了 getEquipmentDropForFloor 中可能出现的 Race Condition 问题
+if (typeof window !== 'undefined') {
+  window.__lootGenerator = lootGenerator;
+}
 
 /**
  * 便捷生成函数
