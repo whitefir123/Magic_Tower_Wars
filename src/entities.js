@@ -1427,6 +1427,28 @@ export class Player extends Entity {
     // ========== 怒气溢出系统 ==========
     this.rageOverflow = 0;        // 怒气溢出池
     this._lastRageRefillLogTime = 0; // 上次自动回填日志时间戳（防刷屏）
+    
+    // ========== 天赋树加成系统：初始化天赋加成容器 ==========
+    // 结构与 stats 类似，初始全为0，用于存储天赋提供的属性加成
+    this.talentBonuses = {
+      p_atk: 0,
+      m_atk: 0,
+      p_def: 0,
+      m_def: 0,
+      maxHp: 0,
+      maxMp: 0,
+      crit_rate: 0,
+      crit_dmg: 0,
+      dodge: 0,
+      gold_rate: 0,
+      armor_pen: 0,
+      atk_speed: 0,
+      p_atk_percent: 0,
+      m_atk_percent: 0,
+      cooldown_reduction: 0,
+      final_dmg_reduce: 0,
+      max_mp_percent: 0
+    };
   }
   
   // Handle status tick effects for player
@@ -1845,6 +1867,55 @@ export class Player extends Entity {
       // 可以添加更多转化类型
     }
     
+    // ========== 天赋树固定属性加成 ==========
+    // ✅ 重构：显式累加 talentBonuses 中的固定属性（不包含百分比属性）
+    if (this.talentBonuses) {
+      // 累加固定属性
+      total.p_atk += (this.talentBonuses.p_atk || 0);
+      total.m_atk += (this.talentBonuses.m_atk || 0);
+      total.p_def += (this.talentBonuses.p_def || 0);
+      total.m_def += (this.talentBonuses.m_def || 0);
+      total.maxHp += (this.talentBonuses.maxHp || 0);
+      total.maxMp += (this.talentBonuses.maxMp || 0);
+      
+      // 累加百分比属性（这些会在后续阶段应用）
+      if (this.talentBonuses.crit_rate !== undefined) {
+        total.crit_rate = (total.crit_rate || 0) + this.talentBonuses.crit_rate;
+      }
+      if (this.talentBonuses.dodge !== undefined) {
+        total.dodge = (total.dodge || 0) + this.talentBonuses.dodge;
+      }
+      if (this.talentBonuses.gold_rate !== undefined) {
+        total.gold_rate = (total.gold_rate || 0) + this.talentBonuses.gold_rate;
+      }
+      if (this.talentBonuses.armor_pen !== undefined) {
+        total.armor_pen = (total.armor_pen || 0) + this.talentBonuses.armor_pen;
+      }
+      if (this.talentBonuses.atk_speed !== undefined) {
+        total.atk_speed = (total.atk_speed || 0) + this.talentBonuses.atk_speed;
+      }
+      if (this.talentBonuses.p_atk_percent !== undefined) {
+        total.p_atk_percent = (total.p_atk_percent || 0) + this.talentBonuses.p_atk_percent;
+      }
+      if (this.talentBonuses.m_atk_percent !== undefined) {
+        total.m_atk_percent = (total.m_atk_percent || 0) + this.talentBonuses.m_atk_percent;
+      }
+      if (this.talentBonuses.cooldown_reduction !== undefined) {
+        total.cooldown_reduction = (total.cooldown_reduction || 0) + this.talentBonuses.cooldown_reduction;
+      }
+      if (this.talentBonuses.final_dmg_reduce !== undefined) {
+        total.final_dmg_reduce = (total.final_dmg_reduce || 0) + this.talentBonuses.final_dmg_reduce;
+      }
+      if (this.talentBonuses.max_mp_percent !== undefined) {
+        total.max_mp_percent = (total.max_mp_percent || 0) + this.talentBonuses.max_mp_percent;
+      }
+      // 累加暴击伤害（注意：TalentData 中可能存储为整数或小数）
+      if (this.talentBonuses.crit_dmg !== undefined) {
+        const critDmgValue = Math.abs(this.talentBonuses.crit_dmg) >= 1 ? this.talentBonuses.crit_dmg / 100 : this.talentBonuses.crit_dmg;
+        total.crit_dmg += critDmgValue;
+      }
+    }
+    
     // ========== 天赋树关键石效果 ==========
     if (this.activeKeystones && Array.isArray(this.activeKeystones)) {
       // IRON_WILL (钢铁意志): 物攻的50%转化为魔攻
@@ -1864,52 +1935,6 @@ export class Player extends Entity {
       if (this.activeKeystones.includes('CRITICAL_MASTER')) {
         total.crit_dmg += 0.5; // 增加50%暴击伤害
       }
-    }
-    
-    // ✅ 累加天赋树提供的 gold_rate 和 armor_pen
-    if (this.stats.gold_rate !== undefined) {
-      total.gold_rate = (total.gold_rate || 0) + this.stats.gold_rate;
-    }
-    if (this.stats.armor_pen !== undefined) {
-      total.armor_pen = (total.armor_pen || 0) + this.stats.armor_pen;
-    }
-    
-    // ✅ 累加天赋树提供的攻击速度
-    if (this.stats.atk_speed !== undefined) {
-      total.atk_speed = (total.atk_speed || 0) + this.stats.atk_speed;
-    }
-    
-    // ✅ 累加天赋树提供的百分比物攻
-    if (this.stats.p_atk_percent !== undefined) {
-      total.p_atk_percent = (total.p_atk_percent || 0) + this.stats.p_atk_percent;
-    }
-    
-    // ✅ 累加天赋树提供的百分比魔攻
-    if (this.stats.m_atk_percent !== undefined) {
-      total.m_atk_percent = (total.m_atk_percent || 0) + this.stats.m_atk_percent;
-    }
-    
-    // ✅ 累加天赋树提供的冷却缩减
-    if (this.stats.cooldown_reduction !== undefined) {
-      total.cooldown_reduction = (total.cooldown_reduction || 0) + this.stats.cooldown_reduction;
-    }
-    
-    // ✅ 累加天赋树提供的最终减伤
-    if (this.stats.final_dmg_reduce !== undefined) {
-      total.final_dmg_reduce = (total.final_dmg_reduce || 0) + this.stats.final_dmg_reduce;
-    }
-    
-    // ✅ 累加天赋树提供的最大魔力百分比
-    if (this.stats.max_mp_percent !== undefined) {
-      total.max_mp_percent = (total.max_mp_percent || 0) + this.stats.max_mp_percent;
-    }
-    
-    // ✅ 累加天赋树提供的暴击伤害
-    // 注意：TalentData 中可能存储为整数（如 50 表示 50%）或小数（如 0.15 表示 15%）
-    // 如果值 >= 1，则除以 100；否则直接使用（已经是小数格式）
-    if (this.stats.crit_dmg !== undefined) {
-      const critDmgValue = Math.abs(this.stats.crit_dmg) >= 1 ? this.stats.crit_dmg / 100 : this.stats.crit_dmg;
-      total.crit_dmg += critDmgValue;
     }
     
     // ✅ 不屈堡垒：最终物防+20%（在所有计算完成后应用）
@@ -2050,15 +2075,39 @@ export class Player extends Entity {
     total.dodge = Math.min(total.dodge || 0, 1.0);
     
     // ========== 第七阶段：应用百分比攻击加成 ==========
-    // ✅ CRITICAL FIX: 百分比加成只应用于BASE stat，不是total
-    // Formula: Total_Stat = Base_Stat + Flat_Bonuses + (Base_Stat * Percent_Bonus)
-    // Example: Base 200 + Flat 50 + (200 * 0.5) = 350 (NOT 375)
+    // ✅ CRITICAL FIX: 百分比加成基于 (基础值 + 装备 + 天赋固定值) 进行计算
+    // Formula: Total_Stat = Base_Stat + Equipment_Bonus + Talent_Flat_Bonus + (Base_Stat + Equipment_Bonus + Talent_Flat_Bonus) * Percent_Bonus
+    // 在应用百分比加成之前，total.p_atk 和 total.m_atk 已经包含了：基础值 + 装备 + 天赋固定值 + 其他加成（如套装、转化等）
+    // 但百分比加成应该只基于：基础值 + 装备 + 天赋固定值
+    // 因此需要计算这个基础值（在套装、转化等效果之前的值）
+    
+    // 计算装备加成（从第一阶段累加的结果）
+    let equipmentPAtk = 0;
+    let equipmentMAtk = 0;
+    const addEquipment = (itemInstance) => {
+      if (!itemInstance) return;
+      const s = itemInstance.stats || {};
+      equipmentPAtk += (s.p_atk || 0);
+      equipmentMAtk += (s.m_atk || 0);
+    };
+    addEquipment(weapon);
+    addEquipment(armor);
+    addEquipment(helm);
+    addEquipment(boots);
+    addEquipment(ring);
+    addEquipment(amulet);
+    addEquipment(accessory);
+    
+    // 计算百分比加成的基础值 = 基础值 + 装备 + 天赋固定值
+    const percentBasePAtk = basePAtk + equipmentPAtk + (this.talentBonuses?.p_atk || 0);
+    const percentBaseMAtk = baseMAtk + equipmentMAtk + (this.talentBonuses?.m_atk || 0);
+    
     if (total.p_atk_percent) {
-      const percentBonus = Math.floor(basePAtk * total.p_atk_percent);
+      const percentBonus = Math.floor(percentBasePAtk * total.p_atk_percent);
       total.p_atk += percentBonus;
     }
     if (total.m_atk_percent) {
-      const percentBonus = Math.floor(baseMAtk * total.m_atk_percent);
+      const percentBonus = Math.floor(percentBaseMAtk * total.m_atk_percent);
       total.m_atk += percentBonus;
     }
     
@@ -2482,6 +2531,55 @@ export class Player extends Entity {
       return false;
     }
     
+    // ========== 技能消耗检查 ==========
+    const baseMpCost = 20; // 主动技能基础蓝耗
+    const hasBloodMagic = this.activeKeystones && Array.isArray(this.activeKeystones) && this.activeKeystones.includes('BLOOD_MAGIC');
+    
+    if (hasBloodMagic) {
+      // 血魔法：消耗当前生命值的10%
+      const totals = this.getTotalStats();
+      const maxHp = totals.maxHp || this.stats.maxHp || 100;
+      const currentHp = this.stats.hp || 0;
+      const hpCost = Math.max(1, Math.floor(currentHp * 0.1));
+      
+      if (currentHp <= hpCost) {
+        // 生命不足，施法失败
+        if (window.game && window.game.ui) {
+          window.game.ui.logMessage('生命值不足，无法施法！', 'info');
+        }
+        return false;
+      }
+      
+      // 消耗生命值
+      this.stats.hp -= hpCost;
+      if (window.game && window.game.ui) {
+        window.game.ui.updateStats(this);
+        // 显示消耗提示
+        if (window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
+          const pos = this.getFloatingTextPosition();
+          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+          const costText = window.game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, `-${hpCost} HP`, '#ff3333');
+          window.game.floatingTexts.push(costText);
+        }
+      }
+    } else {
+      // 正常消耗MP
+      const currentMp = this.stats.mp || 0;
+      if (currentMp < baseMpCost) {
+        // MP不足，施法失败
+        if (window.game && window.game.ui) {
+          window.game.ui.logMessage('魔力不足，无法施法！', 'info');
+        }
+        return false;
+      }
+      
+      // 消耗MP
+      this.stats.mp -= baseMpCost;
+      if (window.game && window.game.ui) {
+        window.game.ui.updateStats(this);
+      }
+    }
+    
     // ✅ FIX: 清除之前的技能预备状态，确保同一时间只有一个技能生效
     this.clearPrimedStates();
     
@@ -2525,6 +2623,55 @@ export class Player extends Entity {
   }
   
   castUltimateSkill() {
+    // ========== 技能消耗检查 ==========
+    const baseMpCost = 50; // 大招基础蓝耗
+    const hasBloodMagic = this.activeKeystones && Array.isArray(this.activeKeystones) && this.activeKeystones.includes('BLOOD_MAGIC');
+    
+    if (hasBloodMagic) {
+      // 血魔法：消耗当前生命值的10%
+      const totals = this.getTotalStats();
+      const maxHp = totals.maxHp || this.stats.maxHp || 100;
+      const currentHp = this.stats.hp || 0;
+      const hpCost = Math.max(1, Math.floor(currentHp * 0.1));
+      
+      if (currentHp <= hpCost) {
+        // 生命不足，施法失败
+        if (window.game && window.game.ui) {
+          window.game.ui.logMessage('生命值不足，无法施法！', 'info');
+        }
+        return false;
+      }
+      
+      // 消耗生命值
+      this.stats.hp -= hpCost;
+      if (window.game && window.game.ui) {
+        window.game.ui.updateStats(this);
+        // 显示消耗提示
+        if (window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
+          const pos = this.getFloatingTextPosition();
+          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+          const costText = window.game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, `-${hpCost} HP`, '#ff3333');
+          window.game.floatingTexts.push(costText);
+        }
+      }
+    } else {
+      // 正常消耗MP
+      const currentMp = this.stats.mp || 0;
+      if (currentMp < baseMpCost) {
+        // MP不足，施法失败
+        if (window.game && window.game.ui) {
+          window.game.ui.logMessage('魔力不足，无法施法！', 'info');
+        }
+        return false;
+      }
+      
+      // 消耗MP
+      this.stats.mp -= baseMpCost;
+      if (window.game && window.game.ui) {
+        window.game.ui.updateStats(this);
+      }
+    }
+    
     // ✅ FIX: 清除之前的技能预备状态，确保同一时间只有一个技能生效
     this.clearPrimedStates();
     

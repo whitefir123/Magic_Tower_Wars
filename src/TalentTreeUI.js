@@ -800,6 +800,14 @@ export class TalentTreeUI {
         
         // 显示解锁通知
         this.showUnlockNotification(targetNode);
+        
+        // ✅ 实现即时生效：在点亮天赋的瞬间应用加成并刷新界面
+        if (this.game && this.game.applyTalentBonuses) {
+            this.game.applyTalentBonuses();
+        }
+        if (this.game && this.game.ui && this.game.ui.updateStats) {
+            this.game.ui.updateStats(this.game.player);
+        }
     }
     
     /**

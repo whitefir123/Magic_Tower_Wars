@@ -2545,50 +2545,81 @@ class Game {
       const talentStats = calculateTotalStats(unlockedIds);
       const keystones = getActiveKeystones(unlockedIds);
       
-      // FIX: 读档时跳过属性叠加，避免重复叠加
+      // ✅ 重构：不再直接修改 this.player.stats，而是先清空 talentBonuses，然后赋值
+      // 确保 talentBonuses 对象存在
+      if (!this.player.talentBonuses) {
+        this.player.talentBonuses = {
+          p_atk: 0,
+          m_atk: 0,
+          p_def: 0,
+          m_def: 0,
+          maxHp: 0,
+          maxMp: 0,
+          crit_rate: 0,
+          crit_dmg: 0,
+          dodge: 0,
+          gold_rate: 0,
+          armor_pen: 0,
+          atk_speed: 0,
+          p_atk_percent: 0,
+          m_atk_percent: 0,
+          cooldown_reduction: 0,
+          final_dmg_reduce: 0,
+          max_mp_percent: 0
+        };
+      }
+      
+      // 清空 talentBonuses
+      Object.keys(this.player.talentBonuses).forEach(key => {
+        this.player.talentBonuses[key] = 0;
+      });
+      
+      // 将计算出的 talentStats 赋值给 talentBonuses
+      if (talentStats.p_atk) this.player.talentBonuses.p_atk = talentStats.p_atk;
+      if (talentStats.m_atk) this.player.talentBonuses.m_atk = talentStats.m_atk;
+      if (talentStats.p_def) this.player.talentBonuses.p_def = talentStats.p_def;
+      if (talentStats.m_def) this.player.talentBonuses.m_def = talentStats.m_def;
+      if (talentStats.max_hp) this.player.talentBonuses.maxHp = talentStats.max_hp;
+      if (talentStats.max_mp) this.player.talentBonuses.maxMp = talentStats.max_mp;
+      if (talentStats.gold_rate) this.player.talentBonuses.gold_rate = talentStats.gold_rate;
+      if (talentStats.armor_pen) this.player.talentBonuses.armor_pen = talentStats.armor_pen;
+      if (talentStats.atk_speed) this.player.talentBonuses.atk_speed = talentStats.atk_speed;
+      if (talentStats.p_atk_percent) this.player.talentBonuses.p_atk_percent = talentStats.p_atk_percent;
+      if (talentStats.m_atk_percent) this.player.talentBonuses.m_atk_percent = talentStats.m_atk_percent;
+      if (talentStats.cooldown_reduction) this.player.talentBonuses.cooldown_reduction = talentStats.cooldown_reduction;
+      if (talentStats.final_dmg_reduce) this.player.talentBonuses.final_dmg_reduce = talentStats.final_dmg_reduce;
+      if (talentStats.max_mp_percent) this.player.talentBonuses.max_mp_percent = talentStats.max_mp_percent;
+      if (talentStats.crit_dmg) this.player.talentBonuses.crit_dmg = talentStats.crit_dmg;
+      
+      // ✅ 处理 maxHp 和 maxMp 的特殊情况：基于 getTotalStats() 返回的值更新
+      // 注意：由于我们不再直接修改 stats，而是通过 talentBonuses，所以需要基于总属性来更新
       if (!restoreKeystonesOnly) {
-        // 应用属性加成（仅在新游戏时执行）
-        if (talentStats.p_atk) this.player.stats.p_atk += talentStats.p_atk;
-        if (talentStats.m_atk) this.player.stats.m_atk += talentStats.m_atk;
-        if (talentStats.p_def) this.player.stats.p_def += talentStats.p_def;
-        if (talentStats.m_def) this.player.stats.m_def += talentStats.m_def;
+        const totals = this.player.getTotalStats();
+        
+        // 更新 maxHp：如果天赋增加了 maxHp，需要同步更新当前 hp
         if (talentStats.max_hp) {
-          this.player.stats.maxHp += talentStats.max_hp;
-          this.player.stats.hp += talentStats.max_hp; // 也增加当前生命值
+          const oldMaxHp = this.player.stats.maxHp;
+          const newMaxHp = totals.maxHp;
+          const hpIncrease = newMaxHp - oldMaxHp;
+          if (hpIncrease > 0) {
+            // 增加当前 hp（但不超过新的 maxHp）
+            this.player.stats.hp = Math.min(this.player.stats.hp + hpIncrease, newMaxHp);
+          }
+          // 更新 stats.maxHp 为新的总 maxHp（用于兼容性）
+          this.player.stats.maxHp = newMaxHp;
         }
+        
+        // 更新 maxMp：如果天赋增加了 maxMp，需要同步更新当前 mp
         if (talentStats.max_mp && this.player.stats.maxMp !== undefined) {
-          this.player.stats.maxMp += talentStats.max_mp;
-          this.player.stats.mp += talentStats.max_mp;
-        }
-        // ✅ 新增：累加 gold_rate 和 armor_pen（这些是百分比属性，不直接加到基础属性上）
-        if (talentStats.gold_rate) {
-          this.player.stats.gold_rate = (this.player.stats.gold_rate || 0) + talentStats.gold_rate;
-        }
-        if (talentStats.armor_pen) {
-          this.player.stats.armor_pen = (this.player.stats.armor_pen || 0) + talentStats.armor_pen;
-        }
-        // ✅ 新增：累加攻击速度、百分比物攻和暴击伤害
-        if (talentStats.atk_speed) {
-          this.player.stats.atk_speed = (this.player.stats.atk_speed || 0) + talentStats.atk_speed;
-        }
-        if (talentStats.p_atk_percent) {
-          this.player.stats.p_atk_percent = (this.player.stats.p_atk_percent || 0) + talentStats.p_atk_percent;
-        }
-        if (talentStats.crit_dmg) {
-          this.player.stats.crit_dmg = (this.player.stats.crit_dmg || 0) + talentStats.crit_dmg;
-        }
-        // ✅ 新增：累加冷却缩减、最终减伤、最大魔力百分比、魔法攻击百分比
-        if (talentStats.cooldown_reduction) {
-          this.player.stats.cooldown_reduction = (this.player.stats.cooldown_reduction || 0) + talentStats.cooldown_reduction;
-        }
-        if (talentStats.final_dmg_reduce) {
-          this.player.stats.final_dmg_reduce = (this.player.stats.final_dmg_reduce || 0) + talentStats.final_dmg_reduce;
-        }
-        if (talentStats.max_mp_percent) {
-          this.player.stats.max_mp_percent = (this.player.stats.max_mp_percent || 0) + talentStats.max_mp_percent;
-        }
-        if (talentStats.m_atk_percent) {
-          this.player.stats.m_atk_percent = (this.player.stats.m_atk_percent || 0) + talentStats.m_atk_percent;
+          const oldMaxMp = this.player.stats.maxMp || 0;
+          const newMaxMp = totals.maxMp || 0;
+          const mpIncrease = newMaxMp - oldMaxMp;
+          if (mpIncrease > 0) {
+            // 增加当前 mp（但不超过新的 maxMp）
+            this.player.stats.mp = Math.min((this.player.stats.mp || 0) + mpIncrease, newMaxMp);
+          }
+          // 更新 stats.maxMp 为新的总 maxMp（用于兼容性）
+          this.player.stats.maxMp = newMaxMp;
         }
       }
       
@@ -2605,6 +2636,11 @@ class Game {
           const name = this.getKeystoneName(ks);
           this.ui.logMessage(`关键石激活: ${name}`, 'buff');
         });
+      }
+      
+      // ✅ 刷新界面
+      if (this.ui) {
+        this.ui.updateStats(this.player);
       }
     }).catch(err => {
       console.error('[TalentSystem] 应用天赋加成失败:', err);

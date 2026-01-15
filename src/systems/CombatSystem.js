@@ -2593,6 +2593,29 @@ export class CombatSystem {
       const wy = monster.y * TILE_SIZE + TILE_SIZE / 2;
       game.vfx.emitParticles(wx, wy, 'DEATH');
     }
+    
+    // ========== 灵魂收割机制 ==========
+    // ✅ 检查玩家是否激活 SOUL_REAPER 关键石
+    if (attacker && attacker === game.player && game.player.activeKeystones && Array.isArray(game.player.activeKeystones)) {
+      if (game.player.activeKeystones.includes('SOUL_REAPER')) {
+        // 恢复玩家10%最大生命值
+        const totals = game.player.getTotalStats();
+        const maxHp = totals.maxHp || game.player.stats.maxHp || 100;
+        const healAmount = Math.floor(maxHp * 0.1);
+        
+        if (healAmount > 0) {
+          game.player.heal(healAmount);
+          
+          // 显示浮动文字提示
+          if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
+            const pos = game.player.getFloatingTextPosition();
+            const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+            const healText = game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, `+${healAmount} HP`, '#00ff88');
+            game.floatingTexts.push(healText);
+          }
+        }
+      }
+    }
 
     // 目前保持逻辑最小侵入：只负责移除怪物，避免破坏既有掉落/经验结算流程
     if (game.map && game.map.removeMonster) {
