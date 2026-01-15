@@ -1819,6 +1819,23 @@ class Game {
               }, 1000);
             }
             
+            // 尝试解锁下一级难度
+            if (this.metaSaveSystem) {
+              const unlocked = this.metaSaveSystem.unlockNextAscensionLevel(this.selectedAscensionLevel);
+              if (unlocked) {
+                // 播放解锁音效
+                if (this.audio && typeof this.audio.playTalentUnlock === 'function') {
+                  this.audio.playTalentUnlock();
+                }
+                // 显示解锁提示
+                if (this.ui) {
+                  setTimeout(() => {
+                    this.ui.logMessage('恭喜！新的噩梦难度已解锁！', 'ultimate');
+                  }, 1500);
+                }
+              }
+            }
+            
             // 延迟触发胜利结算（让玩家看到击杀效果）
             setTimeout(() => {
               this.endGame(false); // false表示胜利/退休
@@ -3993,9 +4010,18 @@ class Game {
   }
 
   // 新的噩梦层级设置方法
-  setAscensionLevel(level) {
+  setAscensionLevel(level, skipUnlockCheck = false) {
     if (level < 1) level = 1;
     if (level > 25) level = 25;
+    
+    // 检查难度解锁限制（每日挑战模式跳过此检查）
+    if (!skipUnlockCheck && this.metaSaveSystem) {
+      const maxUnlocked = this.metaSaveSystem.data?.maxUnlockedAscension ?? 1;
+      if (level > maxUnlocked) {
+        level = maxUnlocked; // 限制为已解锁的最高难度
+      }
+    }
+    
     this.selectedAscensionLevel = level;
     
     // Update UI: Display ascension level number
@@ -4017,7 +4043,17 @@ class Game {
 
   // 改变噩梦层级（方向：-1为减少，+1为增加）
   changeAscensionLevel(direction) {
+    const maxUnlocked = this.metaSaveSystem?.data?.maxUnlockedAscension ?? 1;
     const newLevel = Math.max(1, Math.min(25, this.selectedAscensionLevel + direction));
+    
+    // 限制选择未解锁的难度
+    if (newLevel > maxUnlocked) {
+      if (this.ui) {
+        this.ui.logMessage(`需通关 难度 ${maxUnlocked} 解锁`, 'warning');
+      }
+      return;
+    }
+    
     this.setAscensionLevel(newLevel);
   }
 
@@ -5808,7 +5844,13 @@ window.addEventListener('load', async () => {
           
           // 应用设置到游戏实例
           game.selectedCharId = selectedCharId;
-          game.selectedAscensionLevel = selectedAscensionLevel;
+          // 限制难度不超过已解锁的最高难度
+          if (game.metaSaveSystem) {
+            const maxUnlocked = game.metaSaveSystem.data?.maxUnlockedAscension ?? 1;
+            game.selectedAscensionLevel = Math.min(selectedAscensionLevel, maxUnlocked);
+          } else {
+            game.selectedAscensionLevel = selectedAscensionLevel;
+          }
           game.selectedDiff = selectedDiff;
           game.config.enableFog = enableFog;
           game.config.enableLighting = enableLighting;

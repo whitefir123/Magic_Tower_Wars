@@ -33,6 +33,7 @@ export class MetaSaveSystem {
                 floorStartTime: null,            // 当前层开始时间
                 lastFloorClearTime: null         // 上次清层时间
             },
+            maxUnlockedAscension: 1,            // 已解锁的最高噩梦层级（1-25）
             lastPlayed: Date.now()              // 最后游玩时间
         };
     }
@@ -275,6 +276,28 @@ export class MetaSaveSystem {
     resetFloorStats() {
         // 不再需要重置 trapTriggersThisFloor（已迁移到 sessionStats）
         // 保留此方法以防其他地方调用
+    }
+    
+    /**
+     * 解锁下一级噩梦难度
+     * @param {number} currentLevel - 当前通关的难度层级
+     * @returns {boolean} 如果在本次调用中成功解锁了新难度，返回 true，否则返回 false
+     */
+    unlockNextAscensionLevel(currentLevel) {
+        // 确保 maxUnlockedAscension 字段存在（向后兼容）
+        if (this.data.maxUnlockedAscension === undefined) {
+            this.data.maxUnlockedAscension = 1;
+        }
+        
+        // 如果当前层级等于已解锁的最高层级，且小于25，则解锁下一级
+        if (currentLevel === this.data.maxUnlockedAscension && currentLevel < 25) {
+            this.data.maxUnlockedAscension++;
+            this.save();
+            console.log(`MetaSaveSystem: 已解锁噩梦难度 ${this.data.maxUnlockedAscension}`);
+            return true;
+        }
+        
+        return false;
     }
 }
 
