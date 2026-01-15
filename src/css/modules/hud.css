@@ -270,6 +270,8 @@
   position: relative;
   z-index: 10;
   margin-top: 4px; /* 与怒气条拉开一点距离 */
+  margin-left: auto; /* 居中对齐 */
+  margin-right: auto; /* 居中对齐 */
 }
 
 /* 复用 rage-bar-bg 的样式结构 */

@@ -248,12 +248,8 @@ export class HUD {
     if (!rageSection || !rageSection.parentElement) return;
 
     const mpRow = document.createElement('div');
-    mpRow.className = 'stat-row mp-section';
+    mpRow.className = 'mp-section';
     mpRow.id = 'ui-mp';
-
-    const label = document.createElement('div');
-    label.className = 'stat-label';
-    label.innerText = 'MP';
 
     const barContainer = document.createElement('div');
     barContainer.className = 'bar-container';
@@ -271,7 +267,6 @@ export class HUD {
 
     barContainer.appendChild(barFill);
     barContainer.appendChild(barText);
-    mpRow.appendChild(label);
     mpRow.appendChild(barContainer);
 
     // 严格插在怒气条下方
