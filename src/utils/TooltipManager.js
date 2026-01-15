@@ -47,6 +47,16 @@ export class TooltipManager {
       AMULET: '护身符',
       CONSUMABLE: '消耗品'
     };
+    
+    // ✅ v2.0: 品质颜色映射表（用于浅色背景适配）
+    this.qualityColorMap = {
+      '#ffffff': '#5d4037', // Common: White -> Dark Brown
+      '#1eff00': '#2e7d32', // Uncommon: Bright Green -> Dark Green
+      '#0070dd': '#01579b', // Rare: Blue -> Dark Blue
+      '#a335ee': '#4a148c', // Epic: Purple -> Dark Purple
+      '#ff8000': '#e65100', // Legendary: Orange -> Dark Orange
+      '#e6cc80': '#827717'  // Mythic: Pale Gold -> Dark Gold
+    };
   }
 
   /**
@@ -117,15 +127,17 @@ export class TooltipManager {
     const qualityKey = (item.quality || item.rarity || 'COMMON').toUpperCase();
     const qualityConfig = ITEM_QUALITY[qualityKey] || ITEM_QUALITY.COMMON;
     const qualityColor = qualityConfig.color || '#ffffff';
+    // ✅ FIX: 适配浅色背景，使用深色版本的品质颜色
+    const displayColor = this.qualityColorMap[qualityColor] || (qualityColor === '#ffffff' ? '#5d4037' : qualityColor);
     const qualityName = qualityConfig.name || qualityKey;
     
     // 应用品质颜色到物品名称
-    let content = `<div class="tt-name" style="color: ${qualityColor};">${displayName}</div>`;
+    let content = `<div class="tt-name" style="color: ${displayColor};">${displayName}</div>`;
     content += `<div class="tt-type">${typeZh}</div>`;
     
     // 显示品质和强化等级（如果有）
     if (item.quality || item.rarity) {
-      content += `<div class="tt-quality" style="color: ${qualityColor};">${qualityName}</div>`;
+      content += `<div class="tt-quality" style="color: ${displayColor};">${qualityName}</div>`;
     }
     
     if (item.enhanceLevel && item.enhanceLevel > 0) {
@@ -455,7 +467,7 @@ export class TooltipManager {
 
     // ✅ 英雄联盟风格：技能类型和冷却时间分行显示
     const typeName = isUlt ? '终极技能' : (isPassive ? '被动技能' : '主动技能');
-    const typeColor = isUlt ? '#ff6b9d' : (isPassive ? '#88ccff' : '#4a9eff');
+    const typeColor = isUlt ? '#ad1457' : (isPassive ? '#0277bd' : '#01579b');
     
     content += `<div class="tt-skill-type-row" style="color: ${typeColor}; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;">
       ${typeName}
@@ -464,18 +476,18 @@ export class TooltipManager {
     // ✅ 英雄联盟风格：冷却时间单独一行，使用醒目的颜色
     if (!isPassive && data.cd) {
       const cdSeconds = (data.cd / 1000).toFixed(1);
-      content += `<div class="tt-skill-cd-row" style="color: #ffaa88; font-size: 0.85rem; margin-bottom: 10px;">
-        <span style="color: #aaa;">冷却时间：</span><span style="font-weight: 600;">${cdSeconds} 秒</span>
+      content += `<div class="tt-skill-cd-row" style="color: #d84315; font-size: 0.85rem; margin-bottom: 10px;">
+        <span style="color: #8d6e63;">冷却时间：</span><span style="font-weight: 600;">${cdSeconds} 秒</span>
       </div>`;
     }
 
     // ✅ 英雄联盟风格：技能描述清晰，使用合适的行高和颜色
     if (data.desc) {
-      content += `<div class="tt-skill-desc" style="color: #e0e0e0; font-size: 0.9rem; line-height: 1.6; margin-bottom: 8px;">
+      content += `<div class="tt-skill-desc" style="color: #5d4037; font-size: 0.9rem; line-height: 1.6; margin-bottom: 8px;">
         ${data.desc}
       </div>`;
     } else {
-      content += `<div class="tt-skill-desc" style="color: #888; font-size: 0.85rem; font-style: italic; margin-bottom: 8px;">
+      content += `<div class="tt-skill-desc" style="color: #8d6e63; font-size: 0.85rem; font-style: italic; margin-bottom: 8px;">
         暂无描述
       </div>`;
     }
