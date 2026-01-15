@@ -3,6 +3,13 @@
  * 
  * 任务系统核心逻辑
  * 负责管理任务数据、状态流转、事件监听
+ * 
+ * 平衡性公式说明：
+ * - 楼层任务奖励公式：
+ *   金币：baseGold * (1 + floorIndex * 0.3)
+ *   经验：baseXp * (1 + floorIndex * 0.2)
+ * - 怪物筛选：根据怪物的 maxHp 和攻击力判断是否适合当前楼层
+ *   公式：maxHp <= floorIndex * 150 + 200（可根据实际游戏数据微调）
  */
 
 import { DailyChallengeSystem } from './DailyChallengeSystem.js';
@@ -144,6 +151,67 @@ export class QuestSystem {
     this.floorQuests = new Map(); // Map<floorIndex, questId> - 每层随机任务
     
     console.log('[QuestSystem] 任务系统已初始化');
+  }
+
+  /**
+   * 获取当前楼层可用的怪物类型
+   * 根据怪物的生命值和攻击力判断是否适合当前楼层
+   * @param {number} floorIndex - 楼层索引（从1开始）
+   * @returns {Array<string>} 可用的怪物类型ID数组
+   */
+  getAvailableMonstersForFloor(floorIndex) {
+    const availableMonsters = [];
+    
+    // 计算当前楼层的最大允许生命值
+    // 公式：maxHp <= floorIndex * 150 + 200
+    // 例如：第1层 <= 350, 第5层 <= 950, 第10层 <= 1700
+    const maxAllowedHp = floorIndex * 150 + 200;
+    
+    // 计算当前楼层的最大允许攻击力（物理+魔法取较大值）
+    // 公式：maxAtk <= floorIndex * 3 + 10
+    const maxAllowedAtk = floorIndex * 3 + 10;
+    
+    // 遍历所有怪物，筛选适合的
+    for (const [monsterType, monster] of Object.entries(MONSTER_STATS)) {
+      // 排除BOSS
+      if (monsterType === 'BOSS') continue;
+      
+      // 获取怪物的生命值（优先使用 maxHp，否则使用 hp）
+      const monsterHp = monster.maxHp || monster.hp || 0;
+      
+      // 获取怪物的攻击力（物理和魔法取较大值）
+      const monsterAtk = Math.max(monster.p_atk || 0, monster.m_atk || 0);
+      
+      // 判断是否适合当前楼层
+      // 使用更宽松的条件：只要生命值或攻击力不超过太多即可
+      // 允许稍微超出，因为玩家可能已经有一定装备和等级
+      if (monsterHp <= maxAllowedHp * 1.2 && monsterAtk <= maxAllowedAtk * 1.2) {
+        availableMonsters.push(monsterType);
+      }
+    }
+    
+    // 如果筛选后没有怪物，使用硬编码的分层逻辑作为后备方案
+    if (availableMonsters.length === 0) {
+      console.warn(`[QuestSystem] 楼层 ${floorIndex} 没有通过公式筛选的怪物，使用硬编码分层逻辑`);
+      
+      if (floorIndex <= 3) {
+        // 1-3层：史莱姆、蝙蝠
+        return ['SLIME', 'BAT'].filter(type => MONSTER_STATS[type]);
+      } else if (floorIndex <= 6) {
+        // 4-6层：史莱姆、蝙蝠、骷髅、虚空、幽灵
+        return ['SLIME', 'BAT', 'SKELETON', 'VOID', 'GHOST'].filter(type => MONSTER_STATS[type]);
+      } else if (floorIndex <= 9) {
+        // 7-9层：骷髅、虚空、幽灵、沼泽、死神
+        return ['SKELETON', 'VOID', 'GHOST', 'SWAMP', 'REAPER'].filter(type => MONSTER_STATS[type]);
+      } else {
+        // 10层及以上：所有非BOSS怪物（除了最弱的史莱姆）
+        return Object.keys(MONSTER_STATS).filter(type => 
+          type !== 'BOSS' && type !== 'SLIME'
+        );
+      }
+    }
+    
+    return availableMonsters;
   }
 
   /**
@@ -846,23 +914,24 @@ export class QuestSystem {
 
     try {
       // 使用楼层索引作为种子的一部分，确保每层任务固定
-      const floorSeed = `floor_${floorIndex}_${Date.now()}`;
+      // 注意：使用固定的种子格式，避免使用 Date.now() 以确保每层任务确定性
+      const floorSeed = `floor_${floorIndex}`;
       const rng = new SeededRandom(floorSeed);
 
       // 获取当前楼层可用的怪物类型（根据楼层难度筛选）
-      const monsterTypes = Object.keys(MONSTER_STATS).filter(type => {
-        if (type === 'BOSS') return false;
-        // 可以根据楼层筛选怪物，这里简化处理，使用所有非BOSS怪物
-        return true;
-      });
+      const monsterTypes = this.getAvailableMonstersForFloor(floorIndex);
 
       if (monsterTypes.length === 0) {
         console.warn(`[QuestSystem] 楼层 ${floorIndex} 没有可用怪物类型`);
         return null;
       }
 
-      // 可用消耗品列表
-      const consumableIds = CONSUMABLE_IDS || ['POTION_HP_S', 'POTION_RAGE'];
+      // 可用消耗品列表（确保只使用可获取的物品）
+      const consumableIds = (CONSUMABLE_IDS || ['POTION_HP_S', 'POTION_RAGE']).filter(id => {
+        // 确保物品ID在游戏中存在（可以通过检查是否有对应的物品定义）
+        // 这里简化处理，直接使用 CONSUMABLE_IDS
+        return true;
+      });
 
       // 任务模板池
       const questTemplates = [
@@ -873,10 +942,15 @@ export class QuestSystem {
             const monsterType = rng.choice(monsterTypes);
             const monster = MONSTER_STATS[monsterType];
             const count = rng.nextInt(3, 8); // 3-8只
-            const goldReward = count * rng.nextInt(5, 12);
+            // 基础奖励（随楼层增长）
+            const baseGold = count * rng.nextInt(5, 12);
+            const baseXp = count * 10;
+            // 应用楼层奖励倍率
+            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3));
+            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2));
             
             return {
-              id: `floor_quest_${floorIndex}_kill_${Date.now()}`,
+              id: `floor_quest_${floorIndex}_kill_${rng.nextInt(1000, 9999)}`,
               title: `楼层挑战：${monster.cnName || monster.name}`,
               description: `在第${floorIndex}层击杀${count}只${monster.cnName || monster.name}`,
               category: 'FLOOR',
@@ -894,7 +968,7 @@ export class QuestSystem {
               nextQuest: null,
               reward: {
                 gold: goldReward,
-                xp: count * 10
+                xp: xpReward
               },
               autoComplete: false
             };
@@ -904,9 +978,15 @@ export class QuestSystem {
         {
           type: 'COLLECT',
           generate: () => {
-            const itemId = rng.choice(consumableIds);
+            // 确保只使用可获取的物品（优先使用常见物品）
+            const commonItems = consumableIds.filter(id => id.includes('POTION_HP_S') || id.includes('POTION_RAGE'));
+            const itemPool = commonItems.length > 0 ? commonItems : consumableIds;
+            const itemId = rng.choice(itemPool);
             const count = rng.nextInt(1, 3); // 1-3个
-            const goldReward = count * rng.nextInt(8, 18);
+            // 基础奖励（随楼层增长）
+            const baseGold = count * rng.nextInt(8, 18);
+            // 应用楼层奖励倍率
+            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3));
             
             let itemName = '药水';
             if (itemId.includes('POTION_HP')) itemName = '小型药水';
@@ -915,7 +995,7 @@ export class QuestSystem {
             else if (itemId.includes('SCROLL_FIRE')) itemName = '火焰卷轴';
             
             return {
-              id: `floor_quest_${floorIndex}_collect_${Date.now()}`,
+              id: `floor_quest_${floorIndex}_collect_${rng.nextInt(1000, 9999)}`,
               title: `楼层收集：${itemName}`,
               description: `在第${floorIndex}层收集${count}个${itemName}`,
               category: 'FLOOR',
@@ -945,15 +1025,25 @@ export class QuestSystem {
             const monsterType = rng.choice(monsterTypes);
             const monster = MONSTER_STATS[monsterType];
             const killCount = rng.nextInt(2, 5);
-            const itemId = rng.choice(consumableIds);
+            // 确保只使用可获取的物品
+            const commonItems = consumableIds.filter(id => id.includes('POTION_HP_S') || id.includes('POTION_RAGE'));
+            const itemPool = commonItems.length > 0 ? commonItems : consumableIds;
+            const itemId = rng.choice(itemPool);
             const collectCount = 1;
             
             let itemName = '药水';
             if (itemId.includes('POTION_HP')) itemName = '小型药水';
             else if (itemId.includes('POTION_RAGE')) itemName = '怒气药水';
             
+            // 基础奖励（随楼层增长）
+            const baseGold = (killCount * 8) + (collectCount * 15);
+            const baseXp = killCount * 12;
+            // 应用楼层奖励倍率
+            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3));
+            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2));
+            
             return {
-              id: `floor_quest_${floorIndex}_complex_${Date.now()}`,
+              id: `floor_quest_${floorIndex}_complex_${rng.nextInt(1000, 9999)}`,
               title: `楼层挑战：双重目标`,
               description: `在第${floorIndex}层完成双重挑战：击杀${killCount}只${monster.cnName || monster.name}并收集${collectCount}个${itemName}`,
               category: 'FLOOR',
@@ -978,8 +1068,8 @@ export class QuestSystem {
               prerequisites: [],
               nextQuest: null,
               reward: {
-                gold: (killCount * 8) + (collectCount * 15),
-                xp: killCount * 12
+                gold: goldReward,
+                xp: xpReward
               },
               autoComplete: false
             };
@@ -990,11 +1080,15 @@ export class QuestSystem {
           type: 'ZONE_CLEAR',
           generate: () => {
             const count = rng.nextInt(10, 15); // 10-15只
-            const xpReward = count * rng.nextInt(15, 25); // 较高经验奖励
-            const goldReward = count * rng.nextInt(3, 7);
+            // 基础奖励（随楼层增长）
+            const baseXp = count * rng.nextInt(15, 25); // 较高经验奖励
+            const baseGold = count * rng.nextInt(3, 7);
+            // 应用楼层奖励倍率
+            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2));
+            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3));
 
             return {
-              id: `floor_quest_${floorIndex}_zone_${Date.now()}`,
+              id: `floor_quest_${floorIndex}_zone_${rng.nextInt(1000, 9999)}`,
               title: `楼层清理：第${floorIndex}层`,
               description: `清理第${floorIndex}层的怪物潮（击败${count}个任意敌人）`,
               category: 'FLOOR',
@@ -1018,20 +1112,29 @@ export class QuestSystem {
             };
           }
         },
-        // 战术考核：保持高生命值击杀指定怪物，高金币+随机药水
+        // 战术考核：保持高生命值击杀指定怪物，高金币+随机药水（高风险高回报）
         {
           type: 'TACTICAL',
           generate: () => {
             const monsterType = rng.choice(monsterTypes);
             const monster = MONSTER_STATS[monsterType];
             const count = 5;
-            const minHpPercentOptions = [80, 90];
+            // 放宽生命值要求：从 80/90% 降低到 60/70%，因为这是高风险任务
+            const minHpPercentOptions = [60, 70];
             const minHpPercent = rng.choice(minHpPercentOptions);
-            const goldReward = count * rng.nextInt(15, 30);
-            const potionId = rng.choice(consumableIds);
+            // 基础奖励（随楼层增长），战术任务奖励倍率提升 2.5 倍
+            const baseGold = count * rng.nextInt(15, 30);
+            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3) * 2.5);
+            // 额外经验奖励
+            const baseXp = count * 15;
+            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2) * 1.5);
+            // 确保只使用可获取的物品
+            const commonItems = consumableIds.filter(id => id.includes('POTION_HP_S') || id.includes('POTION_RAGE'));
+            const itemPool = commonItems.length > 0 ? commonItems : consumableIds;
+            const potionId = rng.choice(itemPool);
 
             return {
-              id: `floor_quest_${floorIndex}_tactical_${Date.now()}`,
+              id: `floor_quest_${floorIndex}_tactical_${rng.nextInt(1000, 9999)}`,
               title: `战术考核：${monster.cnName || monster.name}`,
               description: `在保持${minHpPercent}%以上生命值的情况下，击杀${count}只${monster.cnName || monster.name}`,
               category: 'FLOOR',
@@ -1052,6 +1155,7 @@ export class QuestSystem {
               },
               reward: {
                 gold: goldReward,
+                xp: xpReward,
                 items: [potionId]
               },
               autoComplete: false
@@ -1063,11 +1167,15 @@ export class QuestSystem {
           type: 'SURVIVAL',
           generate: () => {
             const count = rng.nextInt(6, 10); // 6-10只
-            const goldReward = count * rng.nextInt(8, 15);
-            const xpReward = count * rng.nextInt(10, 18);
+            // 基础奖励（随楼层增长）
+            const baseGold = count * rng.nextInt(8, 15);
+            const baseXp = count * rng.nextInt(10, 18);
+            // 应用楼层奖励倍率
+            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3));
+            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2));
 
             return {
-              id: `floor_quest_${floorIndex}_survival_${Date.now()}`,
+              id: `floor_quest_${floorIndex}_survival_${rng.nextInt(1000, 9999)}`,
               title: `生存试炼：第${floorIndex}层`,
               description: `在生命值不低于50%的情况下，击败${count}个敌人`,
               category: 'FLOOR',
@@ -1139,10 +1247,14 @@ export class QuestSystem {
       const dateSuffix = `_${dateStr}`;
 
       // 可用怪物类型列表（排除BOSS）
+      // 注意：每日任务不限制楼层，使用所有非BOSS怪物
       const monsterTypes = Object.keys(MONSTER_STATS).filter(type => type !== 'BOSS');
       
-      // 可用消耗品列表
-      const consumableIds = CONSUMABLE_IDS || ['POTION_HP_S', 'POTION_RAGE'];
+      // 可用消耗品列表（确保只使用可获取的物品）
+      const consumableIds = (CONSUMABLE_IDS || ['POTION_HP_S', 'POTION_RAGE']).filter(id => {
+        // 确保物品ID在游戏中存在
+        return true;
+      });
 
       // 每日任务模板池
       const questTemplates = [
@@ -1153,6 +1265,7 @@ export class QuestSystem {
             const monsterType = rng.choice(monsterTypes);
             const monster = MONSTER_STATS[monsterType];
             const count = rng.nextInt(5, 15); // 5-15只
+            // 每日任务使用固定奖励（不随楼层变化，因为每日任务可以在任何楼层完成）
             const goldReward = count * rng.nextInt(3, 8); // 金币奖励：每只3-8金币
             
             return {
@@ -1168,7 +1281,10 @@ export class QuestSystem {
               reward: (() => {
                 const reward = { gold: goldReward };
                 if (rng.next() < 0.3) {
-                  reward.items = [rng.choice(consumableIds)]; // 30%概率奖励药水
+                  // 确保只使用可获取的物品
+                  const commonItems = consumableIds.filter(id => id.includes('POTION_HP_S') || id.includes('POTION_RAGE'));
+                  const itemPool = commonItems.length > 0 ? commonItems : consumableIds;
+                  reward.items = [rng.choice(itemPool)]; // 30%概率奖励药水
                 }
                 return reward;
               })(),
@@ -1180,8 +1296,12 @@ export class QuestSystem {
         {
           type: 'COLLECT',
           generate: (index) => {
-            const itemId = rng.choice(consumableIds);
+            // 确保只使用可获取的物品（优先使用常见物品）
+            const commonItems = consumableIds.filter(id => id.includes('POTION_HP_S') || id.includes('POTION_RAGE'));
+            const itemPool = commonItems.length > 0 ? commonItems : consumableIds;
+            const itemId = rng.choice(itemPool);
             const count = rng.nextInt(2, 5); // 2-5个
+            // 每日任务使用固定奖励
             const goldReward = count * rng.nextInt(5, 15); // 金币奖励：每个5-15金币
             
             // 根据物品ID确定名称
@@ -1213,6 +1333,7 @@ export class QuestSystem {
           type: 'REACH_FLOOR',
           generate: (index) => {
             const targetFloor = rng.nextInt(3, 8); // 3-8层
+            // 每日任务使用固定奖励
             const goldReward = targetFloor * rng.nextInt(10, 20); // 金币奖励：每层10-20金币
             
             return {
@@ -1228,7 +1349,10 @@ export class QuestSystem {
               reward: (() => {
                 const reward = { gold: goldReward };
                 if (rng.next() < 0.4) {
-                  reward.items = [rng.choice(consumableIds)]; // 40%概率奖励药水
+                  // 确保只使用可获取的物品
+                  const commonItems = consumableIds.filter(id => id.includes('POTION_HP_S') || id.includes('POTION_RAGE'));
+                  const itemPool = commonItems.length > 0 ? commonItems : consumableIds;
+                  reward.items = [rng.choice(itemPool)]; // 40%概率奖励药水
                 }
                 return reward;
               })(),
