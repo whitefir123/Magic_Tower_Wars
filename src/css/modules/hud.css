@@ -285,11 +285,11 @@
   z-index: 10;
 }
 
-/* 填充条 - 对标 #rage-fill，改为蓝色渐变 */
+/* 填充条 - 对标 #rage-fill，改为深蓝色纯色 */
 #mp-fill { 
   height: 100%; 
   width: 100%; /* 默认满 */
-  background: linear-gradient(90deg, #0055ff, #00ccff); 
+  background: #0f2f92; 
   transition: all 0.2s ease; 
   position: relative; 
   z-index: 10; 

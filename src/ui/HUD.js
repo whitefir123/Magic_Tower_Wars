@@ -155,7 +155,7 @@ export class HUD {
 
     const mpRegen = totals.mp_regen ?? player.stats.mp_regen ?? 0;
     const regenText = mpRegen ? mpRegen.toFixed(1) : '0.0';
-    this.updateTextIfChanged('mp-text', `MP: ${Math.floor(currentMp)}/${Math.floor(maxMp)} (+${regenText})`);
+    this.updateTextIfChanged('mp-text', `MP ${Math.floor(currentMp)}/${Math.floor(maxMp)} (+${regenText})`);
 
     // Stats 文本
     this.updateTextIfChanged('ui-patk', totals.p_atk);
@@ -280,7 +280,7 @@ export class HUD {
     const barText = document.createElement('div');
     barText.id = 'mp-text';
     barText.className = 'mp-text';
-    barText.innerText = 'MP: --/--';
+    barText.innerText = 'MP --/--';
 
     // 4. 组装
     barContainer.appendChild(barFill);

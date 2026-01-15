@@ -566,7 +566,7 @@ export class UIManager {
     const barText = document.createElement('div');
     barText.id = 'mp-text';
     barText.className = 'mp-text';
-    barText.innerText = 'MP: --/--';
+    barText.innerText = 'MP --/--';
 
     // 4. 组装
     barContainer.appendChild(barFill);
@@ -643,7 +643,7 @@ export class UIManager {
     
     if (mpTextEl) {
       const regenText = mpRegen ? mpRegen.toFixed(1) : '0.0';
-      mpTextEl.innerText = `MP: ${Math.floor(currentMp)}/${Math.floor(maxMp)} (+${regenText})`;
+      mpTextEl.innerText = `MP ${Math.floor(currentMp)}/${Math.floor(maxMp)} (+${regenText})`;
     }
 
     // ULT button
