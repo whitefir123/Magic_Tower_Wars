@@ -2764,6 +2764,16 @@ export class Player extends Entity {
       const text = window.game.floatingTextPool.create(pos.x, pos.y - 5 + microScatterY, `+${actualHeal}`, '#00ff88');
       window.game.floatingTexts.push(text);
     }
+
+    // 仅当当前实体为玩家时，通知任务系统进行条件类任务被动结算检测
+    if (window.game && window.game.questSystem && window.game.player === this &&
+        typeof window.game.questSystem.onPlayerStatsChange === 'function') {
+      try {
+        window.game.questSystem.onPlayerStatsChange();
+      } catch (e) {
+        console.error('[QuestSystem] onPlayerStatsChange 调用失败（heal 钩子）:', e);
+      }
+    }
   }
   gainRage(amt) { 
     const beforeRage = this.stats.rage || 0;
@@ -2804,6 +2814,16 @@ export class Player extends Entity {
     }
     
     if (window.game&&window.game.ui) window.game.ui.updateStats(this); 
+
+    // 仅当当前实体为玩家时，通知任务系统进行条件类任务被动结算检测
+    if (window.game && window.game.questSystem && window.game.player === this &&
+        typeof window.game.questSystem.onPlayerStatsChange === 'function') {
+      try {
+        window.game.questSystem.onPlayerStatsChange();
+      } catch (e) {
+        console.error('[QuestSystem] onPlayerStatsChange 调用失败（takeDamage 钩子）:', e);
+      }
+    }
     // 死亡时触发子弹时间阶段，而不是立即结束游戏
     // ✅ FIX: 更安全的检查，防止因为对象不存在而报错
     if (this.stats.hp <= 0 && window.game) {

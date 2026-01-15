@@ -282,8 +282,52 @@ export class QuestSystem {
     
     // 生成并添加每日任务
     this.generateDailyQuests();
-    
+
+    // 兜底：补全可能因为中断而未自动接取的任务链
+    // 注意：新游戏开始时 claimedQuests 为空，此步骤安全无副作用；
+    // 读档后如果需要同样的兜底逻辑，请参考 loadQuestData 末尾的调用。
+    this.refreshQuestChainsFromClaims();
+
     console.log('[QuestSystem] 任务系统已初始化，已接取初始任务');
+  }
+
+  /**
+   * 基于已领取奖励的任务集合（claimedQuests）刷新任务链
+   * 用于修复由于自动接取延迟（例如 setTimeout）被中断而导致的任务链断裂问题。
+   * 规则：
+   * - 仅遍历静态任务数据库 QUEST_DATABASE
+   * - 如果一个任务的所有 prerequisites 都在 claimedQuests 中
+   * - 且该任务本身不在 activeQuests / completedQuests / claimedQuests 中
+   *   则自动调用 acceptQuest(questId) 接取它
+   */
+  refreshQuestChainsFromClaims() {
+    try {
+      Object.values(QUEST_DATABASE).forEach(rawQuest => {
+        if (!rawQuest || !rawQuest.id) return;
+        const questId = rawQuest.id;
+
+        // 已存在于任一集合则跳过
+        if (this.activeQuests.has(questId) ||
+            this.completedQuests.has(questId) ||
+            this.claimedQuests.has(questId)) {
+          return;
+        }
+
+        const quest = this.normalizeQuest(rawQuest);
+        if (!quest.prerequisites || quest.prerequisites.length === 0) {
+          // 没有前置任务的属于“起点任务”，不在这里自动接取，保持由业务显式控制
+          return;
+        }
+
+        const allPrereqClaimed = quest.prerequisites.every(prereqId => this.claimedQuests.has(prereqId));
+        if (allPrereqClaimed) {
+          // 使用正常前置检查流程，避免意外跳过新增的逻辑
+          this.acceptQuest(questId, false);
+        }
+      });
+    } catch (e) {
+      console.error('[QuestSystem] refreshQuestChainsFromClaims 执行失败:', e);
+    }
   }
 
   /**
@@ -361,6 +405,73 @@ export class QuestSystem {
   }
 
   /**
+   * 获取用于任务展示的物品名称
+   * 优先通过 game.getItemDefinition 获取，失败时再退回到基于ID的硬编码名称
+   * @param {string} itemId - 物品ID
+   * @param {string} defaultName - 默认名称
+   * @returns {string} 物品名称
+   */
+  getItemDisplayName(itemId, defaultName = '物品') {
+    if (!itemId) return defaultName;
+
+    let itemDef = null;
+    try {
+      if (this.game && typeof this.game.getItemDefinition === 'function') {
+        itemDef = this.game.getItemDefinition(itemId);
+      }
+    } catch (e) {
+      console.warn('[QuestSystem] getItemDisplayName 中调用 game.getItemDefinition 失败:', e);
+    }
+
+    if (itemDef) {
+      return itemDef.nameZh || itemDef.name || itemDef.id || itemId;
+    }
+
+    // 回退到基于ID的简单推断，避免完全依赖硬编码
+    const id = String(itemId);
+    let name = defaultName;
+    if (id.includes('POTION_HP')) name = '小型药水';
+    else if (id.includes('POTION_RAGE')) name = '怒气药水';
+    else if (id.includes('SCROLL_XP')) name = '知识卷轴';
+    else if (id.includes('SCROLL_FIRE')) name = '火焰卷轴';
+
+    return name;
+  }
+
+  /**
+   * 获取用于任务生成的有效消耗品ID列表
+   * - 基于 CONSUMABLE_IDS
+   * - 如果 game.getItemDefinition 可用，则过滤掉在当前游戏中不存在的物品
+   * @returns {Array<string>} 可用的消耗品ID
+   */
+  getAvailableConsumableIdsForQuests() {
+    let ids = Array.isArray(CONSUMABLE_IDS) ? CONSUMABLE_IDS.slice() : [];
+    if (ids.length === 0) return [];
+
+    const hasItemDef = this.game && typeof this.game.getItemDefinition === 'function';
+    if (!hasItemDef) {
+      // 无法校验具体可用性，但至少保证是字符串
+      return ids.filter(id => typeof id === 'string' && id.length > 0);
+    }
+
+    const validIds = [];
+    ids.forEach(id => {
+      if (typeof id !== 'string' || !id.length) return;
+      try {
+        const def = this.game.getItemDefinition(id);
+        if (def) {
+          validIds.push(id);
+        }
+      } catch (e) {
+        // 个别物品查找失败不应中断整个流程
+        console.warn(`[QuestSystem] 校验消耗品ID失败: ${id}`, e);
+      }
+    });
+
+    return validIds;
+  }
+
+  /**
    * 接取任务
    * @param {string} questId - 任务ID
    * @param {boolean} skipPrerequisites - 是否跳过前置检查（用于自动接取）
@@ -429,6 +540,19 @@ export class QuestSystem {
           this.completeQuest(questId);
         }
       }
+    }
+  }
+
+  /**
+   * 玩家属性（如HP/金币等）变化时的钩子
+   * - 外部在处理回血、喝药、获得金币等行为后可调用此方法
+   * - 用于被动触发条件类任务的结算检查
+   */
+  onPlayerStatsChange() {
+    try {
+      this.recheckConditionQuests();
+    } catch (e) {
+      console.error('[QuestSystem] onPlayerStatsChange 调用失败:', e);
     }
   }
 
@@ -1062,6 +1186,11 @@ export class QuestSystem {
       floorQuests: this.floorQuests.size
     });
 
+    // 读档兜底：基于已领取奖励的任务重建可能被中断的任务链
+    // 例如：在 claimReward 的 setTimeout 期间退出游戏，导致 nextQuest 未被接取，
+    // 此处会在 claimedQuests 恢复完成后自动补上缺失的后续任务。
+    this.refreshQuestChainsFromClaims();
+
     // 更新UI
     if (this.game && this.game.ui && this.game.ui.questUI) {
       this.game.ui.questUI.update();
@@ -1160,12 +1289,9 @@ export class QuestSystem {
       }
 
       // 可用消耗品列表（确保只使用可获取的物品，提供默认值保护）
-      const consumableIds = (CONSUMABLE_IDS && Array.isArray(CONSUMABLE_IDS) && CONSUMABLE_IDS.length > 0)
-        ? CONSUMABLE_IDS.filter(id => {
-            // 确保物品ID在游戏中存在（可以通过检查是否有对应的物品定义）
-            // 这里简化处理，直接使用 CONSUMABLE_IDS
-            return true;
-          })
+      const validatedConsumables = this.getAvailableConsumableIdsForQuests();
+      const consumableIds = validatedConsumables.length > 0
+        ? validatedConsumables
         : ['POTION_HP_S', 'POTION_RAGE'];
 
       // 高层楼层奖励的非线性加成，使高层任务更有吸引力
@@ -1225,12 +1351,7 @@ export class QuestSystem {
             const baseGold = count * rng.nextInt(8, 18);
             // 应用楼层奖励倍率（线性 + 轻微非线性加成）
             const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3) * floorRewardMultiplier);
-            
-            let itemName = '药水';
-            if (itemId.includes('POTION_HP')) itemName = '小型药水';
-            else if (itemId.includes('POTION_RAGE')) itemName = '怒气药水';
-            else if (itemId.includes('SCROLL_XP')) itemName = '知识卷轴';
-            else if (itemId.includes('SCROLL_FIRE')) itemName = '火焰卷轴';
+            const itemName = this.getItemDisplayName(itemId, '药水');
             
             return {
               id: `floor_quest_${floorIndex}_collect_${rng.nextInt(1000, 9999)}`,
@@ -1268,10 +1389,7 @@ export class QuestSystem {
             const itemPool = commonItems.length > 0 ? commonItems : consumableIds;
             const itemId = rng.choice(itemPool);
             const collectCount = 1;
-            
-            let itemName = '药水';
-            if (itemId.includes('POTION_HP')) itemName = '小型药水';
-            else if (itemId.includes('POTION_RAGE')) itemName = '怒气药水';
+            const itemName = this.getItemDisplayName(itemId, '药水');
             
             // 基础奖励（随楼层增长）
             const baseGold = (killCount * 8) + (collectCount * 15);
@@ -1489,11 +1607,9 @@ export class QuestSystem {
       const monsterTypes = Object.keys(MONSTER_STATS).filter(type => type !== 'BOSS');
       
       // 可用消耗品列表（确保只使用可获取的物品，提供默认值保护）
-      const consumableIds = (CONSUMABLE_IDS && Array.isArray(CONSUMABLE_IDS) && CONSUMABLE_IDS.length > 0)
-        ? CONSUMABLE_IDS.filter(id => {
-            // 确保物品ID在游戏中存在
-            return true;
-          })
+      const validatedConsumables = this.getAvailableConsumableIdsForQuests();
+      const consumableIds = validatedConsumables.length > 0
+        ? validatedConsumables
         : ['POTION_HP_S', 'POTION_RAGE'];
 
       // 每日任务模板池
@@ -1545,11 +1661,7 @@ export class QuestSystem {
             const goldReward = count * rng.nextInt(5, 15); // 金币奖励：每个5-15金币
             
             // 根据物品ID确定名称
-            let itemName = '药水';
-            if (itemId.includes('POTION_HP')) itemName = '小型药水';
-            else if (itemId.includes('POTION_RAGE')) itemName = '怒气药水';
-            else if (itemId.includes('SCROLL_XP')) itemName = '知识卷轴';
-            else if (itemId.includes('SCROLL_FIRE')) itemName = '火焰卷轴';
+            const itemName = this.getItemDisplayName(itemId, '药水');
             
             return {
               id: `daily_collect_${index}${dateSuffix}`,
