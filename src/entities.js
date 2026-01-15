@@ -1728,7 +1728,8 @@ export class Player extends Entity {
       crit_dmg: 1.4, // 基础暴击伤害倍率
       maxHp: this.stats.maxHp || 100,
       maxMp: this.stats.maxMp || 0,
-      mp_regen: this.stats.mp_regen || 0
+      mp_regen: this.stats.mp_regen || 0,
+      mp_on_hit: this.stats.mp_on_hit || 0
     };
     
     // 套装计数：记录每个套装ID出现的次数
@@ -1747,6 +1748,12 @@ export class Player extends Entity {
       total.dodge += (s.dodge || 0); // 安全累加闪避值
       total.maxHp += (s.maxHp || 0);
       total.maxMp += (s.maxMp || 0);
+      if (s.mp_regen !== undefined) {
+        total.mp_regen = (total.mp_regen || 0) + (s.mp_regen || 0);
+      }
+      if (s.mp_on_hit !== undefined) {
+        total.mp_on_hit = (total.mp_on_hit || 0) + (s.mp_on_hit || 0);
+      }
       // ✅ FIX: 暴击伤害属性需要除以100（因为装备/天赋中存储的是百分比值，如50表示50%）
       total.crit_dmg += (s.crit_dmg || 0) / 100;
       
@@ -1888,6 +1895,9 @@ export class Player extends Entity {
       if (this.talentBonuses.mp_regen !== undefined) {
         total.mp_regen = (total.mp_regen || 0) + this.talentBonuses.mp_regen;
       }
+      if (this.talentBonuses.mp_on_hit !== undefined) {
+        total.mp_on_hit = (total.mp_on_hit || 0) + this.talentBonuses.mp_on_hit;
+      }
       
       // 累加百分比属性（这些会在后续阶段应用）
       if (this.talentBonuses.crit_rate !== undefined) {
@@ -2010,6 +2020,9 @@ export class Player extends Entity {
       }
       if (bonus.mp_regen !== undefined) {
         total.mp_regen = (total.mp_regen || 0) + bonus.mp_regen;
+      }
+      if (bonus.mp_on_hit !== undefined) {
+        total.mp_on_hit = (total.mp_on_hit || 0) + bonus.mp_on_hit;
       }
       
       // 累加百分比属性（暴击率、闪避率）
@@ -2831,6 +2844,28 @@ export class Player extends Entity {
 
     if (window.game && window.game.ui) window.game.ui.updateStats(this);
   }
+  gainMana(amt) {
+    const totals = this.getTotalStats ? this.getTotalStats() : this.stats;
+    const maxMp = totals.maxMp || this.stats.maxMp || 0;
+    const beforeMp = this.stats.mp || 0;
+    const incoming = amt || 0;
+    const actualGain = Math.min(maxMp - beforeMp, incoming);
+    
+    if (actualGain > 0 && maxMp > 0) {
+      this.stats.mp = Math.min(maxMp, beforeMp + actualGain);
+      
+      // 更新 UI
+      if (window.game && window.game.ui) window.game.ui.updateStats(this);
+      
+      // 显示回蓝数字（如果设置开启）
+      if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
+        const pos = this.getFloatingTextPosition();
+        const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+        const text = window.game.floatingTextPool.create(pos.x, pos.y - 5 + microScatterY, `+${actualGain} MP`, '#3399FF');
+        window.game.floatingTexts.push(text);
+      }
+    }
+  }
   takeDamage(amt) { 
     // ✅ 获取最终减伤属性
     const totals = this.getTotalStats ? this.getTotalStats() : this.stats;
@@ -2915,6 +2950,10 @@ export class Player extends Entity {
         case 'rage':
           this.gainRage(eff.amount || 0);
           ui?.logMessage(`使用 ${itemName}，怒气 +${eff.amount||0}`, 'gain');
+          break;
+        case 'mana':
+          this.gainMana(eff.amount || 0);
+          ui?.logMessage(`使用 ${itemName}，魔力 +${eff.amount||0}`, 'gain');
           break;
         case 'xp':
           this.gainXp(eff.amount || 0);

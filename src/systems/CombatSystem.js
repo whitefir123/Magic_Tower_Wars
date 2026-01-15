@@ -1997,29 +1997,10 @@ export class CombatSystem {
 
       // 普攻命中时基于 mp_on_hit 恢复魔力（技能攻击不触发）
       if (!skillUsed && player.stats && typeof player.stats.mp_on_hit === 'number') {
-        const mpOnHit = player.stats.mp_on_hit || 0;
-        if (mpOnHit > 0) {
-          const pTotalsForMp = player.getTotalStats ? player.getTotalStats() : player.stats;
-          const maxMp = pTotalsForMp.maxMp || player.stats.maxMp || 0;
-          if (maxMp > 0) {
-            const oldMp = player.stats.mp || 0;
-            const newMp = Math.min(maxMp, oldMp + mpOnHit);
-            const actualGain = newMp - oldMp;
-            if (actualGain > 0) {
-              player.stats.mp = newMp;
-              if (game.settings && game.settings.showDamageNumbers !== false && game.floatingTextPool) {
-                const pos = player.getFloatingTextPosition();
-                const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
-                const mpText = game.floatingTextPool.create(
-                  pos.x,
-                  pos.y - 15 + microScatterY,
-                  `+${actualGain} MP`,
-                  '#3399FF'
-                );
-                game.floatingTexts.push(mpText);
-              }
-            }
-          }
+        const pTotalsForMp = player.getTotalStats ? player.getTotalStats() : player.stats;
+        const mpOnHit = pTotalsForMp.mp_on_hit || player.stats.mp_on_hit || 0;
+        if (mpOnHit > 0 && player.gainMana) {
+          player.gainMana(mpOnHit);
         }
       }
       
