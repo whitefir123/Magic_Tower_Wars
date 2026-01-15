@@ -769,12 +769,46 @@ export class BlacksmithSystem {
       sockets: null // 宝石不需要sockets
     });
     
-    // ✅ FIX: 修复拆除宝石的堆叠逻辑 - 使用 player.addToInventory 方法
-    // 不要手动查找 emptySlot 并赋值，使用标准方法确保堆叠逻辑正确
-    const added = player.addToInventory(gemItem);
+    // ✅ FIX: 优化宝石堆叠返还逻辑
+    // 1. 先尝试堆叠到已有相同ID的宝石上
+    const inventory = player.inventory || [];
+    let stacked = false;
     
-    if (!added) {
-      return { success: false, message: '背包已满，无法拆除宝石' };
+    // 遍历背包，寻找相同ID且未达到最大堆叠数的物品
+    for (let i = 0; i < inventory.length; i++) {
+      const invItem = inventory[i];
+      if (!invItem) continue;
+      
+      // 检查是否为相同ID的宝石
+      const invItemId = invItem.itemId || invItem.id;
+      const gemItemId = gemItem.itemId || gemItem.id;
+      
+      if (invItemId === gemItemId) {
+        // 获取堆叠信息
+        const currentCount = (typeof invItem.count === 'number' && invItem.count > 0) ? invItem.count : 1;
+        const maxStack = invItem.maxStack || 99; // 宝石默认最大堆叠99
+        
+        // 如果未达到最大堆叠数，直接增加count
+        if (currentCount < maxStack) {
+          invItem.count = currentCount + 1;
+          stacked = true;
+          break;
+        }
+      }
+    }
+    
+    // 2. 如果无法堆叠，尝试寻找空位
+    if (!stacked) {
+      const emptyIndex = inventory.findIndex(slot => slot === null);
+      if (emptyIndex === -1) {
+        return { success: false, message: '背包已满，无法拆除宝石' };
+      }
+      
+      // 设置宝石的堆叠属性
+      gemItem.count = 1;
+      gemItem.maxStack = 99; // 宝石默认最大堆叠99
+      
+      inventory[emptyIndex] = gemItem;
     }
     
     // 扣除金币

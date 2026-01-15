@@ -835,6 +835,15 @@ export class ForgeUI {
     itemCard.dataset.itemId = itemInstance.itemId || itemInstance.id;
     itemCard.dataset.uid = itemInstance.uid || itemInstance.id;
     
+    // ✅ FIX: 检查是否为当前选中的物品，如果是则添加 selected 类
+    if (this.selectedItem) {
+      const selectedUid = this.selectedItem.uid || this.selectedItem.id;
+      const currentUid = itemInstance.uid || itemInstance.id;
+      if (selectedUid === currentUid || this.selectedItem === itemInstance) {
+        itemCard.classList.add('selected');
+      }
+    }
+    
     const itemName = this.blacksmithSystem.getItemDisplayName(itemInstance);
     const itemColor = this.blacksmithSystem.getItemQualityColor(itemInstance);
     
@@ -1365,8 +1374,9 @@ export class ForgeUI {
     
     if (result.success) {
       this.showMessage(result.message, 'success');
-      // ✅ 刷新左侧列表和右侧详情
+      // ✅ FIX: 拆除宝石后立即刷新左侧列表，确保拆下来的宝石能立即显示
       this.renderItemList();
+      // ✅ 刷新右侧详情
       this.renderItemDetails(item);
       
       // 更新游戏UI
