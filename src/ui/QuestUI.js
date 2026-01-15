@@ -427,6 +427,9 @@ export class QuestUI {
         color: #fff;
         line-height: 1.5;
         text-shadow: 1px 1px 0px #000;
+        /* 防止长文本溢出：允许自动换行并在必要时断词 */
+        word-wrap: break-word;
+        word-break: break-word;
       }
 
       .quest-progress-container {
@@ -1029,14 +1032,51 @@ export class QuestUI {
     import('../systems/QuestSystem.js').then(({ QUEST_DATABASE }) => {
       const quest = QUEST_DATABASE[questId];
 
+      const {
+        questTitleEl,
+        questDescEl,
+        progressLabel,
+        progressFill,
+        progressText,
+        progressBar,
+        objectivesList,
+        conditionsSection,
+        conditionsList,
+        rewardList,
+        actionButton
+      } = this.elements;
+
+      // 如果找不到任务定义（例如存档中残留了脏数据），使用「未知任务」占位显示，避免UI报错
       if (!quest) {
-        console.warn(`[QuestUI] 任务不存在: ${questId}`);
+        console.warn(`[QuestUI] 任务不存在或定义缺失: ${questId}`);
+
+        // 基本文案
+        questTitleEl.textContent = '未知任务';
+        questDescEl.textContent = '该任务的数据已丢失或损坏，建议清理对应存档条目。';
+
+        // 重置进度与按钮状态
+        progressLabel.textContent = '任务状态:';
+        progressText.textContent = '未知';
+        progressFill.style.width = '0%';
+        progressBar.style.display = 'block';
+
+        objectivesList.classList.remove('visible');
+        objectivesList.innerHTML = '';
+
+        conditionsSection.classList.remove('visible');
+        conditionsList.innerHTML = '';
+
+        rewardList.textContent = '未知';
+
+        actionButton.textContent = '不可用';
+        actionButton.disabled = true;
+        actionButton.classList.remove('claimable');
+        actionButton.onclick = null;
+
         return;
       }
 
-      const { questTitleEl, questDescEl, progressLabel, progressFill, progressText, progressBar, objectivesList, conditionsSection, conditionsList, rewardList, actionButton } = this.elements;
-
-      // 更新标题和描述
+      // 正常任务：更新标题和描述
       questTitleEl.textContent = quest.title;
       questDescEl.textContent = quest.description;
 

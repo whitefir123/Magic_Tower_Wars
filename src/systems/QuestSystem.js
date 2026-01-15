@@ -200,8 +200,23 @@ export class QuestSystem {
         // 7-9层：骷髅、虚空、幽灵、沼泽、死神
         return ['SKELETON', 'VOID', 'GHOST', 'SWAMP', 'REAPER'].filter(type => MONSTER_STATS[type]);
       } else {
-        // 10层及以上：所有非BOSS怪物（除了最弱的史莱姆）
-        return Object.keys(MONSTER_STATS).filter(type => 
+        // 10层及以上：优先返回高强度怪物，避免出现过弱的史莱姆等
+        const highTierMonsters = Object.entries(MONSTER_STATS)
+          .filter(([type, monster]) => {
+            if (type === 'BOSS' || type === 'SLIME' || type === 'BAT') return false;
+            const monsterHp = monster.maxHp || monster.hp || 0;
+            const monsterAtk = Math.max(monster.p_atk || 0, monster.m_atk || 0);
+            // 认为生命值≥220 或 攻击力≥14 的怪物适合高层任务
+            return monsterHp >= 220 || monsterAtk >= 14;
+          })
+          .map(([type]) => type);
+
+        if (highTierMonsters.length > 0) {
+          return highTierMonsters;
+        }
+
+        // 兜底：如果高强度怪物列表为空，则退回到所有非BOSS、非史莱姆
+        return Object.keys(MONSTER_STATS).filter(type =>
           type !== 'BOSS' && type !== 'SLIME'
         );
       }
@@ -666,7 +681,13 @@ export class QuestSystem {
     if (quest.nextQuest) {
       const delay = this.autoSubmit ? 500 : 1000;
       setTimeout(() => {
-        if (this.acceptQuest(quest.nextQuest, true)) {
+        // 逻辑调整：
+        // 1. 若 autoSubmit === true，则保持原逻辑，跳过前置检查（因为奖励已领，前置自然满足）
+        // 2. 若 autoSubmit === false，则不再无条件跳过前置条件，
+        //    而是通过正常的 checkPrerequisites 逻辑来判断是否可以接取后续任务，
+        //    确保「必须已领取(claimed)」这类前置在领取奖励后才真正生效。
+        const skipPrerequisites = this.autoSubmit === true;
+        if (this.acceptQuest(quest.nextQuest, skipPrerequisites)) {
           this.showToast(`自动接取后续任务: ${QUEST_DATABASE[quest.nextQuest]?.title || quest.nextQuest}`, 'info');
         }
       }, delay);
@@ -697,67 +718,109 @@ export class QuestSystem {
    * @returns {object} 任务数据
    */
   getQuestData() {
-    return {
-      activeQuests: Array.from(this.activeQuests.entries()).map(([questId, questData]) => {
-        // 判断是否为动态任务：
-        // - ID 不在初始静态 QUEST_DATABASE 中
-        // - 或者分类为 FLOOR / DAILY（运行时生成）
-        const isDynamicById = isDynamicQuestId(questId);
-        const isDynamicByCategory = questData && (questData.category === 'FLOOR' || questData.category === 'DAILY');
-        const shouldPersistDefinition = isDynamicById || isDynamicByCategory;
+    // 自定义任务定义集合（以 questId 去重）
+    const customQuestDefinitionMap = new Map();
 
-        let definition;
-        let staticData; // 向后兼容旧字段名称
+    const activeQuests = Array.from(this.activeQuests.entries()).map(([questId, questData]) => {
+      // 判断是否为动态任务：
+      // - ID 不在初始静态 QUEST_DATABASE 中
+      // - 或者分类为 FLOOR / DAILY（运行时生成）
+      const isDynamicById = isDynamicQuestId(questId);
+      const isDynamicByCategory = questData && (questData.category === 'FLOOR' || questData.category === 'DAILY');
+      const shouldPersistDefinition = isDynamicById || isDynamicByCategory;
 
-        if (shouldPersistDefinition) {
-          // 优先从 QUEST_DATABASE 读取模板，否则退回到当前 questData
-          const baseQuest = QUEST_DATABASE[questId] || questData || {};
-          const normalized = this.normalizeQuest(JSON.parse(JSON.stringify(baseQuest)));
+      let definition;
+      let staticData; // 向后兼容旧字段名称
 
-          // 只保存任务的结构性定义，不强依赖 current 进度
-          const defPayload = {
-            id: normalized.id || questId,
-            title: normalized.title,
-            description: normalized.description,
-            category: normalized.category,
-            reward: normalized.reward,
-            prerequisites: normalized.prerequisites || [],
-            nextQuest: normalized.nextQuest || null,
-            autoComplete: normalized.autoComplete || false,
-            conditions: normalized.conditions || undefined,
-            objective: normalized.objective || undefined,
-            objectives: normalized.objectives || undefined
-          };
+      if (shouldPersistDefinition) {
+        // 优先从 QUEST_DATABASE 读取模板，否则退回到当前 questData
+        const baseQuest = QUEST_DATABASE[questId] || questData || {};
+        const normalized = this.normalizeQuest(JSON.parse(JSON.stringify(baseQuest)));
 
-          definition = JSON.parse(JSON.stringify(defPayload));
-          staticData = JSON.parse(JSON.stringify(defPayload));
-        }
-
-        return {
-          questId,
-          objectives: questData.objectives ? questData.objectives.map(obj => ({
-            id: obj.id,
-            type: obj.type,
-            target: obj.target,
-            count: obj.count,
-            current: obj.current,
-            description: obj.description
-          })) : [],
-          // 向后兼容：保留 progress 和 target
-          progress: questData.objectives ? questData.objectives.reduce((sum, obj) => sum + obj.current, 0) : 0,
-          target: questData.objectives ? questData.objectives.reduce((sum, obj) => sum + obj.count, 0) : 0,
-          // 仅对动态/随机任务持久化任务定义，避免读档后丢失
-          definition,
-          // 旧存档兼容字段
-          staticData
+        // 只保存任务的结构性定义，不强依赖 current 进度
+        const defPayload = {
+          id: normalized.id || questId,
+          title: normalized.title,
+          description: normalized.description,
+          category: normalized.category,
+          reward: normalized.reward,
+          prerequisites: normalized.prerequisites || [],
+          nextQuest: normalized.nextQuest || null,
+          autoComplete: normalized.autoComplete || false,
+          conditions: normalized.conditions || undefined,
+          objective: normalized.objective || undefined,
+          objectives: normalized.objectives || undefined
         };
-      }),
+
+        definition = JSON.parse(JSON.stringify(defPayload));
+        staticData = JSON.parse(JSON.stringify(defPayload));
+
+        // 记录到自定义任务定义集合（用于全局恢复）
+        customQuestDefinitionMap.set(defPayload.id, JSON.parse(JSON.stringify(defPayload)));
+      }
+
+      return {
+        questId,
+        objectives: questData.objectives ? questData.objectives.map(obj => ({
+          id: obj.id,
+          type: obj.type,
+          target: obj.target,
+          count: obj.count,
+          current: obj.current,
+          description: obj.description
+        })) : [],
+        // 向后兼容：保留 progress 和 target
+        progress: questData.objectives ? questData.objectives.reduce((sum, obj) => sum + obj.current, 0) : 0,
+        target: questData.objectives ? questData.objectives.reduce((sum, obj) => sum + obj.count, 0) : 0,
+        // 仅对动态/随机任务持久化任务定义，避免读档后丢失
+        definition,
+        // 旧存档兼容字段
+        staticData
+      };
+    });
+
+    // 进一步遍历「已完成任务 / 已领取任务 / 楼层任务记录」，为其中的动态任务补充定义
+    const extraQuestIds = new Set();
+    this.completedQuests.forEach(id => extraQuestIds.add(id));
+    this.claimedQuests.forEach(id => extraQuestIds.add(id));
+    this.floorQuests.forEach((questId) => {
+      if (questId) extraQuestIds.add(questId);
+    });
+
+    extraQuestIds.forEach(questId => {
+      if (!isDynamicQuestId(questId)) return;
+      if (customQuestDefinitionMap.has(questId)) return;
+      const baseQuest = QUEST_DATABASE[questId];
+      if (!baseQuest) return;
+
+      const normalized = this.normalizeQuest(JSON.parse(JSON.stringify(baseQuest)));
+      const defPayload = {
+        id: normalized.id || questId,
+        title: normalized.title,
+        description: normalized.description,
+        category: normalized.category,
+        reward: normalized.reward,
+        prerequisites: normalized.prerequisites || [],
+        nextQuest: normalized.nextQuest || null,
+        autoComplete: normalized.autoComplete || false,
+        conditions: normalized.conditions || undefined,
+        objective: normalized.objective || undefined,
+        objectives: normalized.objectives || undefined
+      };
+
+      customQuestDefinitionMap.set(defPayload.id, JSON.parse(JSON.stringify(defPayload)));
+    });
+
+    return {
+      activeQuests,
       completedQuests: Array.from(this.completedQuests),
       claimedQuests: Array.from(this.claimedQuests),
       autoSubmit: this.autoSubmit,
       floorQuests: Array.from(this.floorQuests.entries()),
       // 保存本局游戏的随机种子，保证读档后随机任务一致
-      gameSeed: this.gameSeed
+      gameSeed: this.gameSeed,
+      // 新字段：自定义任务定义（动态生成的任务，如 FLOOR / DAILY）
+      customQuestDefinitions: Array.from(customQuestDefinitionMap.values())
     };
   }
 
@@ -809,6 +872,13 @@ export class QuestSystem {
 
     // 恢复自动提交设置
     this.autoSubmit = data.autoSubmit || false;
+
+    // 在恢复任务前，优先恢复所有「自定义任务定义」（例如楼层任务 / 每日任务）
+    // 这样可以确保 QUEST_DATABASE 中已经包含这些动态任务的静态结构
+    if (Array.isArray(data.customQuestDefinitions) && data.customQuestDefinitions.length > 0) {
+      // 仅写回 ID 以 floor_ / daily_ 开头的任务，避免污染静态任务
+      this.restoreDynamicQuests(data.customQuestDefinitions);
+    }
 
     // 恢复本局随机种子（如果旧存档中没有，则生成一个新的）
     this.gameSeed = data.gameSeed || this.gameSeed || Date.now();

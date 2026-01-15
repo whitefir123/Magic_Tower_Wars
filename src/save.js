@@ -148,8 +148,9 @@ export class SaveSystem {
         // 噩梦层级（1-25）
         ascensionLevel: game.selectedAscensionLevel ?? 1,
         // ✅ 动态任务定义：保存运行时生成的楼层/每日任务模板，防止读档后丢失
+        // 注意：此字段保留用于向后兼容，新版本优先使用 questData.customQuestDefinitions
         dynamicQuestDefinitions: game.questSystem ? game.questSystem.getDynamicQuests() : [],
-        // ✅ 任务系统：保存任务数据
+        // ✅ 任务系统：保存任务数据（包含 customQuestDefinitions 字段）
         questData: game.questSystem ? game.questSystem.getQuestData() : null,
         // 时间戳
         timestamp: Date.now(),
@@ -619,12 +620,21 @@ export class SaveSystem {
       
       // ✅ 任务系统：先恢复动态任务定义，再恢复任务数据
       if (game.questSystem) {
-        // 先恢复动态任务定义（楼层任务/每日任务等运行时生成的任务）
-        if (saveData.dynamicQuestDefinitions && Array.isArray(saveData.dynamicQuestDefinitions)) {
+        // 优先使用 questData.customQuestDefinitions（新版本），向后兼容 dynamicQuestDefinitions（旧版本）
+        // 注意：loadQuestData 内部也会处理 customQuestDefinitions，但为了确保顺序正确，我们先在这里恢复
+        if (saveData.questData && saveData.questData.customQuestDefinitions && Array.isArray(saveData.questData.customQuestDefinitions)) {
+          // 新版本：使用 questData 中的 customQuestDefinitions（更完整，包含所有动态任务）
+          game.questSystem.restoreDynamicQuests(saveData.questData.customQuestDefinitions);
+          console.log(`[SaveSystem] Restored ${saveData.questData.customQuestDefinitions.length} custom quest definitions from questData`);
+        } else if (saveData.dynamicQuestDefinitions && Array.isArray(saveData.dynamicQuestDefinitions)) {
+          // 旧版本兼容：使用独立的 dynamicQuestDefinitions 字段
           game.questSystem.restoreDynamicQuests(saveData.dynamicQuestDefinitions);
+          console.log(`[SaveSystem] Restored ${saveData.dynamicQuestDefinitions.length} dynamic quest definitions (legacy format)`);
         }
 
         if (saveData.questData) {
+          // loadQuestData 内部会再次检查 customQuestDefinitions，但此时已经通过上面的 restoreDynamicQuests 恢复了
+          // 这样可以确保即使 loadQuestData 内部逻辑有变化，也能正确恢复
           game.questSystem.loadQuestData(saveData.questData);
           console.log('[SaveSystem] Quest data restored');
         } else {
