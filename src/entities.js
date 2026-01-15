@@ -498,6 +498,11 @@ export class Monster extends Entity {
     this.stats.p_def = Math.floor(basePDef + defBonus);
     this.stats.m_def = Math.floor(baseMDef + defBonus);
     
+    // ✅ FIX: 实现 Lv14 虚空护盾效果 (Void Shield)
+    if (ascConfig.voidShield) {
+      this.stats.m_def = Math.floor(this.stats.m_def * 1.5);
+    }
+    
     // 奖励倍率（金币和经验）
     this.stats.goldYield = Math.floor(baseGold * ascConfig.goldMult);
     this.stats.xpYield = Math.floor(baseXp * ascConfig.xpMult);
