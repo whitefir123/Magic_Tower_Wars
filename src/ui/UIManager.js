@@ -531,11 +531,64 @@ export class UIManager {
   // ========================================================================
 
   /**
+   * 动态创建 MP 条，直接追加到 .hp-section 内部
+   */
+  createMpBar() {
+    console.log('[UIManager] Creating MP Bar...');
+    
+    // 1. 寻找最佳容器：.hp-section (这是一个 flex-column 容器)
+    const hpSection = document.querySelector('.hp-section');
+    if (!hpSection) {
+      console.error('[UIManager] Fatal: .hp-section not found! Cannot create MP bar.');
+      return;
+    }
+
+    // 2. 防止重复创建
+    if (document.getElementById('ui-mp')) return;
+
+    // 3. 创建结构
+    const mpRow = document.createElement('div');
+    mpRow.className = 'mp-section'; 
+    mpRow.id = 'ui-mp';
+    // 强制样式确保可见性
+    mpRow.style.display = 'flex';
+    mpRow.style.flexDirection = 'column';
+    mpRow.style.width = '80%';
+    mpRow.style.margin = '4px auto 0 auto';
+    mpRow.style.zIndex = '15'; // 确保在最上层
+
+    const barContainer = document.createElement('div');
+    barContainer.className = 'mp-bar-bg';
+    
+    const barFill = document.createElement('div');
+    barFill.id = 'mp-fill';
+    
+    const barText = document.createElement('div');
+    barText.id = 'mp-text';
+    barText.className = 'mp-text';
+    barText.innerText = 'MP: --/--';
+
+    // 4. 组装
+    barContainer.appendChild(barFill);
+    mpRow.appendChild(barContainer);
+    mpRow.appendChild(barText);
+
+    // 5. 关键修改：直接追加到 hp-section 内部的末尾
+    // 这样利用 flex 布局自动排在怒气条下方
+    hpSection.appendChild(mpRow);
+    
+    console.log('[UIManager] MP Bar successfully appended to .hp-section');
+  }
+
+  /**
    * 更新玩家属性显示
    * @param {Player} player - 玩家对象
    */
   updateStats(player) {
     if (!document.getElementById('ui-hp')) return;
+    
+    // 计算总属性（在方法开始处声明，供所有部分使用）
+    const totals = (player.getTotalStats ? player.getTotalStats() : player.stats);
     
     // HP
     document.getElementById('ui-hp').innerText = player.stats.hp;
@@ -562,6 +615,37 @@ export class UIManager {
       }
     }
 
+    // MP Bar
+    // 检查/创建 MP 条
+    let mpFillEl = document.getElementById('mp-fill');
+    if (!mpFillEl) {
+      this.createMpBar();
+      // 创建后重新获取元素
+      mpFillEl = document.getElementById('mp-fill');
+    }
+    
+    // 获取数值
+    const maxMp = player.stats.maxMp ?? totals.maxMp ?? 0;
+    const currentMp = player.stats.mp ?? 0;
+    const mpRegen = totals.mp_regen ?? player.stats.mp_regen ?? 0;
+    
+    // 更新 UI
+    const mpTextEl = document.getElementById('mp-text');
+    
+    if (mpFillEl) {
+      if (maxMp > 0) {
+        const mpPercent = Math.max(0, Math.min(100, (currentMp / maxMp) * 100));
+        mpFillEl.style.width = `${mpPercent}%`;
+      } else {
+        mpFillEl.style.width = '0%';
+      }
+    }
+    
+    if (mpTextEl) {
+      const regenText = mpRegen ? mpRegen.toFixed(1) : '0.0';
+      mpTextEl.innerText = `MP: ${Math.floor(currentMp)}/${Math.floor(maxMp)} (+${regenText})`;
+    }
+
     // ULT button
     const btnUlt = document.getElementById('btn-ultimate');
     if (player.stats.rage >= 100) { 
@@ -577,8 +661,6 @@ export class UIManager {
       const el = document.getElementById(id); 
       if (el) el.innerText = val; 
     };
-    
-    const totals = (player.getTotalStats ? player.getTotalStats() : player.stats);
     setText('ui-patk', totals.p_atk);
     setText('ui-matk', totals.m_atk);
     setText('ui-pdef', totals.p_def);
