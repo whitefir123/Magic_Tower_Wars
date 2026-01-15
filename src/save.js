@@ -147,6 +147,8 @@ export class SaveSystem {
         },
         // 噩梦层级（1-25）
         ascensionLevel: game.selectedAscensionLevel ?? 1,
+        // ✅ 动态任务定义：保存运行时生成的楼层/每日任务模板，防止读档后丢失
+        dynamicQuestDefinitions: game.questSystem ? game.questSystem.getDynamicQuests() : [],
         // ✅ 任务系统：保存任务数据
         questData: game.questSystem ? game.questSystem.getQuestData() : null,
         // 时间戳
@@ -615,14 +617,21 @@ export class SaveSystem {
       game.selectedAscensionLevel = savedAscensionLevel;
       console.log(`[SaveSystem] Restored ascensionLevel: ${savedAscensionLevel}`);
       
-      // ✅ 任务系统：恢复任务数据
-      if (saveData.questData && game.questSystem) {
-        game.questSystem.loadQuestData(saveData.questData);
-        console.log('[SaveSystem] Quest data restored');
-      } else if (game.questSystem) {
-        // 如果没有任务数据，初始化任务系统（新存档兼容）
-        game.questSystem.init();
-        console.log('[SaveSystem] Quest system initialized (no saved data)');
+      // ✅ 任务系统：先恢复动态任务定义，再恢复任务数据
+      if (game.questSystem) {
+        // 先恢复动态任务定义（楼层任务/每日任务等运行时生成的任务）
+        if (saveData.dynamicQuestDefinitions && Array.isArray(saveData.dynamicQuestDefinitions)) {
+          game.questSystem.restoreDynamicQuests(saveData.dynamicQuestDefinitions);
+        }
+
+        if (saveData.questData) {
+          game.questSystem.loadQuestData(saveData.questData);
+          console.log('[SaveSystem] Quest data restored');
+        } else {
+          // 如果没有任务数据，初始化任务系统（新存档兼容）
+          game.questSystem.init();
+          console.log('[SaveSystem] Quest system initialized (no saved data)');
+        }
       }
       
       game.map.generateLevel(currentFloor, game.selectedAscensionLevel);

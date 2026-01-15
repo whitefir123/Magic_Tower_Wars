@@ -115,27 +115,6 @@ export const QUEST_DATABASE = {
       xp: 150
     },
     autoComplete: false
-  },
-  // 示例：带限制条件的任务
-  "quest_condition_demo": {
-    id: "quest_condition_demo",
-    title: "生存挑战",
-    description: "在保持生命值不低于50%的情况下，击杀5个怪物",
-    category: "SIDE",
-    objectives: [
-      { id: 1, type: "KILL", target: "ANY", count: 5, current: 0, description: "击杀任意怪物" }
-    ],
-    prerequisites: [],
-    nextQuest: null,
-    conditions: {
-      minHpPercent: 50, // 生命值必须保持在50%以上
-      minGold: 0 // 金币无要求（示例）
-    },
-    reward: {
-      gold: 200,
-      xp: 150
-    },
-    autoComplete: false
   }
 };
 
@@ -552,24 +531,6 @@ export class QuestSystem {
     // 自动提交：如果开启了自动提交，立即领取奖励
     if (this.autoSubmit) {
       this.claimReward(questId);
-      // 领取奖励后，检查是否有后续任务
-      if (questData.nextQuest) {
-        setTimeout(() => {
-          if (this.acceptQuest(questData.nextQuest, true)) {
-            this.showToast(`自动接取后续任务: ${QUEST_DATABASE[questData.nextQuest]?.title || questData.nextQuest}`, 'info');
-          }
-        }, 500);
-      }
-    } else {
-      // 检查是否有后续任务，如果有则自动接取
-      if (questData.nextQuest) {
-        // 延迟一下，让玩家看到完成提示
-        setTimeout(() => {
-          if (this.acceptQuest(questData.nextQuest, true)) {
-            this.showToast(`自动接取后续任务: ${QUEST_DATABASE[questData.nextQuest]?.title || questData.nextQuest}`, 'info');
-          }
-        }, 1000);
-      }
     }
 
     // 通知UI更新
@@ -700,6 +661,17 @@ export class QuestSystem {
     }
 
     console.log(`[QuestSystem] 任务奖励已领取: ${quest.title} (${rewardStr})`);
+    
+    // 领取奖励成功后，尝试接取后续任务
+    if (quest.nextQuest) {
+      const delay = this.autoSubmit ? 500 : 1000;
+      setTimeout(() => {
+        if (this.acceptQuest(quest.nextQuest, true)) {
+          this.showToast(`自动接取后续任务: ${QUEST_DATABASE[quest.nextQuest]?.title || quest.nextQuest}`, 'info');
+        }
+      }, delay);
+    }
+
     return true;
   }
 
@@ -772,6 +744,39 @@ export class QuestSystem {
   }
 
   /**
+   * 获取当前内存中的动态任务定义（用于存档）
+   * 仅返回 ID 以 floor_ 或 daily_ 开头的任务
+   * @returns {Array<object>} 动态任务定义列表
+   */
+  getDynamicQuests() {
+    const dynamicQuests = [];
+    for (const [questId, questDef] of Object.entries(QUEST_DATABASE)) {
+      if (typeof questId === 'string' && (questId.startsWith('floor_') || questId.startsWith('daily_'))) {
+        // 返回深拷贝，避免外部修改影响数据库
+        dynamicQuests.push(JSON.parse(JSON.stringify(questDef)));
+      }
+    }
+    return dynamicQuests;
+  }
+
+  /**
+   * 恢复动态任务定义（用于读档）
+   * 仅写回 ID 以 floor_ 或 daily_ 开头的任务，避免污染静态任务
+   * @param {Array<object>} quests - 动态任务定义列表
+   */
+  restoreDynamicQuests(quests) {
+    if (!quests || !Array.isArray(quests)) return;
+
+    quests.forEach(quest => {
+      if (!quest || !quest.id || typeof quest.id !== 'string') return;
+      if (!quest.id.startsWith('floor_') && !quest.id.startsWith('daily_')) return;
+
+      // 使用深拷贝写回数据库，避免共享引用
+      QUEST_DATABASE[quest.id] = JSON.parse(JSON.stringify(quest));
+    });
+  }
+
+  /**
    * 加载任务数据（用于读档）
    * @param {object} data - 任务数据
    */
@@ -807,6 +812,7 @@ export class QuestSystem {
             quest = rebuilt;
             console.warn(`[QuestSystem] 已从存档数据中重建动态任务: ${item.questId}`);
           } else {
+            // 此时应当已经在外部（如 SaveSystem.restore）通过 restoreDynamicQuests 尝试恢复动态任务定义
             console.warn(`[QuestSystem] 存档中的任务不存在于数据库且没有静态定义: ${item.questId}`);
             return;
           }
