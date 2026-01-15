@@ -15,6 +15,9 @@ export const TALENT_NODE_TYPES = {
 
 // 关键石效果定义
 export const KEYSTONE_EFFECTS = {
+    PHOENIX_REBIRTH: 'PHOENIX_REBIRTH',   // 凤凰涅槃：最大生命+30%，魔法攻击+10%
+    PEGASUS_WINGS: 'PEGASUS_WINGS',       // 天马之翼：攻击速度+25%，闪避+5%
+    STAR_GUIDE: 'STAR_GUIDE',             // 星引：金币获取+20%，最大魔力+20%
     BLOOD_MAGIC: 'BLOOD_MAGIC',           // 血魔法：使用生命代替魔力
     IRON_WILL: 'IRON_WILL',               // 钢铁意志：力量加成魔法攻击
     SOUL_REAPER: 'SOUL_REAPER',           // 灵魂收割：击杀回复生命
@@ -586,6 +589,150 @@ export const TALENT_TREE_DATA = {
         stats: { crit_rate: 0.10, crit_dmg: 50 },
         keystoneEffect: KEYSTONE_EFFECTS.DEAD_EYE,
         requirements: ['sag_medium']
+    },
+
+    // ========== 重生分支：凤凰座 (Phoenix) - 右上方延伸 ==========
+    // 象征涅槃与魔法生命 [从 pen_1 向右上方延伸]
+    'phoenix_1': {
+        id: 'phoenix_1',
+        x: 220,
+        y: -80, // 火鸟之喙 (Ankaa)
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '凤凰·火喙',
+        description: '提升生命与魔力',
+        cost: 200,
+        stats: { max_hp: 40, m_atk: 4 },
+        requirements: ['pen_1']
+    },
+    'phoenix_2': {
+        id: 'phoenix_2',
+        x: 280,
+        y: -120, // 火鸟之翼
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '凤凰·炎翼',
+        description: '提升魔法抗性与攻击',
+        cost: 300,
+        stats: { m_def: 5, m_atk: 6 },
+        requirements: ['phoenix_1']
+    },
+    'phoenix_medium': {
+        id: 'phoenix_medium',
+        x: 340,
+        y: -100, // 火鸟之心 (稍微下沉，形成翅膀形状)
+        type: TALENT_NODE_TYPES.MEDIUM,
+        name: '凤凰·燃心',
+        description: '大幅提升魔法攻击',
+        cost: 700,
+        stats: { m_atk: 15, max_hp: 100 },
+        requirements: ['phoenix_2']
+    },
+    'keystone_phoenix': {
+        id: 'keystone_phoenix',
+        x: 400,
+        y: -160, // 凤凰涅槃
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '涅槃',
+        description: '最大生命+30%，魔法攻击+10%',
+        cost: 2500,
+        stats: { max_hp_percent: 0.30, m_atk_percent: 0.10 },
+        keystoneEffect: KEYSTONE_EFFECTS.PHOENIX_REBIRTH,
+        requirements: ['phoenix_medium']
+    },
+
+    // ========== 极速分支：飞马座 (Pegasus) - 左上方延伸 ==========
+    // 象征速度与灵动 [从 def_2 向左上方延伸]
+    'pegasus_1': {
+        id: 'pegasus_1',
+        x: -260,
+        y: -100, // 室宿一 (Markab)
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '飞马·室宿',
+        description: '提升闪避与移动速度',
+        cost: 200,
+        stats: { dodge: 0.02, p_def: 3 },
+        requirements: ['def_2']
+    },
+    'pegasus_2': {
+        id: 'pegasus_2',
+        x: -320,
+        y: -100, // 室宿二 (Scheat)
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '飞马·疾驰',
+        description: '提升攻击速度与闪避',
+        cost: 300,
+        stats: { atk_speed: 0.05, dodge: 0.03 },
+        requirements: ['pegasus_1']
+    },
+    'pegasus_medium': {
+        id: 'pegasus_medium',
+        x: -260,
+        y: -160, // 壁宿一 (Algenib) - 形成四边形
+        type: TALENT_NODE_TYPES.MEDIUM,
+        name: '飞马·御风',
+        description: '大幅提升攻击速度',
+        cost: 700,
+        stats: { atk_speed: 0.15, crit_rate: 0.03 },
+        requirements: ['pegasus_2']
+    },
+    'keystone_pegasus': {
+        id: 'keystone_pegasus',
+        x: -320,
+        y: -160, // 天马之翼 (Alpheratz)
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '天马之翼',
+        description: '攻击速度+25%，闪避+5%',
+        cost: 2500,
+        stats: { atk_speed: 0.25, dodge: 0.05 },
+        keystoneEffect: KEYSTONE_EFFECTS.PEGASUS_WINGS,
+        requirements: ['pegasus_medium']
+    },
+
+    // ========== 指引分支：南十字座 (Southern Cross) - 正下方延伸 ==========
+    // 象征财富与方向 [从 keystone_golden 向下方延伸]
+    'cross_1': {
+        id: 'cross_1',
+        x: 0,
+        y: 430, // 十字架一 (Gacrux)
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '南十字·指引',
+        description: '提升金币获取与魔力上限',
+        cost: 300,
+        stats: { gold_rate: 0.05, max_mp: 30 },
+        requirements: ['keystone_golden']
+    },
+    'cross_2': {
+        id: 'cross_2',
+        x: -50,
+        y: 460, // 十字架二 (Mimosa) - 左翼
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '南十字·光辉',
+        description: '提升魔力回复与魔抗',
+        cost: 400,
+        stats: { mp_regen: 1, m_def: 5 },
+        requirements: ['cross_1']
+    },
+    'cross_3': {
+        id: 'cross_3',
+        x: 50,
+        y: 460, // 十字架三 (Acrux) - 右翼
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '南十字·闪耀',
+        description: '进一步提升金币获取',
+        cost: 400,
+        stats: { gold_rate: 0.08 },
+        requirements: ['cross_1']
+    },
+    'keystone_cross': {
+        id: 'keystone_cross',
+        x: 0,
+        y: 520, // 十字架四 (Delta Crucis) - 底部
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '星引',
+        description: '金币获取+20%，最大魔力+20%',
+        cost: 3000,
+        stats: { gold_rate: 0.20, max_mp_percent: 0.20 },
+        keystoneEffect: KEYSTONE_EFFECTS.STAR_GUIDE,
+        requirements: ['cross_2', 'cross_3'] // 需要左右两翼都点亮
     }
 };
 
