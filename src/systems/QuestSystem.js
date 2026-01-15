@@ -139,8 +139,22 @@ export const QUEST_DATABASE = {
   }
 };
 
+// 记录静态任务ID集合，用于判断任务是否为运行时动态生成
+const STATIC_QUEST_IDS = new Set(Object.keys(QUEST_DATABASE));
+
+/**
+ * 判断任务是否为动态任务（运行时生成）
+ * - 不在初始 QUEST_DATABASE 定义中
+ * - 或者 ID 以 floor_ / daily_ 开头
+ */
+function isDynamicQuestId(questId) {
+  if (!questId) return false;
+  if (questId.startsWith('floor_') || questId.startsWith('daily_')) return true;
+  return !STATIC_QUEST_IDS.has(questId);
+}
+
 export class QuestSystem {
-  constructor(game) {
+  constructor(game, gameSeed = null) {
     this.game = game;
     // activeQuests 现在存储完整的任务副本（包含实时的 objectives 状态）
     this.activeQuests = new Map(); // Map<questId, questData>
@@ -149,6 +163,9 @@ export class QuestSystem {
     this.dailyQuestsGenerated = false; // 标记是否已生成今日每日任务
     this.autoSubmit = false; // 自动提交奖励
     this.floorQuests = new Map(); // Map<floorIndex, questId> - 每层随机任务
+
+    // 每局游戏的随机种子，用于保证同一局内随机一致，不同局之间不同
+    this.gameSeed = gameSeed;
     
     console.log('[QuestSystem] 任务系统已初始化');
   }
@@ -218,6 +235,11 @@ export class QuestSystem {
    * 初始化任务系统（新游戏开始时调用）
    */
   init() {
+    // 如果当前还没有 gameSeed，则在新游戏开始时生成一个
+    if (!this.gameSeed) {
+      this.gameSeed = Date.now();
+    }
+
     // 清空所有任务状态
     this.activeQuests.clear();
     this.completedQuests.clear();
@@ -415,6 +437,8 @@ export class QuestSystem {
    * @param {object} data - 事件数据
    */
   check(eventType, data = {}) {
+    const delta = (typeof data.count === 'number' && data.count > 0) ? data.count : 1;
+
     // 遍历所有活跃任务
     for (const [questId, questData] of this.activeQuests.entries()) {
       if (!questData || !questData.objectives) continue;
@@ -453,7 +477,7 @@ export class QuestSystem {
         if (shouldUpdate) {
           // REACH_FLOOR 任务已经在上面直接设置了进度，不需要再增加
           if (objective.type !== 'REACH_FLOOR') {
-            objective.current = Math.min(objective.current + 1, objective.count);
+            objective.current = Math.min(objective.current + delta, objective.count);
           }
           hasUpdate = true;
         }
@@ -702,24 +726,48 @@ export class QuestSystem {
    */
   getQuestData() {
     return {
-      activeQuests: Array.from(this.activeQuests.entries()).map(([questId, questData]) => ({
-        questId,
-        objectives: questData.objectives ? questData.objectives.map(obj => ({
-          id: obj.id,
-          type: obj.type,
-          target: obj.target,
-          count: obj.count,
-          current: obj.current,
-          description: obj.description
-        })) : [],
-        // 向后兼容：保留 progress 和 target
-        progress: questData.objectives ? questData.objectives.reduce((sum, obj) => sum + obj.current, 0) : 0,
-        target: questData.objectives ? questData.objectives.reduce((sum, obj) => sum + obj.count, 0) : 0
-      })),
+      activeQuests: Array.from(this.activeQuests.entries()).map(([questId, questData]) => {
+        const isDynamic = isDynamicQuestId(questId);
+        // 对于动态任务，保存一份完整的静态任务定义，避免读档时丢失
+        const baseQuest = QUEST_DATABASE[questId] || questData;
+        const staticData = isDynamic ? JSON.parse(JSON.stringify({
+          id: baseQuest.id || questId,
+          title: baseQuest.title,
+          description: baseQuest.description,
+          category: baseQuest.category,
+          reward: baseQuest.reward,
+          prerequisites: baseQuest.prerequisites || [],
+          nextQuest: baseQuest.nextQuest || null,
+          autoComplete: baseQuest.autoComplete || false,
+          conditions: baseQuest.conditions || undefined,
+          // 保存 objectives 模板（不强依赖 current，但为了安全一并保存）
+          objective: baseQuest.objective || undefined,
+          objectives: baseQuest.objectives || undefined
+        })) : undefined;
+
+        return {
+          questId,
+          objectives: questData.objectives ? questData.objectives.map(obj => ({
+            id: obj.id,
+            type: obj.type,
+            target: obj.target,
+            count: obj.count,
+            current: obj.current,
+            description: obj.description
+          })) : [],
+          // 向后兼容：保留 progress 和 target
+          progress: questData.objectives ? questData.objectives.reduce((sum, obj) => sum + obj.current, 0) : 0,
+          target: questData.objectives ? questData.objectives.reduce((sum, obj) => sum + obj.count, 0) : 0,
+          // 只有动态任务才包含静态定义
+          staticData
+        };
+      }),
       completedQuests: Array.from(this.completedQuests),
       claimedQuests: Array.from(this.claimedQuests),
       autoSubmit: this.autoSubmit,
-      floorQuests: Array.from(this.floorQuests.entries())
+      floorQuests: Array.from(this.floorQuests.entries()),
+      // 保存本局游戏的随机种子，保证读档后随机任务一致
+      gameSeed: this.gameSeed
     };
   }
 
@@ -739,6 +787,9 @@ export class QuestSystem {
     // 恢复自动提交设置
     this.autoSubmit = data.autoSubmit || false;
 
+    // 恢复本局随机种子（如果旧存档中没有，则生成一个新的）
+    this.gameSeed = data.gameSeed || this.gameSeed || Date.now();
+
     // 恢复活跃任务
     if (data.activeQuests && Array.isArray(data.activeQuests)) {
       data.activeQuests.forEach(item => {
@@ -747,8 +798,18 @@ export class QuestSystem {
         // 尝试从数据库获取任务
         let quest = QUEST_DATABASE[item.questId];
         if (!quest) {
-          console.warn(`[QuestSystem] 存档中的任务不存在于数据库: ${item.questId}`);
-          return;
+          // 对于动态任务，优先尝试从存档中的静态定义重建
+          if (item.staticData) {
+            const rebuilt = JSON.parse(JSON.stringify(item.staticData));
+            // 确保 ID 存在
+            rebuilt.id = rebuilt.id || item.questId;
+            QUEST_DATABASE[item.questId] = rebuilt;
+            quest = rebuilt;
+            console.warn(`[QuestSystem] 已从存档数据中重建动态任务: ${item.questId}`);
+          } else {
+            console.warn(`[QuestSystem] 存档中的任务不存在于数据库且没有静态定义: ${item.questId}`);
+            return;
+          }
         }
 
         // 规范化任务数据
@@ -913,9 +974,11 @@ export class QuestSystem {
     }
 
     try {
-      // 使用楼层索引作为种子的一部分，确保每层任务固定
-      // 注意：使用固定的种子格式，避免使用 Date.now() 以确保每层任务确定性
-      const floorSeed = `floor_${floorIndex}`;
+      // 使用 gameSeed + 楼层索引 作为种子的一部分，确保：
+      // - 同一局游戏内：同一层任务固定（读档前后一致）
+      // - 不同局游戏之间：任务组合不同
+      const baseSeed = this.gameSeed || 'no_seed';
+      const floorSeed = `${baseSeed}_floor_${floorIndex}`;
       const rng = new SeededRandom(floorSeed);
 
       // 获取当前楼层可用的怪物类型（根据楼层难度筛选）
@@ -933,6 +996,9 @@ export class QuestSystem {
         return true;
       });
 
+      // 高层楼层奖励的非线性加成，使高层任务更有吸引力
+      const floorRewardMultiplier = 1 + Math.log2(floorIndex + 1) * 0.15;
+
       // 任务模板池
       const questTemplates = [
         // 击杀特定怪物任务
@@ -945,9 +1011,9 @@ export class QuestSystem {
             // 基础奖励（随楼层增长）
             const baseGold = count * rng.nextInt(5, 12);
             const baseXp = count * 10;
-            // 应用楼层奖励倍率
-            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3));
-            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2));
+            // 应用楼层奖励倍率（线性 + 轻微非线性加成）
+            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3) * floorRewardMultiplier);
+            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2) * floorRewardMultiplier);
             
             return {
               id: `floor_quest_${floorIndex}_kill_${rng.nextInt(1000, 9999)}`,
@@ -985,8 +1051,8 @@ export class QuestSystem {
             const count = rng.nextInt(1, 3); // 1-3个
             // 基础奖励（随楼层增长）
             const baseGold = count * rng.nextInt(8, 18);
-            // 应用楼层奖励倍率
-            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3));
+            // 应用楼层奖励倍率（线性 + 轻微非线性加成）
+            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3) * floorRewardMultiplier);
             
             let itemName = '药水';
             if (itemId.includes('POTION_HP')) itemName = '小型药水';
@@ -1038,9 +1104,9 @@ export class QuestSystem {
             // 基础奖励（随楼层增长）
             const baseGold = (killCount * 8) + (collectCount * 15);
             const baseXp = killCount * 12;
-            // 应用楼层奖励倍率
-            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3));
-            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2));
+            // 应用楼层奖励倍率（线性 + 轻微非线性加成）
+            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3) * floorRewardMultiplier);
+            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2) * floorRewardMultiplier);
             
             return {
               id: `floor_quest_${floorIndex}_complex_${rng.nextInt(1000, 9999)}`,
@@ -1083,9 +1149,9 @@ export class QuestSystem {
             // 基础奖励（随楼层增长）
             const baseXp = count * rng.nextInt(15, 25); // 较高经验奖励
             const baseGold = count * rng.nextInt(3, 7);
-            // 应用楼层奖励倍率
-            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2));
-            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3));
+            // 应用楼层奖励倍率（线性 + 轻微非线性加成）
+            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2) * floorRewardMultiplier);
+            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3) * floorRewardMultiplier);
 
             return {
               id: `floor_quest_${floorIndex}_zone_${rng.nextInt(1000, 9999)}`,
@@ -1124,10 +1190,10 @@ export class QuestSystem {
             const minHpPercent = rng.choice(minHpPercentOptions);
             // 基础奖励（随楼层增长），战术任务奖励倍率提升 2.5 倍
             const baseGold = count * rng.nextInt(15, 30);
-            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3) * 2.5);
+            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3) * floorRewardMultiplier * 2.5);
             // 额外经验奖励
             const baseXp = count * 15;
-            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2) * 1.5);
+            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2) * floorRewardMultiplier * 1.5);
             // 确保只使用可获取的物品
             const commonItems = consumableIds.filter(id => id.includes('POTION_HP_S') || id.includes('POTION_RAGE'));
             const itemPool = commonItems.length > 0 ? commonItems : consumableIds;
@@ -1170,9 +1236,9 @@ export class QuestSystem {
             // 基础奖励（随楼层增长）
             const baseGold = count * rng.nextInt(8, 15);
             const baseXp = count * rng.nextInt(10, 18);
-            // 应用楼层奖励倍率
-            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3));
-            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2));
+            // 应用楼层奖励倍率（线性 + 轻微非线性加成）
+            const goldReward = Math.floor(baseGold * (1 + floorIndex * 0.3) * floorRewardMultiplier);
+            const xpReward = Math.floor(baseXp * (1 + floorIndex * 0.2) * floorRewardMultiplier);
 
             return {
               id: `floor_quest_${floorIndex}_survival_${rng.nextInt(1000, 9999)}`,
