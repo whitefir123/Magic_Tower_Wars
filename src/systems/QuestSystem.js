@@ -186,39 +186,70 @@ export class QuestSystem {
       }
     }
     
-    // 如果筛选后没有怪物，使用硬编码的分层逻辑作为后备方案
+    // 如果筛选后没有怪物，使用动态分层逻辑作为后备方案
     if (availableMonsters.length === 0) {
-      console.warn(`[QuestSystem] 楼层 ${floorIndex} 没有通过公式筛选的怪物，使用硬编码分层逻辑`);
+      console.warn(`[QuestSystem] 楼层 ${floorIndex} 没有通过公式筛选的怪物，使用动态分层逻辑`);
+      
+      // 获取所有非BOSS怪物类型
+      const allNonBossMonsters = Object.keys(MONSTER_STATS).filter(type => type !== 'BOSS');
+      
+      if (allNonBossMonsters.length === 0) {
+        console.error('[QuestSystem] 没有可用的怪物类型');
+        return [];
+      }
       
       if (floorIndex <= 3) {
-        // 1-3层：史莱姆、蝙蝠
-        return ['SLIME', 'BAT'].filter(type => MONSTER_STATS[type]);
+        // 1-3层：返回前几个低强度怪物（按生命值排序）
+        const sortedMonsters = allNonBossMonsters
+          .map(type => ({ type, hp: (MONSTER_STATS[type].maxHp || MONSTER_STATS[type].hp || 0) }))
+          .sort((a, b) => a.hp - b.hp)
+          .slice(0, Math.min(3, allNonBossMonsters.length))
+          .map(item => item.type);
+        return sortedMonsters.length > 0 ? sortedMonsters : allNonBossMonsters.slice(0, 2);
       } else if (floorIndex <= 6) {
-        // 4-6层：史莱姆、蝙蝠、骷髅、虚空、幽灵
-        return ['SLIME', 'BAT', 'SKELETON', 'VOID', 'GHOST'].filter(type => MONSTER_STATS[type]);
+        // 4-6层：返回中等强度怪物（排除最弱的几个）
+        const sortedMonsters = allNonBossMonsters
+          .map(type => ({ type, hp: (MONSTER_STATS[type].maxHp || MONSTER_STATS[type].hp || 0) }))
+          .sort((a, b) => a.hp - b.hp);
+        const startIndex = Math.min(1, sortedMonsters.length - 1);
+        const endIndex = Math.min(startIndex + 5, sortedMonsters.length);
+        return sortedMonsters.slice(startIndex, endIndex).map(item => item.type);
       } else if (floorIndex <= 9) {
-        // 7-9层：骷髅、虚空、幽灵、沼泽、死神
-        return ['SKELETON', 'VOID', 'GHOST', 'SWAMP', 'REAPER'].filter(type => MONSTER_STATS[type]);
+        // 7-9层：返回中高强度怪物
+        const sortedMonsters = allNonBossMonsters
+          .map(type => ({ 
+            type, 
+            hp: (MONSTER_STATS[type].maxHp || MONSTER_STATS[type].hp || 0),
+            atk: Math.max(MONSTER_STATS[type].p_atk || 0, MONSTER_STATS[type].m_atk || 0)
+          }))
+          .filter(item => item.hp >= 150 || item.atk >= 10)
+          .sort((a, b) => (b.hp + b.atk) - (a.hp + a.atk))
+          .slice(0, Math.min(5, allNonBossMonsters.length))
+          .map(item => item.type);
+        return sortedMonsters.length > 0 ? sortedMonsters : allNonBossMonsters.slice(Math.floor(allNonBossMonsters.length / 2));
       } else {
-        // 10层及以上：优先返回高强度怪物，避免出现过弱的史莱姆等
-        const highTierMonsters = Object.entries(MONSTER_STATS)
-          .filter(([type, monster]) => {
-            if (type === 'BOSS' || type === 'SLIME' || type === 'BAT') return false;
-            const monsterHp = monster.maxHp || monster.hp || 0;
-            const monsterAtk = Math.max(monster.p_atk || 0, monster.m_atk || 0);
-            // 认为生命值≥220 或 攻击力≥14 的怪物适合高层任务
-            return monsterHp >= 220 || monsterAtk >= 14;
-          })
-          .map(([type]) => type);
+        // 10层及以上：优先返回高强度怪物
+        const highTierMonsters = allNonBossMonsters
+          .map(type => ({ 
+            type, 
+            hp: (MONSTER_STATS[type].maxHp || MONSTER_STATS[type].hp || 0),
+            atk: Math.max(MONSTER_STATS[type].p_atk || 0, MONSTER_STATS[type].m_atk || 0)
+          }))
+          .filter(item => item.hp >= 220 || item.atk >= 14)
+          .sort((a, b) => (b.hp + b.atk) - (a.hp + a.atk))
+          .map(item => item.type);
 
         if (highTierMonsters.length > 0) {
           return highTierMonsters;
         }
 
-        // 兜底：如果高强度怪物列表为空，则退回到所有非BOSS、非史莱姆
-        return Object.keys(MONSTER_STATS).filter(type =>
-          type !== 'BOSS' && type !== 'SLIME'
-        );
+        // 兜底：如果高强度怪物列表为空，则返回所有非BOSS怪物（排除最弱的几个）
+        const sortedAll = allNonBossMonsters
+          .map(type => ({ type, hp: (MONSTER_STATS[type].maxHp || MONSTER_STATS[type].hp || 0) }))
+          .sort((a, b) => b.hp - a.hp)
+          .slice(0, Math.max(1, Math.floor(allNonBossMonsters.length * 0.7)))
+          .map(item => item.type);
+        return sortedAll.length > 0 ? sortedAll : allNonBossMonsters;
       }
     }
     
@@ -374,6 +405,31 @@ export class QuestSystem {
     this.showToast(`已接取任务: ${quest.title}`);
 
     return true;
+  }
+
+  /**
+   * 重新检查条件任务（Passive Check）
+   * 遍历所有活跃任务，如果所有目标已完成但任务尚未完成，则重新检查条件
+   * 用于解决玩家在达成目标后通过其他方式（如喝药）满足条件，但因为没有触发事件而导致任务无法结算的问题
+   */
+  recheckConditionQuests() {
+    for (const [questId, questData] of this.activeQuests.entries()) {
+      if (!questData || !questData.objectives) continue;
+
+      // 检查所有 objectives 是否均已完成
+      const allObjectivesCompleted = questData.objectives.every(obj => obj.current >= obj.count);
+
+      if (allObjectivesCompleted) {
+        // 所有目标已完成，但任务尚未移入 completedQuests
+        // 重新检查条件
+        const conditionCheck = this.checkConditions(questData);
+
+        if (conditionCheck.satisfied) {
+          // 条件满足，完成任务
+          this.completeQuest(questId);
+        }
+      }
+    }
   }
 
   /**
@@ -1084,12 +1140,14 @@ export class QuestSystem {
         return null;
       }
 
-      // 可用消耗品列表（确保只使用可获取的物品）
-      const consumableIds = (CONSUMABLE_IDS || ['POTION_HP_S', 'POTION_RAGE']).filter(id => {
-        // 确保物品ID在游戏中存在（可以通过检查是否有对应的物品定义）
-        // 这里简化处理，直接使用 CONSUMABLE_IDS
-        return true;
-      });
+      // 可用消耗品列表（确保只使用可获取的物品，提供默认值保护）
+      const consumableIds = (CONSUMABLE_IDS && Array.isArray(CONSUMABLE_IDS) && CONSUMABLE_IDS.length > 0)
+        ? CONSUMABLE_IDS.filter(id => {
+            // 确保物品ID在游戏中存在（可以通过检查是否有对应的物品定义）
+            // 这里简化处理，直接使用 CONSUMABLE_IDS
+            return true;
+          })
+        : ['POTION_HP_S', 'POTION_RAGE'];
 
       // 高层楼层奖励的非线性加成，使高层任务更有吸引力
       const floorRewardMultiplier = 1 + Math.log2(floorIndex + 1) * 0.15;
@@ -1411,11 +1469,13 @@ export class QuestSystem {
       // 注意：每日任务不限制楼层，使用所有非BOSS怪物
       const monsterTypes = Object.keys(MONSTER_STATS).filter(type => type !== 'BOSS');
       
-      // 可用消耗品列表（确保只使用可获取的物品）
-      const consumableIds = (CONSUMABLE_IDS || ['POTION_HP_S', 'POTION_RAGE']).filter(id => {
-        // 确保物品ID在游戏中存在
-        return true;
-      });
+      // 可用消耗品列表（确保只使用可获取的物品，提供默认值保护）
+      const consumableIds = (CONSUMABLE_IDS && Array.isArray(CONSUMABLE_IDS) && CONSUMABLE_IDS.length > 0)
+        ? CONSUMABLE_IDS.filter(id => {
+            // 确保物品ID在游戏中存在
+            return true;
+          })
+        : ['POTION_HP_S', 'POTION_RAGE'];
 
       // 每日任务模板池
       const questTemplates = [

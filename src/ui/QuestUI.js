@@ -831,6 +831,11 @@ export class QuestUI {
    * 更新UI显示
    */
   update() {
+    // 在打开/刷新任务界面时，主动重新检查一次条件类任务（被动结算）
+    if (this.game && this.game.questSystem && typeof this.game.questSystem.recheckConditionQuests === 'function') {
+      this.game.questSystem.recheckConditionQuests();
+    }
+
     // 获取 questSystem 引用
     this.questSystem = this.game ? this.game.questSystem : null;
 
