@@ -269,26 +269,20 @@ export class HUD {
 
     // 4. 创建进度条背景容器
     const barContainer = document.createElement('div');
-    barContainer.className = 'bar-container'; // 对应 CSS 中的 .bar-container (复用样式)
-    // 确保背景容器可见
-    barContainer.style.minHeight = '8px';
+    barContainer.className = 'mp-bar-bg'; // 对应 CSS 中的 .mp-bar-bg
 
     // 5. 创建进度条填充层
     const barFill = document.createElement('div');
     barFill.id = 'mp-fill';
-    barFill.className = 'bar-fill'; 
     // 初始样式，实际由 CSS 控制，这里仅做兜底
-    barFill.style.width = '0%'; 
+    barFill.style.width = '100%'; 
     barFill.style.height = '100%';
 
     // 6. 创建文本显示
     const barText = document.createElement('div');
     barText.id = 'mp-text';
-    barText.className = 'bar-text'; // 对应 CSS 可选样式，主要靠 ID 样式
+    barText.className = 'mp-text'; // 对应 CSS 中的 .mp-text
     barText.innerText = 'MP: 0/0';
-    barText.style.textAlign = 'right'; // 确保文字靠右
-    barText.style.fontSize = '0.8rem';
-    barText.style.color = '#fff';
 
     // 7. 组装元素
     barContainer.appendChild(barFill); // 填充层放入背景容器

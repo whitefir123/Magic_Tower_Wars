@@ -261,47 +261,48 @@
   font-weight: bold; 
 }
 
-/* MP Section */
-.mp-section {
-  width: 80%;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  position: relative;
-  z-index: 10;
-  margin-top: 4px; /* 与怒气条拉开一点距离 */
-  margin-left: auto; /* 居中对齐 */
-  margin-right: auto; /* 居中对齐 */
-  min-height: 20px; /* 确保有最小高度，防止高度塌陷 */
+/* MP Section - 样式完全对标 Rage Section */
+.mp-section { 
+  width: 80%; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 2px; 
+  position: relative; 
+  z-index: 10; 
+  margin: 4px auto 0 auto; /* 居中并与上方拉开一点距离 */
 }
 
-/* 复用 rage-bar-bg 的样式结构 */
-.mp-section .bar-container {
-  width: 100%;
-  height: 8px;
-  min-height: 8px; /* 确保最小高度 */
-  background: #000;
-  border: 1px solid rgba(0, 85, 255, 0.3); /* 添加蓝色边框，即使进度为0%也能看到空槽 */
-  border-radius: 0;
-  position: relative;
-  z-index: 10;
-  box-shadow: inset 0 0 2px rgba(0, 85, 255, 0.2); /* 添加内阴影，增强可见性 */
-}
-
-#mp-fill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #0055ff, #00ccff); /* 蓝色渐变 */
-  transition: width 0.2s ease;
+/* 背景槽 - 对标 .rage-bar-bg */
+.mp-bar-bg { 
+  width: 100%; 
+  height: 8px; 
+  background: #000; 
+  border: none !important; 
+  border-radius: 0; 
+  transition: all 0.2s ease;
+  box-shadow: none !important;
   position: relative;
   z-index: 10;
 }
 
-#mp-text {
-  text-align: right;
-  font-size: 0.8rem;
-  color: #ffffff;
-  margin-top: -2px;
+/* 填充条 - 对标 #rage-fill，改为蓝色渐变 */
+#mp-fill { 
+  height: 100%; 
+  width: 100%; /* 默认满 */
+  background: linear-gradient(90deg, #0055ff, #00ccff); 
+  transition: all 0.2s ease; 
+  position: relative; 
+  z-index: 10; 
+}
+
+/* 文本 - 对标 .rage-text */
+.mp-text { 
+  text-align: right; 
+  font-size: 0.8rem; 
+  color: #ffffff; 
+  transition: all 0.2s ease; 
+  position: relative; 
+  z-index: 10;
   text-shadow: 1px 1px 1px #000;
 }
 
