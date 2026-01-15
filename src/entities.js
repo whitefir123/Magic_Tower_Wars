@@ -1323,7 +1323,7 @@ export class Player extends Entity {
     super(1, 1);
     
     // Initialize stats from character config or use defaults
-    let baseStats = { hp: 100, maxHp: 100, p_atk: 15, p_def: 5, m_atk: 0, m_def: 0, rage: 0 };
+    let baseStats = { hp: 100, maxHp: 100, p_atk: 15, p_def: 5, m_atk: 0, m_def: 0, rage: 0, mp: 0, maxMp: 0, mp_regen: 0, mp_on_hit: 0 };
     if (charConfig && charConfig.stats) {
       baseStats = { ...charConfig.stats };
     }
@@ -1336,6 +1336,10 @@ export class Player extends Entity {
       m_atk: baseStats.m_atk, 
       m_def: baseStats.m_def, 
       rage: baseStats.rage || 0, 
+      mp: baseStats.mp ?? 0,
+      maxMp: baseStats.maxMp ?? 0,
+      mp_regen: baseStats.mp_regen ?? 0,
+      mp_on_hit: baseStats.mp_on_hit ?? 0,
       lvl: 1, 
       xp: 0, 
       nextLevelXp: 50, 
@@ -1396,6 +1400,8 @@ export class Player extends Entity {
         p_def: 0,
         m_def: 0,
         hp: 0,
+        maxMp: 0,
+        mp_regen: 0,
         crit_rate: 0,
         dodge: 0,
         gold_rate: 0,
@@ -1437,6 +1443,7 @@ export class Player extends Entity {
       m_def: 0,
       maxHp: 0,
       maxMp: 0,
+      mp_regen: 0,
       crit_rate: 0,
       crit_dmg: 0,
       dodge: 0,
@@ -1720,7 +1727,8 @@ export class Player extends Entity {
       dodge: 0.05, // 基础闪避率5%
       crit_dmg: 1.4, // 基础暴击伤害倍率
       maxHp: this.stats.maxHp || 100,
-      maxMp: this.stats.maxMp || 0
+      maxMp: this.stats.maxMp || 0,
+      mp_regen: this.stats.mp_regen || 0
     };
     
     // 套装计数：记录每个套装ID出现的次数
@@ -1877,6 +1885,9 @@ export class Player extends Entity {
       total.m_def += (this.talentBonuses.m_def || 0);
       total.maxHp += (this.talentBonuses.maxHp || 0);
       total.maxMp += (this.talentBonuses.maxMp || 0);
+      if (this.talentBonuses.mp_regen !== undefined) {
+        total.mp_regen = (total.mp_regen || 0) + this.talentBonuses.mp_regen;
+      }
       
       // 累加百分比属性（这些会在后续阶段应用）
       if (this.talentBonuses.crit_rate !== undefined) {
@@ -1987,13 +1998,19 @@ export class Player extends Entity {
     // ✅ 命运符文系统 2.1：累加符文提供的属性加成
     if (this.runeState && this.runeState.bonusStats) {
       const bonus = this.runeState.bonusStats;
-      
+
       // 累加基础属性
       total.p_atk += (bonus.p_atk || 0);
       total.m_atk += (bonus.m_atk || 0);
       total.p_def += (bonus.p_def || 0);
       total.m_def += (bonus.m_def || 0);
       total.maxHp += (bonus.hp || 0);
+      if (bonus.maxMp !== undefined) {
+        total.maxMp += (bonus.maxMp || 0);
+      }
+      if (bonus.mp_regen !== undefined) {
+        total.mp_regen = (total.mp_regen || 0) + bonus.mp_regen;
+      }
       
       // 累加百分比属性（暴击率、闪避率）
       if (bonus.crit_rate) {
@@ -2294,6 +2311,21 @@ export class Player extends Entity {
           }
         }
       }
+
+    // ========== 魔力自动回复（基于 mp_regen，单位：每秒） ==========
+    if (this.stats && typeof this.stats.mp === 'number') {
+      const totals = this.getTotalStats ? this.getTotalStats() : this.stats;
+      const maxMp = totals.maxMp || this.stats.maxMp || 0;
+      const regenPerSec = totals.mp_regen ?? this.stats.mp_regen ?? 0;
+
+      if (regenPerSec > 0 && maxMp > 0 && this.stats.mp < maxMp) {
+        const deltaMp = regenPerSec * (dt / 1000);
+        this.stats.mp = Math.min(maxMp, this.stats.mp + deltaMp);
+      } else if (this.stats.mp > maxMp && maxMp > 0) {
+        // 安全限制上限
+        this.stats.mp = maxMp;
+      }
+    }
     }
   }
   
@@ -2550,7 +2582,10 @@ export class Player extends Entity {
     }
     
     // ========== 技能消耗检查 ==========
-    const baseMpCost = 20; // 主动技能基础蓝耗
+    const activeSkillConfig = this.skills && this.skills.ACTIVE ? this.skills.ACTIVE : null;
+    const baseMpCost = activeSkillConfig && typeof activeSkillConfig.manaCost === 'number'
+      ? activeSkillConfig.manaCost
+      : 20; // 主动技能基础蓝耗（默认20）
     const hasBloodMagic = this.activeKeystones && Array.isArray(this.activeKeystones) && this.activeKeystones.includes('BLOOD_MAGIC');
     
     if (hasBloodMagic) {
@@ -2587,6 +2622,12 @@ export class Player extends Entity {
         // MP不足，施法失败
         if (window.game && window.game.ui) {
           window.game.ui.logMessage('魔力不足，无法施法！', 'info');
+        }
+        if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
+          const pos = this.getFloatingTextPosition();
+          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+          const warnText = window.game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, 'Mana Low!', '#3399FF');
+          window.game.floatingTexts.push(warnText);
         }
         return false;
       }

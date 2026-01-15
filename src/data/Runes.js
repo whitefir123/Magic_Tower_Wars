@@ -808,11 +808,11 @@ export const RUNE_POOL = [
       if (!player.runeState) {
         player.runeState = {
           effects: {},
-          bonusStats: { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0, p_atk_percent: 0, m_atk_percent: 0 }
+          bonusStats: { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, maxMp: 0, mp_regen: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0, p_atk_percent: 0, m_atk_percent: 0 }
         };
       }
       if (!player.runeState.bonusStats) {
-        player.runeState.bonusStats = { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0, p_atk_percent: 0, m_atk_percent: 0 };
+        player.runeState.bonusStats = { p_atk: 0, m_atk: 0, p_def: 0, m_def: 0, hp: 0, maxMp: 0, mp_regen: 0, crit_rate: 0, dodge: 0, gold_rate: 0, atk_speed: 0, p_atk_percent: 0, m_atk_percent: 0 };
       }
       // 攻击速度 -0.50
       player.runeState.bonusStats.atk_speed = (player.runeState.bonusStats.atk_speed || 0) - 0.50;
@@ -824,6 +824,171 @@ export const RUNE_POOL = [
       if (!player.runes) player.runes = {};
       if (!player.runes.curses) player.runes.curses = [];
       player.runes.curses.push('clunky');
+    }
+  },
+
+  // ========= Mana / MP 相关符文 =========
+  {
+    id: 'clarity',
+    name: 'Clarity',
+    nameZh: '清明',
+    type: 'STAT',
+    rarity: 'COMMON',
+    spawnWeight: 1.0,
+    description: '最大魔力 +{{value}}',
+    onObtain: (player, value = 30) => {
+      if (!player.stats) player.stats = {};
+      if (!player.runeState) {
+        player.runeState = {
+          effects: {},
+          bonusStats: {
+            p_atk: 0,
+            m_atk: 0,
+            p_def: 0,
+            m_def: 0,
+            hp: 0,
+            maxMp: 0,
+            mp_regen: 0,
+            crit_rate: 0,
+            dodge: 0,
+            gold_rate: 0,
+            atk_speed: 0,
+            p_atk_percent: 0,
+            m_atk_percent: 0
+          }
+        };
+      }
+      if (!player.runeState.bonusStats) {
+        player.runeState.bonusStats = {
+          p_atk: 0,
+          m_atk: 0,
+          p_def: 0,
+          m_def: 0,
+          hp: 0,
+          maxMp: 0,
+          mp_regen: 0,
+          crit_rate: 0,
+          dodge: 0,
+          gold_rate: 0,
+          atk_speed: 0,
+          p_atk_percent: 0,
+          m_atk_percent: 0
+        };
+      }
+
+      player.runeState.bonusStats.maxMp = (player.runeState.bonusStats.maxMp || 0) + value;
+
+      // 同步更新玩家当前最大 MP（通过 getTotalStats 计算后的值）
+      const totalStats = player.getTotalStats ? player.getTotalStats() : player.stats;
+      const newMaxMp = totalStats.maxMp || 0;
+      const oldMaxMp = player.stats.maxMp || 0;
+      const mpIncrease = newMaxMp - oldMaxMp;
+
+      player.stats.maxMp = newMaxMp;
+      // 适度回填当前 MP
+      if (mpIncrease > 0) {
+        player.stats.mp = Math.min(newMaxMp, (player.stats.mp || 0) + mpIncrease);
+      }
+    }
+  },
+  {
+    id: 'meditation',
+    name: 'Meditation',
+    nameZh: '冥想',
+    type: 'STAT',
+    rarity: 'RARE',
+    spawnWeight: 1.0,
+    description: '魔力回复 +{{value}}/秒',
+    onObtain: (player, value = 2) => {
+      if (!player.runeState) {
+        player.runeState = {
+          effects: {},
+          bonusStats: {
+            p_atk: 0,
+            m_atk: 0,
+            p_def: 0,
+            m_def: 0,
+            hp: 0,
+            maxMp: 0,
+            mp_regen: 0,
+            crit_rate: 0,
+            dodge: 0,
+            gold_rate: 0,
+            atk_speed: 0,
+            p_atk_percent: 0,
+            m_atk_percent: 0
+          }
+        };
+      }
+      if (!player.runeState.bonusStats) {
+        player.runeState.bonusStats = {
+          p_atk: 0,
+          m_atk: 0,
+          p_def: 0,
+          m_def: 0,
+          hp: 0,
+          maxMp: 0,
+          mp_regen: 0,
+          crit_rate: 0,
+          dodge: 0,
+          gold_rate: 0,
+          atk_speed: 0,
+          p_atk_percent: 0,
+          m_atk_percent: 0
+        };
+      }
+
+      player.runeState.bonusStats.mp_regen = (player.runeState.bonusStats.mp_regen || 0) + value;
+    }
+  },
+  {
+    id: 'soul_siphon',
+    name: 'Soul Siphon',
+    nameZh: '灵魂虹吸',
+    type: 'MECHANIC',
+    rarity: 'LEGENDARY',
+    spawnWeight: 0.4,
+    description: '击杀敌人时回复最大魔力的20%',
+    onObtain: (player) => {
+      if (!player.runes) player.runes = {};
+      if (!player.runes.soul_siphon) {
+        player.runes.soul_siphon = {
+          mpRestorePercent: 0.2
+        };
+      }
+    },
+    hooks: {
+      onKill: (attacker, defender, context) => {
+        const game = window.game;
+        if (!attacker || !attacker.stats) return;
+        if (!attacker.runes || !attacker.runes.soul_siphon) return;
+
+        const { mpRestorePercent } = attacker.runes.soul_siphon;
+        const totals = attacker.getTotalStats ? attacker.getTotalStats() : attacker.stats;
+        const maxMp = totals.maxMp || attacker.stats.maxMp || 0;
+        if (maxMp <= 0) return;
+
+        const restore = Math.floor(maxMp * (mpRestorePercent || 0.2));
+        if (restore <= 0) return;
+
+        const oldMp = attacker.stats.mp || 0;
+        const newMp = Math.min(maxMp, oldMp + restore);
+        const actualGain = newMp - oldMp;
+        if (actualGain <= 0) return;
+
+        attacker.stats.mp = newMp;
+
+        if (game && game.floatingTextPool && game.floatingTexts && game.settings && game.settings.showDamageNumbers !== false) {
+          const pos = attacker.getFloatingTextPosition ? attacker.getFloatingTextPosition() : { x: attacker.visualX, y: attacker.visualY };
+          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+          const mpText = game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, `+${actualGain} MP`, '#3399FF');
+          game.floatingTexts.push(mpText);
+        }
+
+        if (game && game.ui && game.ui.logMessage) {
+          game.ui.logMessage(`灵魂虹吸：回复了 ${actualGain} 点魔力`, 'gain');
+        }
+      }
     }
   }
 ];

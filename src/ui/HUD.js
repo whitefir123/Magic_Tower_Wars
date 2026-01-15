@@ -129,8 +129,31 @@ export class HUD {
       this.stateCache[ultReadyKey] = isRageFull;
     }
 
-    // Stats
+    // Stats & 计算总属性
     const totals = (player.getTotalStats ? player.getTotalStats() : player.stats);
+
+    // ========== MP 条 ==========
+    // 如果还没有 MP 条 DOM，则动态创建，放在怒气条下方
+    if (!this.getCachedElement('mp-fill')) {
+      if (typeof this.createMpBar === 'function') {
+        this.createMpBar();
+      }
+    }
+
+    const maxMp = player.stats.maxMp ?? totals.maxMp ?? 0;
+    const currentMp = player.stats.mp ?? 0;
+    if (maxMp > 0) {
+      const mpPercent = Math.max(0, Math.min(100, (currentMp / maxMp) * 100));
+      this.updateStyleIfChanged('mp-fill', 'width', `${mpPercent}%`);
+    } else {
+      this.updateStyleIfChanged('mp-fill', 'width', `0%`);
+    }
+
+    const mpRegen = totals.mp_regen ?? player.stats.mp_regen ?? 0;
+    const regenText = mpRegen ? mpRegen.toFixed(1) : '0.0';
+    this.updateTextIfChanged('mp-text', `MP: ${Math.floor(currentMp)}/${Math.floor(maxMp)} (+${regenText})`);
+
+    // Stats 文本
     this.updateTextIfChanged('ui-patk', totals.p_atk);
     this.updateTextIfChanged('ui-matk', totals.m_atk);
     this.updateTextIfChanged('ui-pdef', totals.p_def);
@@ -214,6 +237,49 @@ export class HUD {
         }
         this.stateCache[ultSkillStateKey] = isUltSkillPrimed;
       }
+    }
+  }
+
+  /**
+   * 动态创建 MP 条，插入到怒气条下方
+   */
+  createMpBar() {
+    const rageSection = document.querySelector('.rage-section');
+    if (!rageSection || !rageSection.parentElement) return;
+
+    const mpRow = document.createElement('div');
+    mpRow.className = 'stat-row mp-section';
+    mpRow.id = 'ui-mp';
+
+    const label = document.createElement('div');
+    label.className = 'stat-label';
+    label.innerText = 'MP';
+
+    const barContainer = document.createElement('div');
+    barContainer.className = 'bar-container';
+
+    const barFill = document.createElement('div');
+    barFill.id = 'mp-fill';
+    barFill.className = 'bar-fill';
+    barFill.style.backgroundColor = '#3399FF';
+    barFill.style.width = '100%';
+
+    const barText = document.createElement('div');
+    barText.id = 'mp-text';
+    barText.className = 'bar-text';
+    barText.innerText = 'MP: 0/0 (+0.0)';
+
+    barContainer.appendChild(barFill);
+    barContainer.appendChild(barText);
+    mpRow.appendChild(label);
+    mpRow.appendChild(barContainer);
+
+    // 严格插在怒气条下方
+    const parent = rageSection.parentElement;
+    if (rageSection.nextSibling) {
+      parent.insertBefore(mpRow, rageSection.nextSibling);
+    } else {
+      parent.appendChild(mpRow);
     }
   }
 
