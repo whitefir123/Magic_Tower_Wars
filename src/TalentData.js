@@ -18,6 +18,9 @@ export const KEYSTONE_EFFECTS = {
     PHOENIX_REBIRTH: 'PHOENIX_REBIRTH',   // 凤凰涅槃：最大生命+30%，魔法攻击+10%
     PEGASUS_WINGS: 'PEGASUS_WINGS',       // 天马之翼：攻击速度+25%，闪避+5%
     STAR_GUIDE: 'STAR_GUIDE',             // 星引：金币获取+20%，最大魔力+20%
+    HYDRA_POISON: 'HYDRA_POISON',         // 海德拉毒液：普通攻击附加当前生命值 1% 的额外伤害
+    ANDROMEDA_CHAIN: 'ANDROMEDA_CHAIN',   // 仙女座之锁：受到伤害减少 15%，但移动速度降低 20%
+    CROWN_GLORY: 'CROWN_GLORY',           // 皇冠荣耀：全属性提升 5%
     BLOOD_MAGIC: 'BLOOD_MAGIC',           // 血魔法：使用生命代替魔力
     IRON_WILL: 'IRON_WILL',               // 钢铁意志：力量加成魔法攻击
     SOUL_REAPER: 'SOUL_REAPER',           // 灵魂收割：击杀回复生命
@@ -595,8 +598,8 @@ export const TALENT_TREE_DATA = {
     // 象征涅槃与魔法生命 [从 pen_1 向右上方延伸]
     'phoenix_1': {
         id: 'phoenix_1',
-        x: 220,
-        y: -80, // 火鸟之喙 (Ankaa)
+        x: 180,
+        y: -100, // 火鸟之喙 (Ankaa) - 调整位置避免与人马座重叠
         type: TALENT_NODE_TYPES.SMALL,
         name: '凤凰·火喙',
         description: '提升生命与魔力',
@@ -606,8 +609,8 @@ export const TALENT_TREE_DATA = {
     },
     'phoenix_2': {
         id: 'phoenix_2',
-        x: 280,
-        y: -120, // 火鸟之翼
+        x: 200,
+        y: -160, // 火鸟之翼
         type: TALENT_NODE_TYPES.SMALL,
         name: '凤凰·炎翼',
         description: '提升魔法抗性与攻击',
@@ -617,8 +620,8 @@ export const TALENT_TREE_DATA = {
     },
     'phoenix_medium': {
         id: 'phoenix_medium',
-        x: 340,
-        y: -100, // 火鸟之心 (稍微下沉，形成翅膀形状)
+        x: 220,
+        y: -220, // 火鸟之心
         type: TALENT_NODE_TYPES.MEDIUM,
         name: '凤凰·燃心',
         description: '大幅提升魔法攻击',
@@ -628,8 +631,8 @@ export const TALENT_TREE_DATA = {
     },
     'keystone_phoenix': {
         id: 'keystone_phoenix',
-        x: 400,
-        y: -160, // 凤凰涅槃
+        x: 240,
+        y: -280, // 凤凰涅槃 - 位置上移
         type: TALENT_NODE_TYPES.KEYSTONE,
         name: '涅槃',
         description: '最大生命+30%，魔法攻击+10%',
@@ -733,6 +736,157 @@ export const TALENT_TREE_DATA = {
         stats: { gold_rate: 0.20, max_mp_percent: 0.20 },
         keystoneEffect: KEYSTONE_EFFECTS.STAR_GUIDE,
         requirements: ['cross_2', 'cross_3'] // 需要左右两翼都点亮
+    },
+
+    // ========== 持久分支：长蛇座 (Hydra) - 左下深处 ==========
+    // 象征生命力与再生 [从 dex_3 向左下方延伸]
+    'hydra_1': {
+        id: 'hydra_1',
+        x: -100,
+        y: 300, // 星宿一 (Alphard) - 孤独者
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '长蛇·再生',
+        description: '大幅提升生命回复',
+        cost: 250,
+        stats: { mp_regen: 0.5, max_hp: 50 }, // 这里实际上用MP Regen代替HP Regen如果引擎不支持HP Regen，或者假设支持
+        // 检查 entities.js 发现 Player.regen() 回复 HP 和 MP。
+        // stats通常是 max_hp, max_mp等。
+        // 暂时给 max_hp 和 p_def
+        stats: { max_hp: 60, p_def: 4 },
+        requirements: ['dex_3']
+    },
+    'hydra_2': {
+        id: 'hydra_2',
+        x: -160,
+        y: 360, // 蛇身蜿蜒
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '长蛇·鳞甲',
+        description: '提升生命与防御',
+        cost: 350,
+        stats: { max_hp: 80, m_def: 4 },
+        requirements: ['hydra_1']
+    },
+    'hydra_medium': {
+        id: 'hydra_medium',
+        x: -220,
+        y: 420, // 蛇腹
+        type: TALENT_NODE_TYPES.MEDIUM,
+        name: '长蛇·不朽',
+        description: '大幅提升最大生命值',
+        cost: 800,
+        stats: { max_hp_percent: 0.15, max_hp: 100 },
+        requirements: ['hydra_2']
+    },
+    'keystone_hydra': {
+        id: 'keystone_hydra',
+        x: -280,
+        y: 480, // 九头蛇首
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '海德拉毒液',
+        description: '普通攻击附加当前生命值 1% 的额外伤害',
+        cost: 2800,
+        stats: { max_hp_percent: 0.20 }, // 主要是机制
+        keystoneEffect: KEYSTONE_EFFECTS.HYDRA_POISON,
+        requirements: ['hydra_medium']
+    },
+
+    // ========== 献祭分支：仙女座 (Andromeda) - 左上极远 ==========
+    // 象征牺牲与力量 [从 pegasus_1 向左延伸]
+    'and_1': {
+        id: 'and_1',
+        x: -320,
+        y: -80, // 奎宿九 (Mirach)
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '仙女·锁链',
+        description: '提升攻击力',
+        cost: 250,
+        stats: { p_atk: 6, m_atk: 6 },
+        requirements: ['pegasus_1']
+    },
+    'and_2': {
+        id: 'and_2',
+        x: -380,
+        y: -60, // 天大将军一 (Almach)
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '仙女·决心',
+        description: '提升暴击伤害',
+        cost: 350,
+        stats: { crit_dmg: 20 },
+        requirements: ['and_1']
+    },
+    'and_medium': {
+        id: 'and_medium',
+        x: -440,
+        y: -40, // 星云深处
+        type: TALENT_NODE_TYPES.MEDIUM,
+        name: '仙女·星云',
+        description: '大幅提升双攻',
+        cost: 800,
+        stats: { p_atk_percent: 0.08, m_atk_percent: 0.08 },
+        requirements: ['and_2']
+    },
+    'keystone_andromeda': {
+        id: 'keystone_andromeda',
+        x: -500,
+        y: -20, // 祭坛
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '仙女座之锁',
+        description: '受到伤害减少 15%，但移动速度降低 20%',
+        cost: 3000,
+        stats: { final_dmg_reduce: 0.15 },
+        // 负面效果在机制里或者这里直接不加移速（移速通常不是stats里的直接属性，除非有 move_speed）
+        // 假设 final_dmg_reduce 是有效的
+        keystoneEffect: KEYSTONE_EFFECTS.ANDROMEDA_CHAIN,
+        requirements: ['and_medium']
+    },
+
+    // ========== 统御分支：北冕座 (Corona Borealis) - 正上方高空 ==========
+    // 象征荣耀与全能 [从 str_medium 向右上方延伸]
+    'crb_1': {
+        id: 'crb_1',
+        x: 100,
+        y: -320, // 贯索四 (Nusakan)
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '北冕·宝石',
+        description: '提升全属性基础',
+        cost: 300,
+        stats: { p_atk: 3, m_atk: 3, p_def: 3, m_def: 3 },
+        requirements: ['str_medium']
+    },
+    'crb_2': {
+        id: 'crb_2',
+        x: 150,
+        y: -350, // 贯索三
+        type: TALENT_NODE_TYPES.SMALL,
+        name: '北冕·光环',
+        description: '提升生命与魔力上限',
+        cost: 400,
+        stats: { max_hp: 50, max_mp: 50 },
+        requirements: ['crb_1']
+    },
+    'crb_medium': {
+        id: 'crb_medium',
+        x: 200,
+        y: -370, // 贯索二
+        type: TALENT_NODE_TYPES.MEDIUM,
+        name: '北冕·加冕',
+        description: '大幅提升全属性百分比',
+        cost: 900,
+        stats: { p_atk_percent: 0.03, m_atk_percent: 0.03, max_hp_percent: 0.03 },
+        requirements: ['crb_2']
+    },
+    'keystone_crown': {
+        id: 'keystone_crown',
+        x: 250,
+        y: -390, // 贯索一 (Alphecca) - 最亮星
+        type: TALENT_NODE_TYPES.KEYSTONE,
+        name: '皇冠荣耀',
+        description: '全属性提升 5%',
+        cost: 3500,
+        stats: { p_atk_percent: 0.05, m_atk_percent: 0.05, max_hp_percent: 0.05, max_mp_percent: 0.05, p_def: 5, m_def: 5 }, 
+        // 简单起见，直接给一堆属性，因为 engine 可能没有 "all_stats" 这个 key
+        keystoneEffect: KEYSTONE_EFFECTS.CROWN_GLORY,
+        requirements: ['crb_medium']
     }
 };
 

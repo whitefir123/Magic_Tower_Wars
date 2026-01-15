@@ -87,6 +87,7 @@ export class ForgeUI {
               <div class="forge-tabs">
                 <button class="forge-tab-btn active" data-mode="enhance">强化/重铸</button>
                 <button class="forge-tab-btn" data-mode="socket">宝石镶嵌</button>
+                <button class="forge-tab-btn" data-mode="synthesis">宝石合成</button>
               </div>
               
               <div id="forge-item-details" class="forge-item-details">
@@ -615,6 +616,87 @@ export class ForgeUI {
         color: #aaa;
         white-space: nowrap;
       }
+
+      /* 合成列表样式 */
+      .gem-synthesis-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .synthesis-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(212, 175, 55, 0.3);
+        border-radius: 6px;
+        padding: 10px;
+        transition: all 0.3s ease;
+      }
+
+      .synthesis-row:hover {
+        background: rgba(212, 175, 55, 0.1);
+        border-color: #d4af37;
+      }
+
+      .synthesis-gem-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+
+      .synthesis-icon-wrapper {
+        position: relative;
+        width: 60px;
+        height: 60px;
+      }
+
+      .synthesis-count {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.7);
+        color: #fff;
+        font-size: 12px;
+        padding: 2px 4px;
+        border-radius: 4px;
+      }
+
+      .synthesis-details {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .synthesis-name {
+        font-weight: 600;
+        font-size: 16px;
+      }
+
+      .synthesis-tier {
+        font-size: 12px;
+        color: #aaa;
+      }
+
+      .synthesis-action {
+        min-width: 100px;
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .synthesis-btn {
+        padding: 8px 12px;
+        font-size: 14px;
+      }
+
+      .max-level-text {
+        color: #d4af37;
+        font-size: 14px;
+        font-weight: 600;
+      }
     `;
     
     document.head.appendChild(style);
@@ -894,16 +976,26 @@ export class ForgeUI {
     });
     
     // 重新渲染详情面板
-    if (this.selectedItem) {
-      this.renderItemDetails(this.selectedItem);
-    }
+    this.renderItemDetails(this.selectedItem);
   }
 
   /**
    * 渲染装备详情
    */
   renderItemDetails(item) {
-    if (!this.elements.itemDetails || !item) return;
+    if (!this.elements.itemDetails) return;
+
+    // 宝石合成模式 (不需要选中装备)
+    if (this.currentMode === 'synthesis') {
+      this.renderSynthesisPanel();
+      return;
+    }
+
+    // 其他模式如果没有选中装备，显示占位符
+    if (!item) {
+      this.elements.itemDetails.innerHTML = '<p class="forge-placeholder">选择一件装备来查看详情</p>';
+      return;
+    }
 
     if (this.currentMode === 'socket') {
       this.renderSocketPanel(item);
@@ -1019,6 +1111,37 @@ export class ForgeUI {
       socketHtml += '</div>';
     }
     
+    // 检查是否可以打孔
+    const currentSockets = sockets.length;
+    const canUnlock = currentSockets < 3;
+    const unlockCost = currentSockets + 1; // 消耗星尘钻数量
+    
+    // 检查玩家拥有的星尘钻数量
+    let drillCount = 0;
+    if (this.player.inventory) {
+      this.player.inventory.forEach(invItem => {
+        if (invItem && (invItem.itemId === 'ITEM_STARDUST_DRILL' || invItem.id === 'ITEM_STARDUST_DRILL')) {
+          drillCount += (invItem.count || 1);
+        }
+      });
+    }
+
+    if (canUnlock) {
+      socketHtml += `
+        <div class="socket-unlock-section" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="color: #aaa;">解锁第 ${currentSockets + 1} 个槽位</span>
+            <span style="color: ${drillCount >= unlockCost ? '#4caf50' : '#e74c3c'};">
+              星尘钻: ${drillCount} / ${unlockCost}
+            </span>
+          </div>
+          <button class="forge-btn forge-btn-enhance" id="btn-unlock-socket" ${drillCount < unlockCost ? 'disabled' : ''}>
+            使用星尘钻打孔
+          </button>
+        </div>
+      `;
+    }
+    
     this.elements.itemDetails.innerHTML = `
       <div class="detail-section">
         <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
@@ -1026,7 +1149,7 @@ export class ForgeUI {
           <div>
             <h4 style="color: ${itemColor}; margin: 0;">${itemName}</h4>
             <div style="font-size: 12px; color: #aaa; margin-top: 5px;">
-              镶嵌槽: ${sockets.length} 个
+              镶嵌槽: ${sockets.length} / 3 个
             </div>
           </div>
         </div>
@@ -1040,6 +1163,236 @@ export class ForgeUI {
     
     // 绑定 socket 点击事件
     this.bindSocketEvents(item);
+    
+    // 绑定打孔按钮事件
+    const unlockBtn = document.getElementById('btn-unlock-socket');
+    if (unlockBtn) {
+      unlockBtn.addEventListener('click', () => this.handleUnlockSocket(item));
+    }
+  }
+
+  /**
+   * 处理打孔
+   */
+  handleUnlockSocket(item) {
+    if (!this.player || !item) return;
+    
+    // 播放音效
+    if (AudioManager && typeof AudioManager.playForge === 'function') {
+      AudioManager.playForge();
+    }
+    
+    const result = this.blacksmithSystem.unlockSocket(item, this.player);
+    
+    if (result.success) {
+      this.showMessage(result.message, 'success');
+      // 刷新详情
+      this.renderItemDetails(item);
+      // 刷新左侧列表（可能显示变化）
+      this.renderItemList();
+      
+      // 更新游戏UI
+      const game = window.game;
+      if (game && game.ui) {
+        game.ui.renderInventory?.(this.player);
+      }
+    } else {
+      this.showMessage(result.message, 'error');
+    }
+  }
+
+  /**
+   * 渲染宝石合成面板
+   */
+  renderSynthesisPanel() {
+    if (!this.elements.itemDetails || !this.player) return;
+
+    // 获取背包中的所有宝石
+    const inventory = this.player.inventory || [];
+    const gems = inventory.filter(item => item && item.type === 'GEM');
+    
+    // 统计每种宝石的数量
+    const gemCounts = {};
+    gems.forEach(gem => {
+      const id = gem.itemId || gem.id;
+      if (!gemCounts[id]) {
+        gemCounts[id] = {
+          item: gem,
+          count: 0
+        };
+      }
+      gemCounts[id].count += (gem.count || 1);
+    });
+
+    // 筛选出可以合成的宝石 (数量 >= 3 且不是最高级)
+    const synthesizableGems = Object.values(gemCounts).filter(entry => {
+      const tier = entry.item.tier || 1;
+      return entry.count >= 3 && tier < 5;
+    });
+
+    let contentHtml = '';
+    
+    if (synthesizableGems.length === 0) {
+      contentHtml = `
+        <div class="forge-placeholder">
+          <p>没有可合成的宝石</p>
+          <small style="color: #666;">需要 3 颗相同的宝石才能合成更高一级的宝石</small>
+        </div>
+      `;
+    } else {
+      contentHtml = '<div class="gem-synthesis-list">';
+      
+      // 排序：按等级、品质、名称
+      synthesizableGems.sort((a, b) => {
+        const tierA = a.item.tier || 1;
+        const tierB = b.item.tier || 1;
+        if (tierA !== tierB) return tierA - tierB;
+        return 0;
+      });
+
+      synthesizableGems.forEach(entry => {
+        const gem = entry.item;
+        const count = entry.count;
+        const tier = gem.tier || 1;
+        const nextTier = tier + 1;
+        
+        // 模拟下一级宝石名称
+        const baseName = gem.nameZh || gem.name;
+        // 假设名称中有 "I", "II" 等罗马数字，或者只是简单显示 "下一级"
+        // 这里简单处理：显示当前宝石名称和 T(x) -> T(x+1)
+        
+        contentHtml += `
+          <div class="synthesis-row">
+            <div class="synthesis-gem-info">
+              <!-- 图标占位，实际需要 canvas 渲染 -->
+              <div class="synthesis-icon-wrapper" data-gem-id="${gem.itemId || gem.id}">
+                <div style="width: 60px; height: 60px; background: rgba(0,0,0,0.5); border-radius: 4px;"></div>
+                <div class="synthesis-count">${count}</div>
+              </div>
+              <div class="synthesis-details">
+                <span class="synthesis-name" style="color: ${this.blacksmithSystem.getItemQualityColor(gem)}">${baseName}</span>
+                <span class="synthesis-tier">等级 ${tier} ➤ <span style="color: #4caf50">等级 ${nextTier}</span></span>
+              </div>
+            </div>
+            <div class="synthesis-action">
+              <button class="forge-btn forge-btn-enhance synthesis-btn" 
+                data-gem-id="${gem.itemId || gem.id}">
+                合成 (3合1)
+              </button>
+            </div>
+          </div>
+        `;
+      });
+      
+      contentHtml += '</div>';
+    }
+
+    this.elements.itemDetails.innerHTML = `
+      <div class="detail-section">
+        <h4>宝石合成</h4>
+        <p style="color: #aaa; font-size: 14px; margin-bottom: 15px;">
+          消耗 3 颗相同的宝石，合成 1 颗更高等级的宝石。
+          <br>最高可合成至 5 级 (Mythic)。
+        </p>
+        ${contentHtml}
+      </div>
+    `;
+
+    // 绑定合成按钮事件
+    const synthesisBtns = this.elements.itemDetails.querySelectorAll('.synthesis-btn');
+    synthesisBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const gemId = btn.dataset.gemId;
+        const gemEntry = gemCounts[gemId];
+        if (gemEntry) {
+          this.handleSynthesis(gemEntry.item);
+        }
+      });
+    });
+    
+    // 渲染图标
+    this.renderSynthesisIcons(synthesizableGems);
+  }
+
+  /**
+   * 渲染合成列表中的图标
+   */
+  renderSynthesisIcons(gemEntries) {
+    const game = window.game;
+    const loader = game?.loader;
+    const gemImg = loader?.getImage('ICONS_GEMS');
+    
+    if (!gemImg) return;
+
+    const render = () => {
+      gemEntries.forEach(entry => {
+        const gem = entry.item;
+        const gemId = gem.itemId || gem.id;
+        const wrapper = this.elements.itemDetails.querySelector(`.synthesis-icon-wrapper[data-gem-id="${gemId}"]`);
+        
+        if (wrapper) {
+          const placeholder = wrapper.querySelector('div:first-child');
+          
+          const iconIndex = gem.iconIndex || 0;
+          const cols = 5;
+          const rows = 4;
+          const cellW = Math.floor(gemImg.width / cols);
+          const cellH = Math.floor(gemImg.height / rows);
+          const col = iconIndex % cols;
+          const row = Math.floor(iconIndex / cols);
+          
+          const sx = Math.round(col * cellW);
+          const sy = Math.round(row * cellH);
+          
+          const canvas = document.createElement('canvas');
+          canvas.width = 60;
+          canvas.height = 60;
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(gemImg, sx, sy, cellW, cellH, 0, 0, 60, 60);
+          
+          if (placeholder) {
+            placeholder.replaceWith(canvas);
+          }
+        }
+      });
+    };
+
+    if (gemImg.complete) {
+      render();
+    } else {
+      gemImg.onload = render;
+    }
+  }
+
+  /**
+   * 处理宝石合成
+   */
+  handleSynthesis(gemItem) {
+    if (!this.player || !gemItem) return;
+
+    // 播放音效
+    if (AudioManager && typeof AudioManager.playForge === 'function') {
+      AudioManager.playForge();
+    }
+
+    const result = this.blacksmithSystem.synthesizeGem(gemItem, this.player);
+
+    if (result.success) {
+      this.showMessage(result.message, 'success');
+      // 刷新合成面板
+      this.renderSynthesisPanel();
+      // 刷新左侧列表（宝石数量变化）
+      this.renderItemList();
+      
+      // 更新游戏UI
+      const game = window.game;
+      if (game && game.ui) {
+        game.ui.renderInventory?.(this.player);
+      }
+    } else {
+      this.showMessage(result.message, 'error');
+    }
   }
 
   /**

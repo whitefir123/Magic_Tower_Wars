@@ -56,48 +56,11 @@ export function createStandardizedItem(itemDef, options = {}) {
   // 确保 sockets 是数组
   let finalSockets = Array.isArray(preservedSockets) ? preservedSockets : [];
   
-  // ✅ 随机孔位生成：如果 sockets 为空数组，根据 tier 或 rarity 随机生成
+  // ✅ 随机孔位生成：移除默认随机生成逻辑，改为默认0孔，需要使用星尘钻打孔
+  // 仅在 explicitly passed sockets option 的情况下保留 (兼容旧存档/特殊生成)
   if (finalSockets.length === 0) {
-    const tier = itemDef.tier || 1;
-    const rarity = itemDef.rarity || itemDef.quality || 'COMMON';
-    const random = Math.random();
-    
-    let socketCount = 0;
-    
-    // 根据 tier 和 rarity 决定孔位数量
-    if (tier === 1 || rarity === 'COMMON' || rarity === 'UNCOMMON') {
-      // Tier 1 / Common/Uncommon: 20% 几率 1 孔
-      if (random < 0.20) {
-        socketCount = 1;
-      }
-    } else if (tier === 2 || rarity === 'RARE') {
-      // Tier 2 / Rare: 40% 几率 1 孔，10% 几率 2 孔
-      if (random < 0.40) {
-        socketCount = 1;
-      } else if (random < 0.50) {
-        socketCount = 2;
-      }
-    } else if (tier === 3 || ['EPIC', 'LEGENDARY', 'MYTHIC'].includes(rarity)) {
-      // Tier 3 / Epic+: 60% 几率 1-2 孔，20% 几率 3 孔
-      if (random < 0.30) {
-        socketCount = 1;
-      } else if (random < 0.60) {
-        socketCount = 2;
-      } else if (random < 0.80) {
-        socketCount = 3;
-      }
-    }
-    
-    // 生成 socket 对象数组
-    if (socketCount > 0) {
-      finalSockets = [];
-      for (let i = 0; i < socketCount; i++) {
-        finalSockets.push({
-          status: 'EMPTY',
-          gemId: null
-        });
-      }
-    }
+    // 默认不生成孔位，等待打孔
+    finalSockets = [];
   }
   
   // 构建 meta 对象
@@ -1365,7 +1328,7 @@ export function getEquipmentDropForFloor_Legacy(floor) {
 }
 
 // Consumable item IDs
-export const CONSUMABLE_IDS = ['POTION_HP_S', 'POTION_RAGE', 'SCROLL_XP', 'SCROLL_FIRE'];
+export const CONSUMABLE_IDS = ['POTION_HP_S', 'POTION_RAGE', 'SCROLL_XP', 'SCROLL_FIRE', 'ITEM_STARDUST_DRILL'];
 
 // Get random consumable item
 /**

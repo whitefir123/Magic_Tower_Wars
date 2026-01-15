@@ -1780,6 +1780,19 @@ export class CombatSystem {
         }
       }
       
+      // ✅ 海德拉毒液：普通攻击附加当前生命值 1% 的额外伤害
+      if (!skillUsed && player.activeKeystones && Array.isArray(player.activeKeystones) && player.activeKeystones.includes('HYDRA_POISON')) {
+        const hydraDamage = Math.floor(player.stats.hp * 0.01);
+        if (hydraDamage > 0) {
+          dmgToMon += hydraDamage;
+          // 视觉反馈：海德拉毒液触发
+          if (game.ui && game.ui.logMessage && Math.random() < 0.1) {
+             // 降低日志频率
+             // game.ui.logMessage(`海德拉毒液附加 ${hydraDamage} 伤害`, 'combat');
+          }
+        }
+      }
+
       // ✅ FIX: 清除技能状态并触发CD（在造成伤害后）- 重构为通用处理
       if (skillUsed && player.startSkillCooldown && player.skills) {
         // 处理主动技能

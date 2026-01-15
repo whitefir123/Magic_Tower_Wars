@@ -2390,6 +2390,11 @@ export class Player extends Entity {
     if (this.activeKeystones && Array.isArray(this.activeKeystones) && this.activeKeystones.includes('UNYIELDING_FORTRESS')) {
       effectiveMoveSpeed *= 0.9;
     }
+
+    // ✅ 仙女座之锁：受到伤害-15%，移速-20%
+    if (this.activeKeystones && Array.isArray(this.activeKeystones) && this.activeKeystones.includes('ANDROMEDA_CHAIN')) {
+      effectiveMoveSpeed *= 0.8;
+    }
     
     const step = effectiveMoveSpeed * dt;
     if (dist <= step) { 

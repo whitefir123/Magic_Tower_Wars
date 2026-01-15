@@ -620,7 +620,10 @@ export class LootGenerator {
     }
     
     // ✅ 宝石镶嵌系统：生成sockets数组
+    // V2.1: 默认不生成孔位，需要使用星尘钻打孔
     const sockets = [];
+    // 移除原有的随机孔位逻辑
+    /*
     let socketCount = 0;
     const randomValue = rng ? rng.next() : Math.random();
     
@@ -654,6 +657,7 @@ export class LootGenerator {
     for (let i = 0; i < socketCount; i++) {
       sockets.push({ status: 'EMPTY', gemId: null });
     }
+    */
     
     // ✅ v2.0: 构建标准化的 meta 对象
     const meta = {
