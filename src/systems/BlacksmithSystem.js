@@ -496,6 +496,14 @@ export class BlacksmithSystem {
   initializeItem(item) {
     if (!item) return null;
 
+    // ✅ 增强旧物品兼容性：确保所有物品都有 meta 和 meta.sockets 结构
+    if (!item.meta) {
+      item.meta = {};
+    }
+    if (!item.meta.sockets || !Array.isArray(item.meta.sockets)) {
+      item.meta.sockets = [];
+    }
+
     // 如果已经初始化过，直接返回
     if (item.baseStats && item.quality) {
       return item;

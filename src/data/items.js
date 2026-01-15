@@ -54,7 +54,51 @@ export function createStandardizedItem(itemDef, options = {}) {
     : (itemDef.meta?.sockets || (itemDef.sockets !== undefined ? itemDef.sockets : []));
   
   // 确保 sockets 是数组
-  const finalSockets = Array.isArray(preservedSockets) ? preservedSockets : [];
+  let finalSockets = Array.isArray(preservedSockets) ? preservedSockets : [];
+  
+  // ✅ 随机孔位生成：如果 sockets 为空数组，根据 tier 或 rarity 随机生成
+  if (finalSockets.length === 0) {
+    const tier = itemDef.tier || 1;
+    const rarity = itemDef.rarity || itemDef.quality || 'COMMON';
+    const random = Math.random();
+    
+    let socketCount = 0;
+    
+    // 根据 tier 和 rarity 决定孔位数量
+    if (tier === 1 || rarity === 'COMMON' || rarity === 'UNCOMMON') {
+      // Tier 1 / Common/Uncommon: 20% 几率 1 孔
+      if (random < 0.20) {
+        socketCount = 1;
+      }
+    } else if (tier === 2 || rarity === 'RARE') {
+      // Tier 2 / Rare: 40% 几率 1 孔，10% 几率 2 孔
+      if (random < 0.40) {
+        socketCount = 1;
+      } else if (random < 0.50) {
+        socketCount = 2;
+      }
+    } else if (tier === 3 || ['EPIC', 'LEGENDARY', 'MYTHIC'].includes(rarity)) {
+      // Tier 3 / Epic+: 60% 几率 1-2 孔，20% 几率 3 孔
+      if (random < 0.30) {
+        socketCount = 1;
+      } else if (random < 0.60) {
+        socketCount = 2;
+      } else if (random < 0.80) {
+        socketCount = 3;
+      }
+    }
+    
+    // 生成 socket 对象数组
+    if (socketCount > 0) {
+      finalSockets = [];
+      for (let i = 0; i < socketCount; i++) {
+        finalSockets.push({
+          status: 'EMPTY',
+          gemId: null
+        });
+      }
+    }
+  }
   
   // 构建 meta 对象
   const meta = {

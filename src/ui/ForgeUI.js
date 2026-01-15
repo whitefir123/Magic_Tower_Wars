@@ -1329,6 +1329,8 @@ export class ForgeUI {
     
     if (result.success) {
       this.showMessage(result.message, 'success');
+      // ✅ 刷新左侧列表和右侧详情
+      this.renderItemList();
       this.renderItemDetails(item);
       
       // 更新游戏UI
@@ -1363,6 +1365,8 @@ export class ForgeUI {
     
     if (result.success) {
       this.showMessage(result.message, 'success');
+      // ✅ 刷新左侧列表和右侧详情
+      this.renderItemList();
       this.renderItemDetails(item);
       
       // 更新游戏UI
@@ -1442,18 +1446,18 @@ export class ForgeUI {
   handleReforge() {
     if (!this.selectedItem || !this.player) return;
 
-    // 重铸按钮点击时，播放锻造音效
-    if (AudioManager && typeof AudioManager.playForge === 'function') {
-      AudioManager.playForge();
-    }
-
     const result = this.blacksmithSystem.reforgeItem(this.selectedItem, this.player);
 
     if (result.success) {
+      // ✅ 重铸成功后播放锻造音效
+      if (AudioManager && typeof AudioManager.playForge === 'function') {
+        AudioManager.playForge();
+      }
+      
       // 显示成功消息
       this.showMessage(result.message, 'success');
       
-      // 更新UI
+      // 更新UI（确保重铸后的属性变化能立即直观地展示）
       this.renderItemList();
       this.renderItemDetails(this.selectedItem);
       
