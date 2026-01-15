@@ -790,14 +790,16 @@
   position: absolute;
   background: rgba(0, 0, 0, 1);
   color: #fff;
-  padding: 10px 12px;
+  padding: 12px 16px; /* 稍微增加内边距让其更大气 */
   border-radius: 6px;
-  z-index: 2000;
-  font-size: 0.85em;
-  max-width: 320px !important;
+  z-index: 100000; /* 提高层级 */
+  font-size: 0.9em; /* 稍微调大字体 */
+  min-width: 300px; /* 增加最小宽度 */
+  width: max-content; /* 尽可能宽 */
+  max-width: 450px !important; /* 增加最大宽度限制 */
   pointer-events: none;
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 215, 0, 0.4); /* 稍微调亮边框 */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.9); /* 加深阴影 */
   line-height: 1.5;
   text-align: left;
   top: 100%;
