@@ -241,8 +241,11 @@ export class BlacksmithSystem {
       return;
     }
     
-    // ✅ V2.0: 强化只提升底材，不修改 baseStats（它应该永远保持为 +0 时的原始底材数值）
-    // 第一步：读取底材
+    // ✅ CRITICAL FIX: baseStats 应该永远保持为 Common 品质的原始底材数值（+0 强化等级）
+    // 重铸时不再修改 baseStats，而是通过品质倍率动态计算最终属性
+    // 这样可以避免属性降级问题：Legendary -> Common -> Legendary 不会导致属性损失
+    
+    // 第一步：读取底材（baseStats 应该是 Common 品质的原始值）
     const base = { ...item.baseStats };
     
     // ✅ FIX: 第二步：先应用品质倍率（重铸不再修改 baseStats，而是通过品质倍率动态计算）
@@ -315,7 +318,8 @@ export class BlacksmithSystem {
       }
     }
     
-    // ✅ FIX: 第六步：应用宝石属性加成
+    // ✅ CRITICAL FIX: 第六步：应用宝石属性加成
+    // 宝石属性在品质倍率和强化倍率之后应用，提供固定数值加成（不参与倍率计算）
     const sockets = item.meta?.sockets;
     if (sockets && Array.isArray(sockets)) {
       for (const socket of sockets) {
@@ -331,7 +335,7 @@ export class BlacksmithSystem {
             if (gemEffect) {
               // 累加宝石属性
               for (const [statKey, statValue] of Object.entries(gemEffect)) {
-                // 跳过 infuseElement（这是机制属性，不是数值属性）
+                // 跳过 infuseElement（这是机制属性，不是数值属性，由 CombatSystem 处理）
                 if (statKey === 'infuseElement') continue;
                 
                 // 初始化属性（如果不存在）
@@ -339,8 +343,9 @@ export class BlacksmithSystem {
                   enhancedBase[statKey] = 0;
                 }
                 
-                // 累加属性值
+                // 累加属性值（宝石提供固定数值加成）
                 if (typeof statValue === 'number' && !isNaN(statValue)) {
+                  // 处理百分比属性（crit_rate, dodge, lifesteal 等）
                   if (statKey.includes('rate') || statKey.includes('dodge') || statKey.includes('pen') || statKey.includes('gold') || statKey.includes('lifesteal')) {
                     // 百分比属性保留2位小数
                     enhancedBase[statKey] = Math.round((enhancedBase[statKey] + statValue) * 100) / 100;
@@ -373,6 +378,9 @@ export class BlacksmithSystem {
       return;
     }
     
+    // ✅ CRITICAL FIX: baseStats 应该永远保持为 Common 品质的原始数值
+    // 重铸时不再修改 baseStats，而是通过品质倍率动态计算最终属性
+    
     // 获取品质倍率
     const quality = item.quality || 'COMMON';
     const qualityMultiplier = ITEM_QUALITY[quality]?.multiplier || 1.0;
@@ -393,7 +401,8 @@ export class BlacksmithSystem {
       }
     }
     
-    // ✅ FIX: 应用宝石属性加成
+    // ✅ CRITICAL FIX: 应用宝石属性加成
+    // 宝石属性在品质倍率和强化倍率之后应用，提供固定数值加成（不参与倍率计算）
     const sockets = item.meta?.sockets;
     if (sockets && Array.isArray(sockets)) {
       for (const socket of sockets) {
@@ -409,7 +418,7 @@ export class BlacksmithSystem {
             if (gemEffect) {
               // 累加宝石属性
               for (const [statKey, statValue] of Object.entries(gemEffect)) {
-                // 跳过 infuseElement（这是机制属性，不是数值属性）
+                // 跳过 infuseElement（这是机制属性，不是数值属性，由 CombatSystem 处理）
                 if (statKey === 'infuseElement') continue;
                 
                 // 初始化属性（如果不存在）
@@ -417,8 +426,9 @@ export class BlacksmithSystem {
                   item.stats[statKey] = 0;
                 }
                 
-                // 累加属性值
+                // 累加属性值（宝石提供固定数值加成）
                 if (typeof statValue === 'number' && !isNaN(statValue)) {
+                  // 处理百分比属性（crit_rate, dodge, lifesteal 等）
                   if (statKey.includes('rate') || statKey.includes('dodge') || statKey.includes('pen') || statKey.includes('gold') || statKey.includes('lifesteal')) {
                     // 百分比属性保留2位小数
                     item.stats[statKey] = Math.round((item.stats[statKey] + statValue) * 100) / 100;
@@ -711,6 +721,7 @@ export class BlacksmithSystem {
     
     // ✅ FIX: 使用 createStandardizedItem 创建标准物品对象，确保结构完整
     // 这样可以确保宝石对象具有所有必需的字段（如 meta 等），避免后续处理时出错
+    // 注意：createStandardizedItem 会生成新的 uid，避免与原有宝石实例冲突
     const gemItem = createStandardizedItem(gemDef, {
       level: 1,
       affixes: [],
