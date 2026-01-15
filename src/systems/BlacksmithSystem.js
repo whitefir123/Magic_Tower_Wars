@@ -137,14 +137,16 @@ export class BlacksmithSystem {
     // 重铸只影响最终计算结果，不修改存档数据
     // 品质倍率将在 recalculateDynamicItemStats 中动态计算
 
-    // 更新 Tier（根据新品质）
-    if (['LEGENDARY', 'MYTHIC'].includes(newQuality)) {
-      item.tier = 3;
-    } else if (['RARE', 'EPIC'].includes(newQuality)) {
-      item.tier = 2;
-    } else {
-      item.tier = 1;
-    }
+    // ✅ FIX: 优化 Tier 变更逻辑 - 重铸不应改变装备的阶级（Tier）
+    // 通常重铸只改变品质，不改变装备的阶级，除非这是游戏核心设定
+    // 注释掉以下代码，保持 tier 不变
+    // if (['LEGENDARY', 'MYTHIC'].includes(newQuality)) {
+    //   item.tier = 3;
+    // } else if (['RARE', 'EPIC'].includes(newQuality)) {
+    //   item.tier = 2;
+    // } else {
+    //   item.tier = 1;
+    // }
 
     // 重新计算属性
     this.recalculateStats(item);
@@ -509,9 +511,31 @@ export class BlacksmithSystem {
       return item;
     }
 
-    // 保存基础属性
+    // ✅ FIX: 修复属性初始化时的倍率二次叠加问题
+    // 如果 item.quality 不是 'COMMON'，在将 item.stats 复制给 item.baseStats 之前，
+    // 需要先除以当前品质的倍率，将属性还原为白装（Common）的基准值
     if (item.stats && !item.baseStats) {
-      item.baseStats = { ...item.stats };
+      const currentQuality = item.quality || 'COMMON';
+      const qualityMultiplier = ITEM_QUALITY[currentQuality]?.multiplier || 1.0;
+      
+      // 如果品质不是 COMMON 且倍率不为 1.0，需要先还原为基准值
+      if (currentQuality !== 'COMMON' && qualityMultiplier !== 1.0) {
+        item.baseStats = {};
+        for (const [stat, value] of Object.entries(item.stats)) {
+          // 将属性值除以品质倍率，还原为 Common 品质的基准值
+          // 使用 Math.round 处理精度，避免 Math.floor 带来的精度丢失
+          if (stat.includes('rate') || stat.includes('dodge') || stat.includes('pen') || stat.includes('gold') || stat.includes('lifesteal')) {
+            // 百分比属性保留2位小数
+            item.baseStats[stat] = Math.round((value / qualityMultiplier) * 100) / 100;
+          } else {
+            // 整数属性使用 Math.round 避免精度丢失
+            item.baseStats[stat] = Math.round(value / qualityMultiplier);
+          }
+        }
+      } else {
+        // 如果是 COMMON 品质或倍率为 1.0，直接复制
+        item.baseStats = { ...item.stats };
+      }
     }
 
     // 设置默认品质
@@ -664,7 +688,22 @@ export class BlacksmithSystem {
     inventory[gemIndex] = null;
 
     // ✅ FIX: 重新计算装备属性（应用宝石加成）
+    const statsBefore = item.stats ? { ...item.stats } : null;
     this.recalculateStats(item);
+    
+    // ✅ FIX: 增强代码健壮性 - 验证 recalculateStats 后 item.stats 确实发生变化
+    const statsAfter = item.stats || {};
+    const statsChanged = statsBefore ? 
+      Object.keys(statsAfter).some(key => statsAfter[key] !== statsBefore[key]) : 
+      Object.keys(statsAfter).length > 0;
+    
+    if (!statsChanged) {
+      console.warn('[BlacksmithSystem] socketGem: 警告 - 镶嵌宝石后属性未发生变化', {
+        socketIndex,
+        gemId: socket.gemId,
+        itemId: item.itemId || item.id
+      });
+    }
 
     const gemName = gemItem.nameZh || gemItem.name || '宝石';
     const itemName = this.getItemDisplayName(item);
@@ -730,11 +769,11 @@ export class BlacksmithSystem {
       sockets: null // 宝石不需要sockets
     });
     
-    // 尝试将宝石添加到背包
-    const inventory = player.inventory || [];
-    const emptySlot = inventory.findIndex(slot => slot === null);
+    // ✅ FIX: 修复拆除宝石的堆叠逻辑 - 使用 player.addToInventory 方法
+    // 不要手动查找 emptySlot 并赋值，使用标准方法确保堆叠逻辑正确
+    const added = player.addToInventory(gemItem);
     
-    if (emptySlot === -1) {
+    if (!added) {
       return { success: false, message: '背包已满，无法拆除宝石' };
     }
     
@@ -744,12 +783,24 @@ export class BlacksmithSystem {
     // 清空孔位
     socket.status = 'EMPTY';
     socket.gemId = null;
-    
-    // 将宝石添加到背包
-    inventory[emptySlot] = gemItem;
 
     // ✅ FIX: 重新计算装备属性（移除宝石加成）
+    const statsBefore = item.stats ? { ...item.stats } : null;
     this.recalculateStats(item);
+    
+    // ✅ FIX: 增强代码健壮性 - 验证 recalculateStats 后 item.stats 确实发生变化
+    const statsAfter = item.stats || {};
+    const statsChanged = statsBefore ? 
+      Object.keys(statsAfter).some(key => statsAfter[key] !== statsBefore[key]) : 
+      Object.keys(statsAfter).length > 0;
+    
+    if (!statsChanged) {
+      console.warn('[BlacksmithSystem] unsocketGem: 警告 - 拆除宝石后属性未发生变化', {
+        socketIndex,
+        gemId: gemId,
+        itemId: item.itemId || item.id
+      });
+    }
 
     const itemName = this.getItemDisplayName(item);
     const gemName = gemDef.nameZh || gemDef.name || '宝石';
