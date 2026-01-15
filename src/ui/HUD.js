@@ -244,37 +244,97 @@ export class HUD {
    * 动态创建 MP 条，插入到怒气条下方
    */
   createMpBar() {
+    console.log('[HUD] createMpBar 方法被调用');
+    
+    // 1. 找到锚点元素（怒气条区域）
     const rageSection = document.querySelector('.rage-section');
-    if (!rageSection || !rageSection.parentElement) return;
+    console.log('[HUD] 查找 .rage-section:', rageSection);
+    
+    // 2. 防止重复创建
+    if (document.getElementById('ui-mp')) {
+      console.log('[HUD] MP 条已存在，跳过创建');
+      return;
+    }
 
+    console.log('[HUD] 正在创建 MP 条...');
+
+    // 3. 创建主容器
     const mpRow = document.createElement('div');
-    mpRow.className = 'mp-section';
+    mpRow.className = 'mp-section'; // 对应 CSS 中的 .mp-section
     mpRow.id = 'ui-mp';
+    // 确保容器有明确的高度，防止内容为空时高度塌陷
+    mpRow.style.display = 'flex';
+    mpRow.style.flexDirection = 'column';
+    mpRow.style.minHeight = '20px'; // 确保有最小高度
 
+    // 4. 创建进度条背景容器
     const barContainer = document.createElement('div');
-    barContainer.className = 'bar-container';
+    barContainer.className = 'bar-container'; // 对应 CSS 中的 .bar-container (复用样式)
+    // 确保背景容器可见
+    barContainer.style.minHeight = '8px';
 
+    // 5. 创建进度条填充层
     const barFill = document.createElement('div');
     barFill.id = 'mp-fill';
-    barFill.className = 'bar-fill';
-    barFill.style.backgroundColor = '#3399FF';
-    barFill.style.width = '100%';
+    barFill.className = 'bar-fill'; 
+    // 初始样式，实际由 CSS 控制，这里仅做兜底
+    barFill.style.width = '0%'; 
+    barFill.style.height = '100%';
 
+    // 6. 创建文本显示
     const barText = document.createElement('div');
     barText.id = 'mp-text';
-    barText.className = 'bar-text';
-    barText.innerText = 'MP: 0/0 (+0.0)';
+    barText.className = 'bar-text'; // 对应 CSS 可选样式，主要靠 ID 样式
+    barText.innerText = 'MP: 0/0';
+    barText.style.textAlign = 'right'; // 确保文字靠右
+    barText.style.fontSize = '0.8rem';
+    barText.style.color = '#fff';
 
-    barContainer.appendChild(barFill);
-    barContainer.appendChild(barText);
-    mpRow.appendChild(barContainer);
+    // 7. 组装元素
+    barContainer.appendChild(barFill); // 填充层放入背景容器
+    mpRow.appendChild(barContainer);   // 背景容器放入主行
+    mpRow.appendChild(barText);        // 文本放入主行（在进度条下方）
 
-    // 严格插在怒气条下方
-    const parent = rageSection.parentElement;
-    if (rageSection.nextSibling) {
-      parent.insertBefore(mpRow, rageSection.nextSibling);
+    // 8. 插入到页面中 - 添加后备方案
+    let insertParent = null;
+    let insertBefore = null;
+    
+    if (rageSection && rageSection.parentNode) {
+      insertParent = rageSection.parentNode;
+      insertBefore = rageSection.nextSibling;
+      console.log('[HUD] 找到 .rage-section，将在其后插入 MP 条');
     } else {
-      parent.appendChild(mpRow);
+      // 后备方案1：尝试找到 hpSection
+      const hpSection = document.querySelector('.hp-section');
+      if (hpSection && hpSection.parentNode) {
+        insertParent = hpSection.parentNode;
+        insertBefore = hpSection.nextSibling;
+        console.log('[HUD] 未找到 .rage-section，使用 .hp-section 作为锚点');
+      } else {
+        // 后备方案2：尝试找到 rightSidebar
+        const rightSidebar = document.getElementById('right-sidebar');
+        if (rightSidebar) {
+          insertParent = rightSidebar;
+          insertBefore = null; // 插入到末尾
+          console.log('[HUD] 未找到 .rage-section 和 .hp-section，使用 #right-sidebar 作为锚点');
+        } else {
+          // 后备方案3：直接插入到 body（临时调试）
+          insertParent = document.body;
+          insertBefore = null;
+          console.warn('[HUD] 未找到任何合适的锚点，将 MP 条插入到 body（临时调试）');
+        }
+      }
+    }
+    
+    if (insertParent) {
+      if (insertBefore) {
+        insertParent.insertBefore(mpRow, insertBefore);
+      } else {
+        insertParent.appendChild(mpRow);
+      }
+      console.log('[HUD] MP 条创建成功并已插入 DOM，父元素:', insertParent);
+    } else {
+      console.error('[HUD] 无法插入 MP 条：找不到任何可用的父元素');
     }
   }
 

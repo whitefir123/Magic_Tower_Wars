@@ -1323,7 +1323,7 @@ export class Player extends Entity {
     super(1, 1);
     
     // Initialize stats from character config or use defaults
-    let baseStats = { hp: 100, maxHp: 100, p_atk: 15, p_def: 5, m_atk: 0, m_def: 0, rage: 0, mp: 0, maxMp: 0, mp_regen: 0, mp_on_hit: 0 };
+    let baseStats = { hp: 100, maxHp: 100, p_atk: 15, p_def: 5, m_atk: 0, m_def: 0, rage: 0, mp: 100, maxMp: 100, mp_regen: 0, mp_on_hit: 0 };
     if (charConfig && charConfig.stats) {
       baseStats = { ...charConfig.stats };
     }
