@@ -1931,10 +1931,8 @@ export class Player extends Entity {
         }
       }
       
-      // CRITICAL_MASTER (暴击大师): 增加暴击伤害
-      if (this.activeKeystones.includes('CRITICAL_MASTER')) {
-        total.crit_dmg += 0.5; // 增加50%暴击伤害
-      }
+      // ✅ FIX: CRITICAL_MASTER 的暴击伤害加成已通过 TalentData.js 中的 stats.crit_dmg 配置控制
+      // 不再需要硬编码判断，避免双重叠加
     }
     
     // ✅ 不屈堡垒：最终物防+20%（在所有计算完成后应用）
@@ -2556,11 +2554,11 @@ export class Player extends Entity {
     const hasBloodMagic = this.activeKeystones && Array.isArray(this.activeKeystones) && this.activeKeystones.includes('BLOOD_MAGIC');
     
     if (hasBloodMagic) {
-      // 血魔法：消耗当前生命值的10%
+      // 血魔法：消耗当前生命值的5%
       const totals = this.getTotalStats();
       const maxHp = totals.maxHp || this.stats.maxHp || 100;
       const currentHp = this.stats.hp || 0;
-      const hpCost = Math.max(1, Math.floor(currentHp * 0.1));
+      const hpCost = Math.max(1, Math.floor(currentHp * 0.05));
       
       if (currentHp <= hpCost) {
         // 生命不足，施法失败
@@ -2648,11 +2646,11 @@ export class Player extends Entity {
     const hasBloodMagic = this.activeKeystones && Array.isArray(this.activeKeystones) && this.activeKeystones.includes('BLOOD_MAGIC');
     
     if (hasBloodMagic) {
-      // 血魔法：消耗当前生命值的10%
+      // 血魔法：消耗当前生命值的5%
       const totals = this.getTotalStats();
       const maxHp = totals.maxHp || this.stats.maxHp || 100;
       const currentHp = this.stats.hp || 0;
-      const hpCost = Math.max(1, Math.floor(currentHp * 0.1));
+      const hpCost = Math.max(1, Math.floor(currentHp * 0.05));
       
       if (currentHp <= hpCost) {
         // 生命不足，施法失败
