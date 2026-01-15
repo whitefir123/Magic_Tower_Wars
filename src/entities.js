@@ -1943,11 +1943,21 @@ export class Player extends Entity {
     }
     
     // ✅ FIX: Calculate Crit Rate - 累加所有来源，而不是覆盖
-    // 公式：总暴击率 = 基础值 + 装备属性 + Buff + 符文 + 宝石
+    // 公式：总暴击率 = 基础值 + 装备属性 + this.stats（天赋加成）+ Buff + 符文 + 宝石
     let crit_rate = COMBAT_CONFIG.BASE_CRIT_RATE || 0.2; // Default 20% base crit rate
     
     // ✅ FIX: 累加装备提供的暴击率（在第二阶段已计算）
     crit_rate += equipmentCritRate;
+    
+    // ✅ FIX: 累加 this.stats.crit_rate（来自天赋的加成）
+    // 数值转换：如果是整数（>=1），则视为百分比并除以 100 转换为小数；如果是小数则直接使用
+    if (this.stats && this.stats.crit_rate !== undefined) {
+      const critRateValue = this.stats.crit_rate;
+      if (typeof critRateValue === 'number' && !isNaN(critRateValue)) {
+        const convertedValue = Math.abs(critRateValue) >= 1 ? critRateValue / 100 : critRateValue;
+        crit_rate += convertedValue;
+      }
+    }
     
     // If Berserk is active with stacks, set crit rate to 100% (覆盖所有其他来源)
     if (this.buffs && this.buffs.berserk && this.buffs.berserk.stacks > 0) {
@@ -1957,6 +1967,16 @@ export class Player extends Entity {
     // ✅ FIX: 累加而不是覆盖
     // 注意：total.dodge 已经在第一阶段通过 add() 累加了装备的 dodge，所以这里只需要设置 crit_rate
     total.crit_rate = crit_rate;
+    
+    // ✅ FIX: 累加 this.stats.dodge（来自天赋的加成）
+    // 数值转换：如果是整数（>=1），则视为百分比并除以 100 转换为小数；如果是小数则直接使用
+    if (this.stats && this.stats.dodge !== undefined) {
+      const dodgeValue = this.stats.dodge;
+      if (typeof dodgeValue === 'number' && !isNaN(dodgeValue)) {
+        const convertedValue = Math.abs(dodgeValue) >= 1 ? dodgeValue / 100 : dodgeValue;
+        total.dodge = (total.dodge || 0) + convertedValue;
+      }
+    }
     
     // ✅ 防御性检查：确保dodge值有效（防止NaN或无效值）
     if (isNaN(total.dodge) || total.dodge < 0) {

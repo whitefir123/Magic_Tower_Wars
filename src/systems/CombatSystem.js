@@ -316,10 +316,11 @@ export class CombatSystem {
           
           // 给予金币奖励（应用 gold_rate，已包含点石成金加成）
           if (g > 0) {
-            // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate（已包含点石成金的0.30加成）
+            // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate + GOLDEN_TOUCH 额外加成
             const attackerTotals = attacker.getTotalStats ? attacker.getTotalStats() : attacker.stats;
+            const hasGoldenTouch = attacker.activeKeystones && Array.isArray(attacker.activeKeystones) && attacker.activeKeystones.includes('GOLDEN_TOUCH');
             const goldRate = attackerTotals.gold_rate || 0;
-            const goldMult = 1 + goldRate;
+            const goldMult = 1 + goldRate + (hasGoldenTouch ? 0.3 : 0);
             const finalGold = Math.floor(g * goldMult);
             
             attacker.stats.gold = (attacker.stats.gold || 0) + finalGold;
@@ -464,10 +465,11 @@ export class CombatSystem {
                 const xp = entity.stats.xpYield || entity.stats.xp || 0;
                 
                 if (g > 0) {
-                  // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate（已包含点石成金的0.30加成）
+                  // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate + GOLDEN_TOUCH 额外加成
                   const sourceTotals = source.getTotalStats ? source.getTotalStats() : source.stats;
+                  const hasGoldenTouch = source.activeKeystones && Array.isArray(source.activeKeystones) && source.activeKeystones.includes('GOLDEN_TOUCH');
                   const goldRate = sourceTotals.gold_rate || 0;
-                  const goldMult = 1 + goldRate;
+                  const goldMult = 1 + goldRate + (hasGoldenTouch ? 0.3 : 0);
                   const finalGold = Math.floor(g * goldMult);
                   source.stats.gold = (source.stats.gold || 0) + finalGold;
                   if (game.settings && game.settings.showDamageNumbers !== false) {
@@ -622,10 +624,11 @@ export class CombatSystem {
               const xp = nearestEnemy.stats.xpYield || nearestEnemy.stats.xp || 0;
               
               if (g > 0) {
-                // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate（已包含点石成金的0.30加成）
+                // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate + GOLDEN_TOUCH 额外加成
                 const sourceTotals = source.getTotalStats ? source.getTotalStats() : source.stats;
+                const hasGoldenTouch = source.activeKeystones && Array.isArray(source.activeKeystones) && source.activeKeystones.includes('GOLDEN_TOUCH');
                 const goldRate = sourceTotals.gold_rate || 0;
-                const goldMult = 1 + goldRate;
+                const goldMult = 1 + goldRate + (hasGoldenTouch ? 0.3 : 0);
                 const finalGold = Math.floor(g * goldMult);
                 source.stats.gold = (source.stats.gold || 0) + finalGold;
                 // ✅ FIX: 优化飘字显示重叠 - 金币和XP使用不同的高度偏移
@@ -711,10 +714,11 @@ export class CombatSystem {
               const xp = entity.stats.xpYield || entity.stats.xp || 0;
               
               if (g > 0) {
-                // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate（已包含点石成金的0.30加成）
+                // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate + GOLDEN_TOUCH 额外加成
                 const sourceTotals = source.getTotalStats ? source.getTotalStats() : source.stats;
+                const hasGoldenTouch = source.activeKeystones && Array.isArray(source.activeKeystones) && source.activeKeystones.includes('GOLDEN_TOUCH');
                 const goldRate = sourceTotals.gold_rate || 0;
-                const goldMult = 1 + goldRate;
+                const goldMult = 1 + goldRate + (hasGoldenTouch ? 0.3 : 0);
                 const finalGold = Math.floor(g * goldMult);
                 source.stats.gold = (source.stats.gold || 0) + finalGold;
                 if (game.settings && game.settings.showDamageNumbers !== false) {
@@ -2236,10 +2240,11 @@ export class CombatSystem {
         
         // ✅ FIX: 优化飘字显示重叠 - 金币和XP使用不同的高度偏移
         if (g > 0) {
-          // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate（已包含点石成金的0.30加成）
+          // ✅ 计算金币倍率：基础倍率 + 天赋 gold_rate + GOLDEN_TOUCH 额外加成
           const playerTotals = player.getTotalStats ? player.getTotalStats() : player.stats;
+          const hasGoldenTouch = player.activeKeystones && Array.isArray(player.activeKeystones) && player.activeKeystones.includes('GOLDEN_TOUCH');
           const goldRate = playerTotals.gold_rate || 0;
-          const goldMult = 1 + goldRate;
+          const goldMult = 1 + goldRate + (hasGoldenTouch ? 0.3 : 0);
           const finalGold = Math.floor(g * goldMult);
           player.stats.gold = (player.stats.gold || 0) + finalGold;
           if (game.settings && game.settings.showDamageNumbers !== false) {
