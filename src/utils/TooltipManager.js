@@ -150,8 +150,10 @@ export class TooltipManager {
     }
     
     // 显示描述（包括 Jackpot 等特殊标记）
-    if (item.description) {
-      content += `<div class="tt-desc">${item.description}</div>`;
+    // 优先使用中文描述 descZh，其次是 desc，最后是 description
+    const description = item.descZh || item.desc || item.description;
+    if (description) {
+      content += `<div class="tt-desc">${description}</div>`;
     }
     
     // ✅ v2.0: 显示词缀信息（改进版，支持特殊词缀描述）

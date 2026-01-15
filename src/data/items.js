@@ -270,6 +270,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { p_atk: 3 }, 
     iconIndex: 0,
+    descZh: '一把布满锈迹的铁剑，虽然不再锋利，但勉强还能用来防身。',
     dropWeight: 100
   },
   WEAPON_IRON_T2: { 
@@ -281,6 +282,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { p_atk: 7 }, 
     iconIndex: 0,
+    descZh: '由精钢锻造而成的利剑，剑身光亮，削铁如泥。',
     dropWeight: 50
   },
   WEAPON_IRON_T3: { 
@@ -292,6 +294,7 @@ export const EQUIPMENT_DB = {
     rarity: 'EPIC', 
     stats: { p_atk: 12 }, 
     iconIndex: 0,
+    descZh: '传说中勇者曾经使用过的佩剑，剑身散发着令人敬畏的气息。',
     dropWeight: 10
   },
   
@@ -305,6 +308,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { p_atk: 2, crit_rate: 0.05 }, 
     iconIndex: 1,
+    descZh: '古老的青铜剑，虽然材质不如钢铁坚硬，但轻盈易舞。',
     dropWeight: 100
   },
   WEAPON_GOLDEN_T2: { 
@@ -316,6 +320,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { p_atk: 5, crit_rate: 0.10 }, 
     iconIndex: 1,
+    descZh: '通体由黄金打造的华丽长剑，不仅贵重，而且致命。',
     dropWeight: 50
   },
   WEAPON_GOLDEN_T3: { 
@@ -327,6 +332,7 @@ export const EQUIPMENT_DB = {
     rarity: 'LEGENDARY', 
     stats: { p_atk: 9, crit_rate: 0.20 }, 
     iconIndex: 1,
+    descZh: '传说中的王者之剑，只有天选之人才能发挥出它的全部力量。',
     dropWeight: 10
   },
   
@@ -340,6 +346,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { m_atk: 3 }, 
     iconIndex: 2,
+    descZh: '一根普通的橡木手杖，能够微弱地引导魔法能量。',
     dropWeight: 100
   },
   WEAPON_STAFF_T2: { 
@@ -351,6 +358,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { m_atk: 7 }, 
     iconIndex: 2,
+    descZh: '镶嵌着低阶魔晶的法杖，是正式法师的标准装备。',
     dropWeight: 50
   },
   WEAPON_STAFF_T3: { 
@@ -362,6 +370,7 @@ export const EQUIPMENT_DB = {
     rarity: 'EPIC', 
     stats: { m_atk: 12 }, 
     iconIndex: 2,
+    descZh: '大法师生前使用的法杖，蕴含着狂暴的奥术能量。',
     dropWeight: 10
   },
   
@@ -375,6 +384,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { p_atk: 2, m_atk: 1, armor_pen: 0.05 }, 
     iconIndex: 3,
+    descZh: '原本是农具，但在绝望中也被当作武器使用。',
     dropWeight: 100
   },
   WEAPON_SICKLE_T2: { 
@@ -386,6 +396,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { p_atk: 4, m_atk: 3, armor_pen: 0.10 }, 
     iconIndex: 3,
+    descZh: '为了收割生命而特制的镰刀，刀刃呈现出不祥的暗红色。',
     dropWeight: 50
   },
   WEAPON_SICKLE_T3: { 
@@ -397,6 +408,7 @@ export const EQUIPMENT_DB = {
     rarity: 'LEGENDARY', 
     stats: { p_atk: 7, m_atk: 6, armor_pen: 0.20 }, 
     iconIndex: 3,
+    descZh: '仿佛死神手中的凶器，能够轻易撕裂敌人的灵魂与肉体。',
     dropWeight: 10
   },
 
@@ -411,6 +423,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { p_def: 2, dodge: 0.05 }, 
     iconIndex: 4,
+    descZh: '用粗糙兽皮缝制的简易护甲，虽然防护有限，但胜在轻便灵活。',
     dropWeight: 100
   },
   ARMOR_LEATHER_T2: { 
@@ -422,6 +435,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { p_def: 5, dodge: 0.10 }, 
     iconIndex: 4,
+    descZh: '经过特殊工艺硬化处理的皮甲，关键部位镶嵌了金属片。',
     dropWeight: 50
   },
   ARMOR_LEATHER_T3: { 
@@ -433,6 +447,7 @@ export const EQUIPMENT_DB = {
     rarity: 'EPIC', 
     stats: { p_def: 8, dodge: 0.15 }, 
     iconIndex: 4,
+    descZh: '融入了暗影魔法的皮甲，穿戴者仿佛与阴影融为一体，难以被击中。',
     dropWeight: 10
   },
   
@@ -446,6 +461,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { p_def: 3, maxHp: 20 }, 
     iconIndex: 5,
+    descZh: '由细小的铁环编织而成的铠甲，能够有效抵挡利刃的劈砍。',
     dropWeight: 100
   },
   ARMOR_CHAIN_T2: { 
@@ -457,6 +473,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { p_def: 6, maxHp: 50 }, 
     iconIndex: 5,
+    descZh: '使用了多层编织工艺的重型锁甲，虽然沉重，但提供了极佳的防护。',
     dropWeight: 50
   },
   ARMOR_CHAIN_T3: { 
@@ -468,6 +485,7 @@ export const EQUIPMENT_DB = {
     rarity: 'LEGENDARY', 
     stats: { p_def: 10, maxHp: 100 }, 
     iconIndex: 5,
+    descZh: '传说由巨人打造的锁甲，每一个铁环都蕴含着大地之力，大幅提升穿戴者的体质。',
     dropWeight: 10
   },
   
@@ -481,6 +499,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { p_def: 4 }, 
     iconIndex: 6,
+    descZh: '标准的步兵板甲，厚实的铁板提供了可靠的物理防御。',
     dropWeight: 100
   },
   ARMOR_OBSIDIAN_T2: { 
@@ -492,6 +511,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { p_def: 8 }, 
     iconIndex: 6,
+    descZh: '骑士阶层专用的精钢板甲，表面经过抛光处理，坚固而美观。',
     dropWeight: 50
   },
   ARMOR_OBSIDIAN_T3: { 
@@ -503,6 +523,7 @@ export const EQUIPMENT_DB = {
     rarity: 'LEGENDARY', 
     stats: { p_def: 12 }, 
     iconIndex: 6,
+    descZh: '由稀有的黑曜石打造而成的全身甲，几乎能免疫所有普通的物理攻击。',
     dropWeight: 10
   },
   
@@ -516,6 +537,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { p_def: 1, m_atk: 2 }, 
     iconIndex: 7,
+    descZh: '魔法学徒穿着的长袍，布料粗糙，只能提供微弱的魔法亲和力。',
     dropWeight: 100
   },
   ARMOR_ROBE_T2: { 
@@ -527,6 +549,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { p_def: 3, m_atk: 5 }, 
     iconIndex: 7,
+    descZh: '正式法师的制式法袍，袖口和领口绣有魔力符文，能增强施法效果。',
     dropWeight: 50
   },
   ARMOR_ROBE_T3: { 
@@ -538,6 +561,7 @@ export const EQUIPMENT_DB = {
     rarity: 'EPIC', 
     stats: { p_def: 5, m_atk: 9 }, 
     iconIndex: 7,
+    descZh: '大法师的法袍，布料本身就由魔法丝线织成，能源源不断地汇聚元素能量。',
     dropWeight: 10
   },
 
@@ -552,6 +576,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { p_def: 2 }, 
     iconIndex: 8,
+    descZh: '普通的铁制头盔，能保护头部免受重击。',
     dropWeight: 100
   },
   HELM_IRON_T2: { 
@@ -563,6 +588,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { p_def: 4 }, 
     iconIndex: 8,
+    descZh: '精钢打造的全覆式头盔，提供了全方位的头部防护。',
     dropWeight: 50
   },
   HELM_IRON_T3: { 
@@ -574,6 +600,7 @@ export const EQUIPMENT_DB = {
     rarity: 'EPIC', 
     stats: { p_def: 6 }, 
     iconIndex: 8,
+    descZh: '拥有泰坦神力的头盔，据说戴上它的人会变得力大无穷。',
     dropWeight: 10
   },
   
@@ -587,6 +614,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { p_def: 1, gold: 0.10 }, 
     iconIndex: 9,
+    descZh: '古老的青铜头冠，虽然有些氧化，但依然能彰显佩戴者的身份。',
     dropWeight: 100
   },
   HELM_CROWN_T2: { 
@@ -598,6 +626,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { p_def: 2, gold: 0.20, maxMp: 20 }, 
     iconIndex: 9,
+    descZh: '纯金打造的皇冠，镶嵌着细小的宝石，象征着财富与地位。',
     dropWeight: 50
   },
   HELM_CROWN_T3: { 
@@ -609,6 +638,7 @@ export const EQUIPMENT_DB = {
     rarity: 'LEGENDARY', 
     stats: { p_def: 3, gold: 0.30, maxMp: 50 }, 
     iconIndex: 9,
+    descZh: '曾经统治大陆的王者所佩戴的皇冠，不仅价值连城，更蕴含着统御万物的魔力。',
     dropWeight: 10
   },
 
@@ -623,6 +653,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { p_def: 1, dodge: 0.05 }, 
     iconIndex: 10,
+    descZh: '普通的布鞋，走起路来悄无声息，适合潜行。',
     dropWeight: 100
   },
   BOOTS_CLOTH_T2: { 
@@ -634,6 +665,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { p_def: 2, dodge: 0.10 }, 
     iconIndex: 10,
+    descZh: '为了追求极致的速度而设计的靴子，穿上它感觉身轻如燕。',
     dropWeight: 50
   },
   BOOTS_CLOTH_T3: { 
@@ -645,6 +677,7 @@ export const EQUIPMENT_DB = {
     rarity: 'EPIC', 
     stats: { p_def: 3, dodge: 0.15 }, 
     iconIndex: 10,
+    descZh: '融入了暗影魔法的靴子，让穿戴者在移动时如同鬼魅一般。',
     dropWeight: 10
   },
   
@@ -658,6 +691,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { p_def: 2 }, 
     iconIndex: 11,
+    descZh: '厚重的铁靴，虽然牺牲了速度，但提供了可靠的足部防护。',
     dropWeight: 100
   },
   BOOTS_IRON_T2: { 
@@ -669,6 +703,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { p_def: 4 }, 
     iconIndex: 11,
+    descZh: '精钢打造的战靴，配有防滑钉，适合各种地形作战。',
     dropWeight: 50
   },
   BOOTS_IRON_T3: { 
@@ -680,6 +715,7 @@ export const EQUIPMENT_DB = {
     rarity: 'EPIC', 
     stats: { p_def: 6 }, 
     iconIndex: 11,
+    descZh: '仿佛泰坦巨人的战靴，每一步踏下都令大地为之震颤。',
     dropWeight: 10
   },
 
@@ -694,6 +730,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { p_atk: 2 }, 
     iconIndex: 12,
+    descZh: '简单的青铜手镯，刻有原始的力量符文。',
     dropWeight: 100
   },
   RING_BRACELET_T2: { 
@@ -705,6 +742,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { p_atk: 5 }, 
     iconIndex: 12,
+    descZh: '沉重的铁制手镯，常被角斗士用来增加挥拳的力度。',
     dropWeight: 50
   },
   RING_BRACELET_T3: { 
@@ -716,6 +754,7 @@ export const EQUIPMENT_DB = {
     rarity: 'EPIC', 
     stats: { p_atk: 8 }, 
     iconIndex: 12,
+    descZh: '只有最强大的战士才有资格佩戴的手镯，象征着无尽的斗志。',
     dropWeight: 10
   },
   
@@ -729,6 +768,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { m_atk: 2 }, 
     iconIndex: 15,
+    descZh: '普通的铜戒指，稍微能储存一点魔力。',
     dropWeight: 100
   },
   RING_EMERALD_T2: { 
@@ -740,6 +780,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { m_atk: 5 }, 
     iconIndex: 15,
+    descZh: '镶嵌着绿宝石的戒指，魔力在其中流动顺畅。',
     dropWeight: 50
   },
   RING_EMERALD_T3: { 
@@ -751,6 +792,7 @@ export const EQUIPMENT_DB = {
     rarity: 'LEGENDARY', 
     stats: { m_atk: 8 }, 
     iconIndex: 15,
+    descZh: '大法师的私人藏品，蕴含着浩瀚的魔力，能大幅增强法术威力。',
     dropWeight: 10
   },
 
@@ -765,6 +807,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { maxHp: 15 }, 
     iconIndex: 13,
+    descZh: '廉价的护身符，据说能保佑平安。',
     dropWeight: 100
   },
   AMULET_RUBY_T2: { 
@@ -776,6 +819,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { maxHp: 40 }, 
     iconIndex: 13,
+    descZh: '鲜红如血的红宝石护符，散发着旺盛的生命力。',
     dropWeight: 50
   },
   AMULET_RUBY_T3: { 
@@ -787,6 +831,7 @@ export const EQUIPMENT_DB = {
     rarity: 'EPIC', 
     stats: { maxHp: 80 }, 
     iconIndex: 13,
+    descZh: '传说中用生命之树的枝干雕刻而成的护符，拥有起死回生的力量。',
     dropWeight: 10
   },
   
@@ -800,6 +845,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     stats: { p_atk: 1, m_atk: 1 }, 
     iconIndex: 14,
+    descZh: '用不知名生物的骨头打磨成的吊坠，看起来有点诡异。',
     dropWeight: 100
   },
   AMULET_BONE_T2: { 
@@ -811,6 +857,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     stats: { p_atk: 3, m_atk: 3 }, 
     iconIndex: 14,
+    descZh: '来自远古巨兽的骨骼碎片，依然残留着强大的原始力量。',
     dropWeight: 50
   },
   AMULET_BONE_T3: { 
@@ -822,6 +869,7 @@ export const EQUIPMENT_DB = {
     rarity: 'LEGENDARY', 
     stats: { p_atk: 5, m_atk: 5 }, 
     iconIndex: 14,
+    descZh: '巫妖的命匣，封印着不朽的灵魂与力量，散发着令人胆寒的死气。',
     dropWeight: 10
   },
   
@@ -836,6 +884,7 @@ export const EQUIPMENT_DB = {
     stats: { fovRadius: 2 }, 
     iconIndex: 3, 
     desc: '增加视野范围+2',
+    descZh: '散发着永恒光芒的魔法灯笼，能够驱散黑暗，照亮前行的道路。',
     dropWeight: 50
   },
 
@@ -848,6 +897,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     iconIndex: 0,
     maxStack: 99,
+    descZh: '一瓶红色的小药水，喝下去后能快速愈合伤口。',
     effect: { kind: 'heal', amount: 50 } 
   },
   POTION_RAGE: { 
@@ -858,6 +908,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     iconIndex: 1,
     maxStack: 99,
+    descZh: '这瓶药水剧烈沸腾着，饮用后会让人感到热血沸腾，充满斗志。',
     effect: { kind: 'rage', amount: 20 } 
   },
   SCROLL_XP: { 
@@ -868,6 +919,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     iconIndex: 4,
     maxStack: 99,
+    descZh: '记载着古代英雄战斗技巧的卷轴，阅读后能获得宝贵的经验。',
     effect: { kind: 'xp', amount: 10 } 
   },
   SCROLL_FIRE: { 
@@ -898,6 +950,7 @@ export const EQUIPMENT_DB = {
     tier: 1,
     rarity: 'COMMON',
     iconIndex: 0, // 第0列，第0行
+    descZh: '碎裂的红宝石，散发着微弱的温热。',
     gemEffects: {
       weapon: { p_atk: 2 },
       armor: { p_def: 2, maxHp: 2 }
@@ -912,6 +965,7 @@ export const EQUIPMENT_DB = {
     tier: 2,
     rarity: 'RARE',
     iconIndex: 5, // 第0列，第1行 (col + row * 5)
+    descZh: '完整的红宝石，内部燃烧着火焰。',
     gemEffects: {
       weapon: { p_atk: 5 },
       armor: { p_def: 5, maxHp: 5 }
@@ -926,6 +980,7 @@ export const EQUIPMENT_DB = {
     tier: 3,
     rarity: 'EPIC',
     iconIndex: 10, // 第0列，第2行
+    descZh: '无瑕的红宝石，仿佛凝固的熔岩，晶莹剔透。',
     gemEffects: {
       weapon: { p_atk: 10, infuseElement: 'PYRO' },
       armor: { p_def: 10, maxHp: 10 }
@@ -940,6 +995,7 @@ export const EQUIPMENT_DB = {
     tier: 4,
     rarity: 'LEGENDARY',
     iconIndex: 15, // 第0列，第3行
+    descZh: '完美红宝石，蕴含着永不熄灭的烈火，是火元素的结晶。',
     gemEffects: {
       weapon: { p_atk: 20, infuseElement: 'PYRO', crit_rate: 0.05 },
       armor: { p_def: 20, maxHp: 20, p_atk: 5 }
@@ -956,6 +1012,7 @@ export const EQUIPMENT_DB = {
     tier: 1,
     rarity: 'COMMON',
     iconIndex: 1, // 第1列，第0行
+    descZh: '碎裂的蓝宝石，摸起来有点凉。',
     gemEffects: {
       weapon: { m_atk: 2 },
       armor: { m_def: 2, maxHp: 2 }
@@ -970,6 +1027,7 @@ export const EQUIPMENT_DB = {
     tier: 2,
     rarity: 'RARE',
     iconIndex: 6, // 第1列，第1行
+    descZh: '完整的蓝宝石，像深邃的湖水一样平静。',
     gemEffects: {
       weapon: { m_atk: 5 },
       armor: { m_def: 5, maxHp: 5 }
@@ -984,6 +1042,7 @@ export const EQUIPMENT_DB = {
     tier: 3,
     rarity: 'EPIC',
     iconIndex: 11, // 第1列，第2行
+    descZh: '无瑕的蓝宝石，散发着刺骨的寒气。',
     gemEffects: {
       weapon: { m_atk: 10, infuseElement: 'CRYO' },
       armor: { m_def: 10, maxHp: 10 }
@@ -998,6 +1057,7 @@ export const EQUIPMENT_DB = {
     tier: 4,
     rarity: 'LEGENDARY',
     iconIndex: 16, // 第1列，第3行
+    descZh: '完美蓝宝石，凝结了极北之地的万年寒冰。',
     gemEffects: {
       weapon: { m_atk: 20, infuseElement: 'CRYO', crit_rate: 0.05 },
       armor: { m_def: 20, maxHp: 20, m_atk: 5 }
@@ -1014,6 +1074,7 @@ export const EQUIPMENT_DB = {
     tier: 1,
     rarity: 'COMMON',
     iconIndex: 2, // 第2列，第0行
+    descZh: '碎裂的黄宝石，偶尔会冒出电火花。',
     gemEffects: {
       weapon: { p_atk: 1, m_atk: 1 },
       armor: { p_def: 1, m_def: 1, maxHp: 2 }
@@ -1028,6 +1089,7 @@ export const EQUIPMENT_DB = {
     tier: 2,
     rarity: 'RARE',
     iconIndex: 7, // 第2列，第1行
+    descZh: '完整的黄宝石，蕴含着活跃的雷电能量。',
     gemEffects: {
       weapon: { p_atk: 3, m_atk: 2 },
       armor: { p_def: 3, m_def: 2, maxHp: 5 }
@@ -1042,6 +1104,7 @@ export const EQUIPMENT_DB = {
     tier: 3,
     rarity: 'EPIC',
     iconIndex: 12, // 第2列，第2行
+    descZh: '无瑕的黄宝石，雷光在内部不断闪烁。',
     gemEffects: {
       weapon: { p_atk: 5, m_atk: 5, infuseElement: 'ELECTRO' },
       armor: { p_def: 5, m_def: 5, maxHp: 10 }
@@ -1056,6 +1119,7 @@ export const EQUIPMENT_DB = {
     tier: 4,
     rarity: 'LEGENDARY',
     iconIndex: 17, // 第2列，第3行
+    descZh: '完美黄宝石，仿佛握住了一道闪电，充满了毁灭性的力量。',
     gemEffects: {
       weapon: { p_atk: 10, m_atk: 10, infuseElement: 'ELECTRO', crit_rate: 0.05 },
       armor: { p_def: 10, m_def: 10, maxHp: 20, p_atk: 3, m_atk: 2 }
@@ -1072,6 +1136,7 @@ export const EQUIPMENT_DB = {
     tier: 1,
     rarity: 'COMMON',
     iconIndex: 3, // 第3列，第0行
+    descZh: '碎裂的绿宝石，颜色有些浑浊。',
     gemEffects: {
       weapon: { p_atk: 2 },
       armor: { p_def: 2, maxHp: 2 }
@@ -1086,6 +1151,7 @@ export const EQUIPMENT_DB = {
     tier: 2,
     rarity: 'RARE',
     iconIndex: 8, // 第3列，第1行
+    descZh: '完整的绿宝石，散发着诡异的绿色光芒。',
     gemEffects: {
       weapon: { p_atk: 5 },
       armor: { p_def: 5, maxHp: 5 }
@@ -1100,6 +1166,7 @@ export const EQUIPMENT_DB = {
     tier: 3,
     rarity: 'EPIC',
     iconIndex: 13, // 第3列，第2行
+    descZh: '无瑕的绿宝石，蕴含着剧毒的力量，令人不寒而栗。',
     gemEffects: {
       weapon: { p_atk: 10, infuseElement: 'POISON' },
       armor: { p_def: 10, maxHp: 10 }
@@ -1114,6 +1181,7 @@ export const EQUIPMENT_DB = {
     tier: 4,
     rarity: 'LEGENDARY',
     iconIndex: 18, // 第3列，第3行
+    descZh: '完美绿宝石，连光线照射进去都会被腐蚀，是毒元素的极致。',
     gemEffects: {
       weapon: { p_atk: 20, infuseElement: 'POISON', crit_rate: 0.05 },
       armor: { p_def: 20, maxHp: 20, p_atk: 5 }
@@ -1130,6 +1198,7 @@ export const EQUIPMENT_DB = {
     tier: 1,
     rarity: 'COMMON',
     iconIndex: 4, // 第4列，第0行
+    descZh: '碎裂的钻石，依然十分坚硬。',
     gemEffects: {
       weapon: { p_atk: 2 },
       armor: { p_def: 2, maxHp: 2 }
@@ -1144,6 +1213,7 @@ export const EQUIPMENT_DB = {
     tier: 2,
     rarity: 'RARE',
     iconIndex: 9, // 第4列，第1行
+    descZh: '完整的钻石，光彩夺目，坚硬无比。',
     gemEffects: {
       weapon: { p_atk: 5 },
       armor: { p_def: 5, maxHp: 5 }
@@ -1158,6 +1228,7 @@ export const EQUIPMENT_DB = {
     tier: 3,
     rarity: 'EPIC',
     iconIndex: 14, // 第4列，第2行
+    descZh: '无瑕的钻石，没有任何杂质，纯净无比。',
     gemEffects: {
       weapon: { p_atk: 10, infuseElement: 'PHYSICAL' },
       armor: { p_def: 10, maxHp: 10 }
@@ -1172,6 +1243,7 @@ export const EQUIPMENT_DB = {
     tier: 4,
     rarity: 'LEGENDARY',
     iconIndex: 19, // 第4列，第3行
+    descZh: '完美钻石，世界上最坚硬的物质，无坚不摧。',
     gemEffects: {
       weapon: { p_atk: 20, infuseElement: 'PHYSICAL', crit_rate: 0.05 },
       armor: { p_def: 20, maxHp: 20, p_atk: 5 }
