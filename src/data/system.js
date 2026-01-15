@@ -42,6 +42,28 @@ export const FORGE_CONFIG = {
 };
 
 // Gamble Configuration - 赌博配置（赌徒NPC）
+export const GAMBLER_CONFIG = {
+  // Jackpot 配置
+  JACKPOT: {
+    CHANCE: 0.001,           // 0.1% 概率中大奖
+    CONTRIBUTION_RATE: 0.1,  // 每次旋转费用的 10% 进入奖池
+    BASE_POOL: 1000,         // 基础奖池金币
+    MIN_POOL: 500            // 奖池被领空后的重置下限
+  },
+  // 保底机制 (Pity System)
+  PITY: {
+    THRESHOLD_STANDARD: 8,   // 标准场连续 8 次未出稀有以上触发保底
+    THRESHOLD_HIGH_ROLLER: 4,// 豪赌场连续 4 次未出稀有以上触发保底
+  },
+  // 奖励类型权重 (总和 100)
+  REWARD_WEIGHTS: {
+    EQUIPMENT: 65,    // 65% 装备
+    CONSUMABLE: 25,   // 25% 消耗品
+    BUFF: 8,          // 8% 临时 Buff
+    SOUL_CRYSTAL: 2   // 2% 灵魂水晶 (仅在高品质时生效)
+  }
+};
+
 export const GAMBLE_TIERS = {
   STANDARD: {
     id: 'STANDARD',
