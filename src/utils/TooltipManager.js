@@ -310,7 +310,8 @@ export class TooltipManager {
         case 'fire': effText = `造成 ${eff.amount || 0} 伤害`; break;
         default: effText = '使用物品'; break;
       }
-      content += `<div class="tt-stat">${effText}</div>`;
+      // ✅ 消耗品效果：深灰色
+      content += `<div class="tt-stat" style="color: #333333;">${effText}</div>`;
     } else {
       // ✅ V2.0: 装备属性 - 改进显示格式，区分底材和词缀加成
       const statsToShow = item.stats || {};

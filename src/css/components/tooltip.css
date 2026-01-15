@@ -47,37 +47,42 @@
 }
 
 #tooltip .tt-name { 
-  color:#ffd700; 
+  color: #b71c1c; /* 默认深红色，具体由JS覆盖 */
   font-family: var(--font-header); 
   margin-bottom:6px; 
-  font-size:1.05rem; 
+  font-size:1.1rem; 
+  font-weight: bold;
+  text-shadow: none;
+  padding-left: 8px; /* 整体右移 */
 }
 
 #tooltip .tt-type { 
-  color:#aaa; 
+  color: #8d6e63; /* 浅棕色 */
   font-family: var(--font-body); 
   margin-bottom:4px; 
   font-size:0.85rem; 
+  padding-left: 8px; /* 整体右移 */
 }
 
 #tooltip .tt-stat { 
-  color:#fff; 
+  color: #5d4037; /* 深棕色 */
+  padding-left: 8px; /* 整体右移 */
 }
 
 /* ✅ V2.0: 属性显示格式样式 */
 #tooltip .tt-stat .val-main {
-  color: #ffd700; /* 主数值高亮颜色 */
+  color: #e65100; /* 主数值：深橙色 */
   font-weight: bold;
 }
 
 #tooltip .tt-stat .val-sub {
-  color: #aaa; /* 副说明颜色（更暗） */
+  color: #8d6e63; /* 副说明：浅棕色 */
   font-size: 0.85em; /* 字体更小 */
   margin-left: 4px;
 }
 
 #tooltip .tt-stat .val-bonus {
-  color: #00ffff; /* 词缀加成颜色（青色） */
+  color: #006064; /* 词缀加成：深青色 */
   font-weight: normal;
 }
 
@@ -85,36 +90,38 @@
 #tooltip .tt-affix {
   margin-top: 4px;
   font-size: 0.9em;
+  padding-left: 8px; /* 整体右移 */
 }
 
 #tooltip .tt-affix.tt-prefix {
-  color: #4a9eff; /* 前缀：蓝色 */
+  color: #0277bd; /* 前缀：深蓝色 */
 }
 
 #tooltip .tt-affix.tt-suffix {
-  color: #ff6b9d; /* 后缀：粉色 */
+  color: #ad1457; /* 后缀：深粉色 */
 }
 
 /* ✅ v2.0: 传奇特效样式（暗金色，醒目） */
 #tooltip .tt-unique-effect {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 2px solid #8b7355;
-  border-bottom: 2px solid #8b7355;
+  border-top: 2px solid #8d6e63;
+  border-bottom: 2px solid #8d6e63;
   padding-bottom: 8px;
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(139, 115, 85, 0.05) 100%);
+  background: rgba(141, 110, 99, 0.1);
+  padding-left: 8px; /* 整体右移 */
 }
 
 #tooltip .tt-unique-title {
-  color: #d4af37; /* 暗金色 */
+  color: #827717; /* 深暗金色 */
   font-weight: bold;
   font-size: 1.05em;
   margin-bottom: 4px;
-  text-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
+  text-shadow: none;
 }
 
 #tooltip .tt-unique-desc {
-  color: #ffd700; /* 金色 */
+  color: #e65100; /* 深橙色 */
   font-size: 0.9em;
   line-height: 1.4;
   margin-top: 4px;
@@ -124,12 +131,13 @@
 #tooltip .tt-set-info {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 2px solid #8b7355;
+  border-top: 2px solid #8d6e63;
   font-size: 0.9em;
+  padding-left: 8px; /* 整体右移 */
 }
 
 #tooltip .tt-set-header {
-  color: #ffd700;
+  color: #e65100; /* 深橙色 */
   font-weight: bold;
   font-size: 1.0em;
   margin-bottom: 8px;
@@ -142,12 +150,13 @@
 }
 
 #tooltip .tt-set-effect-active {
-  color: #00ff00; /* 已激活：绿色 */
+  color: #1b5e20; /* 已激活：深绿色 */
+  font-weight: bold;
 }
 
 #tooltip .tt-set-effect-inactive {
-  color: #888; /* 未激活：灰色 */
-  opacity: 0.6;
+  color: #a1887f; /* 未激活：浅棕灰色 */
+  opacity: 0.8;
 }
 
 #tooltip .tt-set-piece-count {
@@ -157,6 +166,28 @@
 
 #tooltip .tt-set-effect-text {
   color: inherit;
+}
+
+/* ✅ 补充：其他物品属性类 */
+#tooltip .tt-quality {
+  padding-left: 8px;
+}
+
+#tooltip .tt-enhance {
+  padding-left: 8px;
+}
+
+#tooltip .tt-ipower {
+  padding-left: 8px;
+}
+
+#tooltip .tt-desc {
+  color: #5d4037; /* 深棕色 */
+  padding-left: 8px;
+}
+
+#tooltip .tt-sockets {
+  padding-left: 8px;
 }
 
 /**
