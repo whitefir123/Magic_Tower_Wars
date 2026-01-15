@@ -776,8 +776,16 @@ export class QuestSystem {
   getQuestData() {
     // 自定义任务定义集合（以 questId 去重）
     const customQuestDefinitionMap = new Map();
+    // 新字段：用于持久化「楼层动态任务」的完整定义（包含 objectives 当前进度等）
+    // 仅针对 category === 'FLOOR' 的任务，避免无谓膨胀存档体积
+    const dynamicQuestDefinitions = {};
 
     const activeQuests = Array.from(this.activeQuests.entries()).map(([questId, questData]) => {
+      // 需求：如果是动态生成的楼层任务，把完整 questData 存到 dynamicQuestDefinitions
+      if (questData && questData.category === 'FLOOR') {
+        dynamicQuestDefinitions[questId] = JSON.parse(JSON.stringify(questData));
+      }
+
       // 判断是否为动态任务：
       // - ID 不在初始静态 QUEST_DATABASE 中
       // - 或者分类为 FLOOR / DAILY（运行时生成）
@@ -875,6 +883,8 @@ export class QuestSystem {
       floorQuests: Array.from(this.floorQuests.entries()),
       // 保存本局游戏的随机种子，保证读档后随机任务一致
       gameSeed: this.gameSeed,
+      // 新字段：楼层动态任务完整定义（用于修复读档后任务ID查找失败/定义丢失）
+      dynamicQuestDefinitions,
       // 新字段：自定义任务定义（动态生成的任务，如 FLOOR / DAILY）
       customQuestDefinitions: Array.from(customQuestDefinitionMap.values())
     };
@@ -928,6 +938,15 @@ export class QuestSystem {
 
     // 恢复自动提交设置
     this.autoSubmit = data.autoSubmit || false;
+
+    // 在恢复任务前，先回灌楼层动态任务定义，避免后续通过 ID 查找 QUEST_DATABASE 失败
+    // 需求字段：data.dynamicQuestDefinitions（对象：{ [questId]: questData }）
+    if (data.dynamicQuestDefinitions && typeof data.dynamicQuestDefinitions === 'object') {
+      Object.entries(data.dynamicQuestDefinitions).forEach(([questId, questDef]) => {
+        if (!questId || !questDef) return;
+        QUEST_DATABASE[questId] = JSON.parse(JSON.stringify(questDef));
+      });
+    }
 
     // 在恢复任务前，优先恢复所有「自定义任务定义」（例如楼层任务 / 每日任务）
     // 这样可以确保 QUEST_DATABASE 中已经包含这些动态任务的静态结构

@@ -1707,6 +1707,10 @@ class Game {
       const pendingCombat = this.player.pendingCombat; // 保存引用，防止在 checkInteraction 中被清空
       const res = CombatSystem.checkInteraction(this.player, pendingCombat);
       if (res === 'WIN' && pendingCombat) {
+        // 通用击杀通知：用于击杀类任务统计（需在 Boss 分支之前触发）
+        if (this.questSystem) {
+          this.questSystem.check('onKill', { monsterType: pendingCombat.type });
+        }
         // FIX: Boss击杀胜利结算
         if (pendingCombat.type === 'BOSS') {
           const isInfinite = this.config.infiniteMode;
@@ -3431,6 +3435,8 @@ class Game {
         if (lootItem) {
           // 掉落在宝箱位置
           this.map.addConsumableAt(lootItem, chestX, chestY);
+          // 修复：宝箱掉落的消耗品也应计入任务（收集类任务）
+          if (this.questSystem) this.questSystem.check('onLoot', { itemId: lootItem.id || lootItem, itemType: 'POTION' });
 
           const rarityKey = (lootItem.quality || lootItem.rarity || 'COMMON').toUpperCase();
           const rarity = RARITY[rarityKey] || RARITY.COMMON;
@@ -3457,6 +3463,8 @@ class Game {
         if (equipment) {
           // Drop equipment on ground near chest
           this.map.addEquipAt(equipment.id, chestX, chestY);
+          // 可选：如果未来加入“收集装备”类任务，可在此处触发任务检查
+          if (this.questSystem) this.questSystem.check('onLoot', { itemId: equipment.id || equipment, itemType: 'EQUIPMENT' });
           const rarity = RARITY[equipment.rarity] || RARITY.COMMON;
           this.ui.logMessage(`宝箱打开！发现装备 ${equipment.nameZh || equipment.name} [${rarity.name}]`, 'gain');
           
