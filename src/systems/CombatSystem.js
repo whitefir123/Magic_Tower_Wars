@@ -351,7 +351,10 @@ export class CombatSystem {
           
           // 任务系统：检查击杀事件
           if (game.questSystem) {
-            game.questSystem.check('onKill', { monsterType: enemy.type });
+            game.questSystem.check('onKill', { 
+              monsterType: enemy.type,
+              isElite: !!enemy.isElite
+            });
           }
           
           // 掉落物品（30%概率）
@@ -497,7 +500,10 @@ export class CombatSystem {
                 
                 // 任务系统：检查击杀事件
                 if (game.questSystem) {
-                  game.questSystem.check('onKill', { monsterType: entity.type });
+                  game.questSystem.check('onKill', { 
+                    monsterType: entity.type,
+                    isElite: !!entity.isElite
+                  });
                 }
                 
                 // ✅ FIX: 触发 onKill 遗物效果（如吸血鬼之牙）
@@ -657,7 +663,10 @@ export class CombatSystem {
               
               // 任务系统：检查击杀事件
               if (game.questSystem) {
-                game.questSystem.check('onKill', { monsterType: nearestEnemy.type });
+                game.questSystem.check('onKill', { 
+                  monsterType: nearestEnemy.type,
+                  isElite: !!nearestEnemy.isElite
+                });
               }
               
               // 掉落物品（技能击杀）
@@ -744,7 +753,10 @@ export class CombatSystem {
               
               // 任务系统：检查击杀事件
               if (game.questSystem) {
-                game.questSystem.check('onKill', { monsterType: entity.type });
+                game.questSystem.check('onKill', { 
+                  monsterType: entity.type,
+                  isElite: !!entity.isElite
+                });
               }
               
               // ✅ FIX: 触发 onKill 遗物效果（如吸血鬼之牙）
@@ -2368,7 +2380,10 @@ export class CombatSystem {
         
         // 任务系统：检查击杀事件
         if (game.questSystem) {
-          game.questSystem.check('onKill', { monsterType: monster.type });
+          game.questSystem.check('onKill', { 
+            monsterType: monster.type,
+            isElite: !!monster.isElite
+          });
         }
         
         // 符文强化触发判定 (Draft Trigger) - 概率触发以控制数值膨胀

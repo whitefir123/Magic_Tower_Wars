@@ -699,23 +699,39 @@ export class QuestSystem {
   getQuestData() {
     return {
       activeQuests: Array.from(this.activeQuests.entries()).map(([questId, questData]) => {
-        const isDynamic = isDynamicQuestId(questId);
-        // 对于动态任务，保存一份完整的静态任务定义，避免读档时丢失
-        const baseQuest = QUEST_DATABASE[questId] || questData;
-        const staticData = isDynamic ? JSON.parse(JSON.stringify({
-          id: baseQuest.id || questId,
-          title: baseQuest.title,
-          description: baseQuest.description,
-          category: baseQuest.category,
-          reward: baseQuest.reward,
-          prerequisites: baseQuest.prerequisites || [],
-          nextQuest: baseQuest.nextQuest || null,
-          autoComplete: baseQuest.autoComplete || false,
-          conditions: baseQuest.conditions || undefined,
-          // 保存 objectives 模板（不强依赖 current，但为了安全一并保存）
-          objective: baseQuest.objective || undefined,
-          objectives: baseQuest.objectives || undefined
-        })) : undefined;
+        // 判断是否为动态任务：
+        // - ID 不在初始静态 QUEST_DATABASE 中
+        // - 或者分类为 FLOOR / DAILY（运行时生成）
+        const isDynamicById = isDynamicQuestId(questId);
+        const isDynamicByCategory = questData && (questData.category === 'FLOOR' || questData.category === 'DAILY');
+        const shouldPersistDefinition = isDynamicById || isDynamicByCategory;
+
+        let definition;
+        let staticData; // 向后兼容旧字段名称
+
+        if (shouldPersistDefinition) {
+          // 优先从 QUEST_DATABASE 读取模板，否则退回到当前 questData
+          const baseQuest = QUEST_DATABASE[questId] || questData || {};
+          const normalized = this.normalizeQuest(JSON.parse(JSON.stringify(baseQuest)));
+
+          // 只保存任务的结构性定义，不强依赖 current 进度
+          const defPayload = {
+            id: normalized.id || questId,
+            title: normalized.title,
+            description: normalized.description,
+            category: normalized.category,
+            reward: normalized.reward,
+            prerequisites: normalized.prerequisites || [],
+            nextQuest: normalized.nextQuest || null,
+            autoComplete: normalized.autoComplete || false,
+            conditions: normalized.conditions || undefined,
+            objective: normalized.objective || undefined,
+            objectives: normalized.objectives || undefined
+          };
+
+          definition = JSON.parse(JSON.stringify(defPayload));
+          staticData = JSON.parse(JSON.stringify(defPayload));
+        }
 
         return {
           questId,
@@ -730,7 +746,9 @@ export class QuestSystem {
           // 向后兼容：保留 progress 和 target
           progress: questData.objectives ? questData.objectives.reduce((sum, obj) => sum + obj.current, 0) : 0,
           target: questData.objectives ? questData.objectives.reduce((sum, obj) => sum + obj.count, 0) : 0,
-          // 只有动态任务才包含静态定义
+          // 仅对动态/随机任务持久化任务定义，避免读档后丢失
+          definition,
+          // 旧存档兼容字段
           staticData
         };
       }),
@@ -803,9 +821,10 @@ export class QuestSystem {
         // 尝试从数据库获取任务
         let quest = QUEST_DATABASE[item.questId];
         if (!quest) {
-          // 对于动态任务，优先尝试从存档中的静态定义重建
-          if (item.staticData) {
-            const rebuilt = JSON.parse(JSON.stringify(item.staticData));
+          // 对于动态/随机任务，优先尝试从存档中的定义重建
+          const definition = item.definition || item.staticData;
+          if (definition) {
+            const rebuilt = JSON.parse(JSON.stringify(definition));
             // 确保 ID 存在
             rebuilt.id = rebuilt.id || item.questId;
             QUEST_DATABASE[item.questId] = rebuilt;

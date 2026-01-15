@@ -1376,11 +1376,13 @@ class Game {
         const def = getItemDefinition(it.itemId);
         // 调试日志
         // console.log('[Main] Pickup item:', it.type, it.itemId);
-        
+        let picked = false;
+
         if (def && !this.player.equipment[def.type]) {
           this.player.equip(it.itemId);
           this.map.removeItem(it);
           if (this.audio) this.audio.playCloth();
+          picked = true;
         } else {
           const added = this.player.addToInventory(it.itemId);
           if (added) {
@@ -1390,6 +1392,7 @@ class Game {
               this.ui.logMessage(`已添加 ${itemName} 到背包`, 'gain');
             }
             if (this.audio) this.audio.playCloth();
+            picked = true;
           } else {
             this.ui.logMessage('背包已满！', 'info');
           }
@@ -1402,6 +1405,14 @@ class Game {
         }
         
         this.ui.updateStats(this.player);
+
+        // 任务系统：装备拾取事件（仅在成功拾取/装备时触发）
+        if (picked && this.questSystem) {
+          this.questSystem.check('onLoot', {
+            itemId: it.itemId,
+            itemType: 'EQUIPMENT'
+          });
+        }
       } else if (it.type === 'ITEM_CONSUMABLE') {
         // 1. 尝试从动态池获取完整对象
         let itemToAdd = it.itemId; 
