@@ -122,10 +122,11 @@ export class LootGenerator {
 
   /**
    * 计算物品等级 (Item Power)
-   * 公式：iPwr = (Floor * 10) + (MonsterBonus) + (AscensionBonus)
+   * 公式：iPwr = (Floor * 6) + (MonsterBonus) + (AscensionBonus)
+   * ✅ FIX: 楼层系数从 10 降低为 6，平滑掉落曲线
    */
   calculateItemPower(floor, monsterTier, ascensionLevel) {
-    const floorBonus = floor * 10;
+    const floorBonus = floor * 6;
     const monsterBonus = (monsterTier - 1) * 5; // T1:0, T2:5, T3:10
     const ascensionBonus = ascensionLevel * 20;
     
@@ -177,15 +178,30 @@ export class LootGenerator {
   rollArchetype(playerClass, isJackpot, rng = null) {
     const archetypes = Object.values(ARCHETYPES);
     
-    // ✅ FIX: 统一将职业字符串转换为小写，确保与procgen.js中的classAffinity键名匹配
-    const normalizedClass = playerClass ? playerClass.toLowerCase() : null;
+    // ✅ FIX: 移除强制小写转换，增加容错检查
+    const targetClass = playerClass || null;
     
     // 如果有职业，调整权重
     const weightedPool = archetypes.map(arch => {
       let weight = arch.weight;
       
-      if (normalizedClass && arch.classAffinity && arch.classAffinity[normalizedClass]) {
-        weight *= arch.classAffinity[normalizedClass];
+      if (targetClass && arch.classAffinity) {
+        // 尝试直接匹配 targetClass
+        let affinity = arch.classAffinity[targetClass];
+        
+        // 如果直接匹配失败，尝试匹配大写版本
+        if (affinity === undefined && typeof targetClass === 'string') {
+          affinity = arch.classAffinity[targetClass.toUpperCase()];
+        }
+        
+        // 如果仍然失败，尝试匹配小写版本（兼容旧配置）
+        if (affinity === undefined && typeof targetClass === 'string') {
+          affinity = arch.classAffinity[targetClass.toLowerCase()];
+        }
+        
+        if (affinity !== undefined) {
+          weight *= affinity;
+        }
       }
       
       return { ...arch, weight };
