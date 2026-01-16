@@ -1058,7 +1058,7 @@ export class Monster extends Entity {
     
     // Damage player if in range
     if (distance <= config.explodeRange) {
-      player.takeDamage(config.explodeDamage);
+      player.takeDamage(config.explodeDamage, 'MAGIC');
       
       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
         const pos = player.getFloatingTextPosition();
@@ -1489,7 +1489,7 @@ export class Player extends Entity {
       // Burn damage: 2% of max HP per tick
       const damagePercent = statusDef.damagePercent || 0.02;
       const damage = Math.max(1, Math.floor(this.stats.maxHp * damagePercent));
-      this.takeDamage(damage);
+      this.takeDamage(damage, 'MAGIC');
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
         const pos = this.getFloatingTextPosition();
         const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
@@ -1500,7 +1500,7 @@ export class Player extends Entity {
       // Freeze DOT: 3% of max HP per tick
       const damagePercent = statusDef.damagePercent || 0.03;
       const damage = Math.max(1, Math.floor(this.stats.maxHp * damagePercent));
-      this.takeDamage(damage);
+      this.takeDamage(damage, 'MAGIC');
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
         const pos = this.getFloatingTextPosition();
         const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
@@ -1512,7 +1512,7 @@ export class Player extends Entity {
       const stacks = status.config?.stacks || 1;
       const damagePercent = statusDef.damagePercent || 0.01;
       const damage = Math.max(1, Math.floor(this.stats.maxHp * damagePercent * stacks));
-      this.takeDamage(damage);
+      this.takeDamage(damage, 'MAGIC');
       if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
         const pos = this.getFloatingTextPosition();
         const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;

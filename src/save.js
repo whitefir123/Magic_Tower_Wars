@@ -84,6 +84,8 @@ export class SaveSystem {
           keys: player.stats.keys ?? 1,
           floor: player.stats.floor ?? 1,
           gold: player.stats.gold ?? 0,
+          physicalShield: player.stats.physicalShield ?? 0,
+          magicShield: player.stats.magicShield ?? 0,
           // ✅ FIX: soulCrystals是元进度数据，已由MetaSaveSystem独立接管，不再在此保存
         },
         // ✅ FIX: 保存玩家状态效果（Buff/Debuff）
@@ -283,6 +285,8 @@ export class SaveSystem {
           keys: saveData.stats.keys ?? 1,
           floor: saveData.stats.floor ?? 1,
           gold: saveData.stats.gold ?? 0,
+          physicalShield: saveData.stats.physicalShield ?? 0,
+          magicShield: saveData.stats.magicShield ?? 0,
           // ✅ FIX: soulCrystals是元进度数据，已由MetaSaveSystem独立接管，不再从此处恢复
         };
       }

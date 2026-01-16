@@ -1875,7 +1875,7 @@ class Game {
       trapAtPlayer.resetTimer = 2000; // 2 seconds before it can be triggered again
       // 使用动态计算的陷阱伤害（应用了ascensionLevel修饰符），如果没有则使用默认值
       const damage = trapAtPlayer.damage || OBJ_TRAP.damage;
-      this.player.takeDamage(damage);
+      this.player.takeDamage(damage, 'PHYSICAL');
       // 使用对象池创建飘字 (如果设置允许)
       if (this.settings && this.settings.showDamageNumbers !== false) {
         const floatingText = this.floatingTextPool.create(this.player.visualX, this.player.visualY - 10, `-${damage}`, '#ff6b6b');
@@ -2126,7 +2126,7 @@ class Game {
       case 'TRAP_BOMB': {
         // Trap - deals damage immediately
         const damage = Math.floor(Math.random() * (lootData.maxDamage - lootData.minDamage + 1)) + lootData.minDamage;
-        this.player.takeDamage(damage);
+        this.player.takeDamage(damage, 'PHYSICAL');
         
         if (this.settings && this.settings.showDamageNumbers !== false) {
           const floatingText = this.floatingTextPool.create(x * TILE_SIZE, y * TILE_SIZE - 10, `陷阱！-${damage}`, '#ff0000');
@@ -3651,7 +3651,7 @@ class Game {
         // 10% chance for trap, 90% chance for just nothing
         if (Math.random() < 0.1) {
           const damage = 10 + Math.floor(Math.random() * 15);
-          this.player.takeDamage(damage);
+          this.player.takeDamage(damage, 'PHYSICAL');
           this.ui.logMessage(`陷阱箱！受到 ${damage} 伤害！`, 'combat');
           
           if (this.settings && this.settings.showDamageNumbers !== false) {

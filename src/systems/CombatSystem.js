@@ -1248,7 +1248,7 @@ export class CombatSystem {
         }
         
         if (dmgToPlay > 0) {
-          player.takeDamage(dmgToPlay);
+          player.takeDamage(dmgToPlay, monsterUsesMagic ? 'MAGIC' : 'PHYSICAL');
           if (game.settings && game.settings.showDamageNumbers !== false) {
             const pos = player.getFloatingTextPosition();
             const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
@@ -2041,7 +2041,7 @@ export class CombatSystem {
         // 将反伤视为物理攻击，应用玩家防御减免
         const thornsEffectiveDef = pTotals.p_def || 0;
         thornsDamage = Math.max(1, rawThornsDamage - thornsEffectiveDef);
-        player.takeDamage(thornsDamage);
+        player.takeDamage(thornsDamage, 'PHYSICAL');
         if (game.settings && game.settings.showDamageNumbers !== false) {
           // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
           const pos = player.getFloatingTextPosition();
@@ -2122,7 +2122,7 @@ export class CombatSystem {
       // 但THORNS反伤已经在上方处理（被动效果，即使怪物死亡也应触发）
       if (monster.stats.hp > 0) {
         // 怪物还活着，进行反击
-        player.takeDamage(dmgToPlay);
+        player.takeDamage(dmgToPlay, monsterUsesMagic ? 'MAGIC' : 'PHYSICAL');
         if (dmgToPlay > 0) {
           if (game.settings && game.settings.showDamageNumbers !== false) {
             // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
@@ -2191,7 +2191,7 @@ export class CombatSystem {
           // 对玩家造成伤害（如果在范围内）
           const distToPlayer = Math.abs(player.x - monster.x) + Math.abs(player.y - monster.y);
           if (distToPlayer <= aoeRange) {
-            player.takeDamage(aoeDamage);
+            player.takeDamage(aoeDamage, 'MAGIC');
             explosionOccurred = true;
             // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
             if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
@@ -2231,7 +2231,7 @@ export class CombatSystem {
                     const otherAoeDamage = Math.floor((otherMonster.stats.m_atk || 0) * 2.0);
                     const otherDistToPlayer = Math.abs(player.x - otherMonster.x) + Math.abs(player.y - otherMonster.y);
                     if (otherDistToPlayer <= aoeRange) {
-                      player.takeDamage(otherAoeDamage);
+                      player.takeDamage(otherAoeDamage, 'MAGIC');
                       // ✅ FIX: 优化飘字显示重叠 - 添加随机偏移
                       if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
                         const pos = player.getFloatingTextPosition();
