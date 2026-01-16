@@ -36,13 +36,18 @@ export class ShopUI {
       ...config.customStyles
     };
 
-    // 商店价格
+    // 商店基础服务价格
     this.shopPrices = { 
       atk: 200, 
       def: 200, 
       hp: 100, 
       key: 500 
     };
+
+    // 随机商品列表
+    this.goods = [];
+    this.lastRefreshFloor = -1;
+    this.refreshCount = 0;
 
     // 内部状态
     this.isOpen = false;
@@ -52,7 +57,9 @@ export class ShopUI {
     this.elements = {
       overlay: null,
       priceElements: {},
-      buyButtons: {}
+      goodsContainer: null,
+      refreshBtn: null,
+      refreshPrice: null
     };
 
     // 初始化
@@ -75,14 +82,48 @@ export class ShopUI {
    */
   getHTML() {
     return `
-    <h2 class="modal-title-shop">地精商店</h2>
-    <div class="flex-center">
-      <button class="btn-core btn-transaction" data-shop-item="atk">购买 攻击 +3<br/>价格: <span id="price-atk">200</span> 金币</button>
-      <button class="btn-core btn-transaction" data-shop-item="def">购买 防御 +3<br/>价格: <span id="price-def">200</span> 金币</button>
-      <button class="btn-core btn-transaction" data-shop-item="hp">购买 治疗 +200HP<br/>价格: <span id="price-hp">100</span> 金币</button>
-      <button class="btn-core btn-transaction" data-shop-item="key">购买 钥匙 +1<br/>价格: <span id="price-key">500</span> 金币</button>
+    <div class="shop-panel" style="background: rgba(0,0,0,0.9); padding: 20px; border: 2px solid #666; border-radius: 10px; max-width: 800px; width: 90%; display: flex; flex-direction: column; gap: 15px;">
+      <h2 class="modal-title-shop" style="color: #ffd700; text-align: center; margin: 0 0 10px 0;">地精商店</h2>
+      
+      <!-- 基础服务区域 -->
+      <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #444; padding-bottom: 15px;">
+        <button class="btn-core btn-transaction" data-shop-item="atk" style="flex: 1; min-width: 120px;">
+          <div style="font-weight: bold;">攻击 +3</div>
+          <div style="font-size: 0.9em; color: #aaa;">价格: <span id="price-atk">200</span></div>
+        </button>
+        <button class="btn-core btn-transaction" data-shop-item="def" style="flex: 1; min-width: 120px;">
+          <div style="font-weight: bold;">防御 +3</div>
+          <div style="font-size: 0.9em; color: #aaa;">价格: <span id="price-def">200</span></div>
+        </button>
+        <button class="btn-core btn-transaction" data-shop-item="hp" style="flex: 1; min-width: 120px;">
+          <div style="font-weight: bold;">治疗 +200HP</div>
+          <div style="font-size: 0.9em; color: #aaa;">价格: <span id="price-hp">100</span></div>
+        </button>
+        <button class="btn-core btn-transaction" data-shop-item="key" style="flex: 1; min-width: 120px;">
+          <div style="font-weight: bold;">钥匙 +1</div>
+          <div style="font-size: 0.9em; color: #aaa;">价格: <span id="price-key">500</span></div>
+        </button>
+      </div>
+
+      <!-- 限时货物区域 -->
+      <div style="display: flex; flex-direction: column; gap: 5px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="color: #fff; margin: 0; font-size: 16px;">限时货物</h3>
+          <div style="font-size: 12px; color: #888;">每天自动刷新</div>
+        </div>
+        <div id="shop-goods-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; min-height: 200px;">
+          <!-- 动态生成的商品将在这里 -->
+        </div>
+      </div>
+
+      <!-- 底部操作栏 -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #444; padding-top: 15px;">
+        <button id="btn-shop-refresh" class="btn-core" style="background: #4a3b18; border-color: #ffd700;">
+          刷新货物 (<span id="price-refresh">100</span> G)
+        </button>
+        <button class="btn-core btn-modal-close" style="background: #333;">离开商店</button>
+      </div>
     </div>
-    <button class="btn-core btn-modal-close" style="margin-top:25px;">关闭商店</button>
     `;
   }
 
@@ -99,6 +140,10 @@ export class ShopUI {
       const overlay = document.createElement('div');
       overlay.id = 'shop-overlay';
       overlay.className = 'modal-overlay hidden';
+      overlay.style.display = 'none';
+      overlay.style.justifyContent = 'center';
+      overlay.style.alignItems = 'center';
+      overlay.style.zIndex = '1000';
       
       // 注入 HTML 内容
       overlay.innerHTML = this.getHTML();
@@ -108,25 +153,24 @@ export class ShopUI {
       this.elements.overlay = overlay;
     }
     
-    // 缓存价格显示元素（在 overlay 创建后获取）
+    // 缓存价格显示元素
     this.elements.priceElements = {
       atk: document.getElementById('price-atk'),
       def: document.getElementById('price-def'),
       hp: document.getElementById('price-hp'),
       key: document.getElementById('price-key')
     };
+    this.elements.goodsContainer = document.getElementById('shop-goods-grid');
+    this.elements.refreshBtn = document.getElementById('btn-shop-refresh');
+    this.elements.refreshPrice = document.getElementById('price-refresh');
 
-    // 应用样式配置到面板（如果存在 .shop-panel，否则应用到 overlay 本身）
+    // 应用样式配置
     if (this.elements.overlay && this.style.panelScale !== 1.0) {
       const panel = this.elements.overlay.querySelector('.shop-panel');
-      const target = panel || this.elements.overlay;
-      target.style.transform = `scale(${this.style.panelScale})`;
+      if (panel) {
+        panel.style.transform = `scale(${this.style.panelScale})`;
+      }
     }
-    
-    console.log('✓ ShopUI DOM elements initialized:', {
-      overlay: !!this.elements.overlay,
-      priceElements: Object.keys(this.elements.priceElements).filter(k => this.elements.priceElements[k]).length
-    });
   }
 
   /**
@@ -135,34 +179,44 @@ export class ShopUI {
   setupEventListeners() {
     if (!this.elements.overlay) return;
 
-    // 防止重复初始化
-    if (this.elements.overlay._listenersInitialized) {
-      console.log('ShopUI event listeners already initialized, skipping');
-      return;
-    }
+    if (this.elements.overlay._listenersInitialized) return;
     this.elements.overlay._listenersInitialized = true;
 
-    // 关闭按钮监听器（支持多种选择器）
-    const closeBtn = this.elements.overlay.querySelector('.shop-close-btn, .btn-modal-close');
+    // 关闭按钮
+    const closeBtn = this.elements.overlay.querySelector('.btn-modal-close');
     if (closeBtn) {
       closeBtn.addEventListener('click', () => this.close());
     }
 
-    // 点击 overlay 外部关闭（仅当 overlay 是模态时）
+    // 点击外部关闭
     this.elements.overlay.addEventListener('click', (e) => {
       if (e.target === this.elements.overlay) {
         this.close();
       }
     });
 
-    // 购买按钮监听器（支持 data-shop-item 属性）
+    // 基础服务购买
     const buyButtons = this.elements.overlay.querySelectorAll('[data-shop-item]');
     buyButtons.forEach(btn => {
       const itemType = btn.dataset.shopItem;
-      btn.addEventListener('click', () => this.buy(itemType));
+      btn.addEventListener('click', () => this.buyService(itemType));
     });
-    
-    console.log('✓ ShopUI event listeners setup complete');
+
+    // 刷新按钮
+    if (this.elements.refreshBtn) {
+      this.elements.refreshBtn.addEventListener('click', () => this.refreshGoods());
+    }
+
+    // 商品点击委托（动态生成的按钮）
+    if (this.elements.goodsContainer) {
+      this.elements.goodsContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.shop-good-item');
+        if (btn && !btn.disabled) {
+          const index = parseInt(btn.dataset.index, 10);
+          this.buyGood(index);
+        }
+      });
+    }
   }
 
   /**
@@ -174,50 +228,34 @@ export class ShopUI {
     }
 
     if (this.elements.overlay) {
-      // 打开商店：金币/交易提示
+      // 播放音效
       if (AudioManager && typeof AudioManager.playCoins === 'function') {
         AudioManager.playCoins({ forceCategory: 'ui' });
       }
+
       // 暂停游戏
       const game = window.game;
       if (game) {
         game.isPaused = true;
         game.inputStack = [];
+        this.player = game.player;
+        
+        // 检查是否需要生成新货物
+        const currentFloor = game.player.floor || 1;
+        if (this.lastRefreshFloor !== currentFloor) {
+          this.initGoods(currentFloor);
+          this.lastRefreshFloor = currentFloor;
+          this.refreshCount = 0; // 重置刷新次数
+        }
       }
 
-      // 使用平滑过渡显示
+      // 显示界面
       this.elements.overlay.classList.remove('hidden');
-      this.elements.overlay.style.setProperty('display', 'flex', 'important');
-      // 强制重排以应用初始状态
-      void this.elements.overlay.offsetWidth;
-      // 使用 requestAnimationFrame 确保平滑过渡
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          this.elements.overlay.classList.remove('overlay-fade-out');
-          this.elements.overlay.classList.add('overlay-fade-in');
-        });
-      });
+      this.elements.overlay.style.display = 'flex';
       this.isOpen = true;
 
-      // 渲染当前数据
-      if (game && game.player) {
-        this.player = game.player;
-        this.render();
-      }
-
-      // Apply smooth transition animation
-      const shopPanel = this.elements.overlay.querySelector('.shop-panel, .shop-content, .shop-modal');
-      const targetElement = shopPanel || this.elements.overlay.querySelector('[class*="shop"]');
-      if (targetElement) {
-        // Remove animation class to restart animation on re-open
-        targetElement.classList.remove('modal-animate-enter');
-        // Force reflow to restart animation
-        void targetElement.offsetWidth;
-        // Add animation class
-        targetElement.classList.add('modal-animate-enter');
-      }
-
-      console.log('✓ ShopUI 已打开');
+      // 渲染
+      this.render();
     }
   }
 
@@ -226,19 +264,12 @@ export class ShopUI {
    */
   close() {
     if (this.elements.overlay) {
-      // 关闭商店：合书/收起
       if (AudioManager && typeof AudioManager.playBookClose === 'function') {
         AudioManager.playBookClose();
       }
-      // 使用平滑过渡隐藏
-      this.elements.overlay.classList.remove('overlay-fade-in');
-      this.elements.overlay.classList.add('overlay-fade-out');
-      // 等待过渡完成后隐藏
-      setTimeout(() => {
-        this.elements.overlay.classList.add('hidden');
-        this.elements.overlay.style.setProperty('display', 'none', 'important');
-        this.elements.overlay.classList.remove('overlay-fade-out');
-      }, 300);
+      
+      this.elements.overlay.classList.add('hidden');
+      this.elements.overlay.style.display = 'none';
       this.isOpen = false;
 
       // 恢复游戏
@@ -246,116 +277,266 @@ export class ShopUI {
       if (game) {
         game.isPaused = false;
       }
-
-      console.log('✓ ShopUI 已关闭');
     }
   }
 
   /**
-   * 切换商店界面开关
+   * 初始化商品列表
    */
-  toggle() {
-    if (this.isOpen) {
-      this.close();
+  initGoods(floor) {
+    if (window.__lootGenerator) {
+      // 生成 6 个商品
+      this.goods = window.__lootGenerator.generateShopGoods(floor, 6);
+      console.log('商店货物已刷新:', this.goods);
     } else {
-      this.open();
+      console.warn('LootGenerator not found');
+      this.goods = [];
     }
   }
 
   /**
-   * 完整渲染商店界面
+   * 刷新货物逻辑
+   */
+  refreshGoods() {
+    const game = window.game;
+    if (!game || !game.player) return;
+
+    const refreshCost = this.getRefreshCost();
+    
+    if (game.player.stats.gold < refreshCost) {
+      if (game.ui) game.ui.logMessage('金币不足，无法刷新！', 'info');
+      return;
+    }
+
+    // 扣费
+    game.player.stats.gold -= refreshCost;
+    if (AudioManager && typeof AudioManager.playCoins === 'function') {
+      AudioManager.playCoins({ forceCategory: 'ui' });
+    }
+
+    // 重新生成
+    this.initGoods(game.player.floor || 1);
+    this.refreshCount++;
+
+    // 更新界面
+    this.render();
+    if (game.ui) game.ui.logMessage('商店货物已刷新', 'gain');
+  }
+
+  /**
+   * 获取刷新价格
+   */
+  getRefreshCost() {
+    const game = window.game;
+    const floor = (game && game.player) ? game.player.floor : 1;
+    // 基础 50，每层 +10，每次刷新 +50% (防止无限刷)
+    const base = 50 + (floor * 10);
+    return Math.floor(base * Math.pow(1.5, this.refreshCount));
+  }
+
+  /**
+   * 计算商品价格
+   */
+  calculateItemPrice(item) {
+    if (!item) return 0;
+
+    const game = window.game;
+    const floor = (game && game.player) ? game.player.floor : 1;
+    
+    let price = 0;
+
+    // 1. 消耗品
+    if (item.type === 'CONSUMABLE') {
+      const rarityMultipliers = {
+        'COMMON': 1, 'UNCOMMON': 2, 'RARE': 5, 'EPIC': 10, 'LEGENDARY': 20, 'MYTHIC': 50
+      };
+      const mult = rarityMultipliers[item.rarity || item.quality] || 1;
+      price = 50 * mult;
+    }
+    // 2. 宝石
+    else if (item.type === 'GEM') {
+      const tierPrices = { 1: 200, 2: 500, 3: 1500, 4: 5000 };
+      price = tierPrices[item.tier] || 200;
+    }
+    // 3. 装备
+    else {
+      const iPwr = item.itemPower || (floor * 5);
+      const rarityMultipliers = {
+        'COMMON': 1, 'UNCOMMON': 1.5, 'RARE': 3, 'EPIC': 8, 'LEGENDARY': 20, 'MYTHIC': 50
+      };
+      const mult = rarityMultipliers[item.rarity || item.quality] || 1;
+      
+      // 基础公式：(100 + iPwr * 10) * 品质系数
+      price = Math.floor((100 + iPwr * 10) * mult);
+    }
+
+    // 应用折扣 (遗物/每日词缀)
+    return this.applyPriceModifiers(price);
+  }
+
+  /**
+   * 应用价格修正 (折扣等)
+   */
+  applyPriceModifiers(basePrice) {
+    const game = window.game;
+    let finalPrice = basePrice;
+
+    // 每日挑战通胀
+    if (game && game.dailyShopPriceMultiplier) {
+      finalPrice = Math.floor(finalPrice * game.dailyShopPriceMultiplier);
+    }
+
+    // 贪婪戒指折扣
+    if (game && game.player && game.player.hasRelic && game.player.hasRelic('MERCHANTS_RING')) {
+      finalPrice = Math.floor(finalPrice * 0.8);
+    }
+
+    return Math.max(1, finalPrice);
+  }
+
+  /**
+   * 渲染界面
    */
   render() {
-    this.renderPrices();
+    this.renderServicePrices();
+    this.renderGoods();
+    this.renderRefreshButton();
     this.updateButtonStates();
   }
 
   /**
-   * 更新商店界面（数据变化时调用）
+   * 渲染基础服务价格
    */
-  update() {
-    if (this.isOpen) {
-      this.render();
-    }
-  }
-
-  /**
-   * 获取实际价格（考虑遗物折扣和每日词缀）
-   * @param {string} type - 商品类型
-   * @param {number} basePrice - 基础价格
-   * @returns {number} 实际价格
-   */
-  getPrice(type, basePrice) {
-    const game = window.game;
-    if (!game || !game.player) return basePrice;
-    
-    let finalPrice = basePrice;
-    
-    // ✅ 检查每日挑战词缀：通胀（商店价格 x2）
-    if (game.dailyShopPriceMultiplier && game.dailyShopPriceMultiplier !== 1.0) {
-      finalPrice = Math.floor(finalPrice * game.dailyShopPriceMultiplier);
-    }
-    
-    // ✅ 检查贪婪戒指遗物效果（在每日词缀之后应用，降低价格）
-    if (game.player.hasRelic && game.player.hasRelic('MERCHANTS_RING')) {
-      // 贪婪戒指：价格降低 20%
-      finalPrice = Math.floor(finalPrice * 0.8);
-    }
-    
-    return finalPrice;
-  }
-  
-  /**
-   * 渲染价格显示
-   */
-  renderPrices() {
-    const priceElements = this.elements.priceElements;
-    const game = window.game;
-    
+  renderServicePrices() {
     for (const [type, basePrice] of Object.entries(this.shopPrices)) {
-      const el = priceElements[type];
+      const el = this.elements.priceElements[type];
       if (el) {
-        // ✅ 使用动态价格（考虑遗物折扣）
-        const actualPrice = this.getPrice(type, basePrice);
+        const actualPrice = this.applyPriceModifiers(basePrice);
         el.innerText = actualPrice;
-        
-        // 如果有折扣，显示原价（删除线）和折扣价
-        if (actualPrice < basePrice && game && game.player && game.player.hasRelic && game.player.hasRelic('MERCHANTS_RING')) {
-          el.innerHTML = `<span style="text-decoration: line-through; opacity: 0.5;">${basePrice}</span> ${actualPrice}`;
-        }
-        
-        // 应用样式配置
-        if (this.style.priceColor) {
-          el.style.color = this.style.priceColor;
-        }
-        if (this.style.fontSize) {
-          el.style.fontSize = `${this.style.fontSize}px`;
-        }
+        // 简单删除线效果略，保持清晰
       }
     }
+  }
 
-    // 更新玩家属性显示
-    if (game && game.ui && game.ui.updateStats && game.player) {
-      game.ui.updateStats(game.player);
+  /**
+   * 渲染商品网格
+   */
+  renderGoods() {
+    const container = this.elements.goodsContainer;
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const game = window.game;
+    const playerGold = game && game.player ? game.player.stats.gold : 0;
+
+    this.goods.forEach((item, index) => {
+      if (!item) return; // 已购买的可能是 null
+
+      const price = this.calculateItemPrice(item);
+      const canAfford = playerGold >= price;
+      
+      // 稀有度颜色
+      const rarityColors = {
+        'COMMON': '#ffffff', 'UNCOMMON': '#00ff00', 'RARE': '#0070dd', 
+        'EPIC': '#a335ee', 'LEGENDARY': '#ff8000', 'MYTHIC': '#ff0000'
+      };
+      const color = rarityColors[item.rarity || item.quality] || '#ffffff';
+      
+      const itemEl = document.createElement('div');
+      itemEl.className = 'shop-good-item btn-core';
+      itemEl.dataset.index = index;
+      itemEl.style.cssText = `
+        display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+        padding: 10px; background: #222; border: 1px solid ${canAfford ? '#444' : '#333'};
+        border-radius: 5px; cursor: ${canAfford ? 'pointer' : 'not-allowed'};
+        opacity: ${canAfford ? 1 : 0.6}; transition: all 0.2s;
+        min-height: 120px; position: relative;
+      `;
+      
+      // 图标 (简单用首字母或 Emoji 替代，如果有 iconIndex 更好)
+      // 这里简化处理，显示名称
+      let icon = '📦';
+      if (item.type === 'WEAPON') icon = '⚔️';
+      else if (item.type === 'ARMOR') icon = '🛡️';
+      else if (item.type === 'CONSUMABLE') icon = '🧪';
+      else if (item.type === 'GEM') icon = '💎';
+
+      itemEl.innerHTML = `
+        <div style="font-size: 24px; margin-bottom: 5px;">${icon}</div>
+        <div style="color: ${color}; font-weight: bold; text-align: center; font-size: 14px; margin-bottom: 5px;">
+          ${item.nameZh || item.name}
+        </div>
+        ${item.type === 'GEM' ? `<div style="font-size:12px; color:#aaa;">Tier ${item.tier}</div>` : ''}
+        <div style="color: #ffd700; font-size: 14px;">💰 ${price}</div>
+      `;
+      
+      // Tooltip (简单 title 属性，或自定义 tooltip)
+      const statsStr = this.formatItemStats(item);
+      itemEl.title = `${item.nameZh || item.name}\n${item.descZh || item.desc || ''}\n\n${statsStr}`;
+
+      if (!canAfford) {
+        itemEl.disabled = true;
+      }
+
+      container.appendChild(itemEl);
+    });
+
+    if (this.goods.every(g => g === null)) {
+      container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #666; padding: 20px;">货物已售罄</div>';
     }
   }
 
   /**
-   * 更新购买按钮状态（根据玩家金币）
+   * 格式化物品属性用于显示
+   */
+  formatItemStats(item) {
+    if (!item.stats) return '';
+    return Object.entries(item.stats)
+      .map(([k, v]) => {
+        if (v === 0) return null;
+        // 简单映射
+        const map = { p_atk: '攻击', p_def: '防御', m_atk: '魔攻', m_def: '魔防', maxHp: '生命', crit_rate: '暴击' };
+        const label = map[k] || k;
+        return `${label}: +${v}`;
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  /**
+   * 渲染刷新按钮
+   */
+  renderRefreshButton() {
+    if (this.elements.refreshPrice) {
+      this.elements.refreshPrice.innerText = this.getRefreshCost();
+    }
+    
+    if (this.elements.refreshBtn) {
+      const game = window.game;
+      const cost = this.getRefreshCost();
+      const canAfford = game && game.player && game.player.stats.gold >= cost;
+      
+      this.elements.refreshBtn.style.opacity = canAfford ? '1' : '0.5';
+      this.elements.refreshBtn.style.cursor = canAfford ? 'pointer' : 'not-allowed';
+    }
+  }
+
+  /**
+   * 更新基础服务按钮状态
    */
   updateButtonStates() {
     const game = window.game;
     if (!game || !game.player) return;
 
-    const playerGold = game.player.stats.gold ?? 0;
+    const playerGold = game.player.stats.gold;
 
     for (const [type, basePrice] of Object.entries(this.shopPrices)) {
-      const buttons = this.elements.overlay?.querySelectorAll(`[data-shop-item="${type}"]`);
-      buttons?.forEach(btn => {
-        // ✅ 使用动态价格（考虑遗物折扣）
-        const actualPrice = this.getPrice(type, basePrice);
-        const canAfford = playerGold >= actualPrice;
-        
+      const buttons = this.elements.overlay.querySelectorAll(`[data-shop-item="${type}"]`);
+      const actualPrice = this.applyPriceModifiers(basePrice);
+      const canAfford = playerGold >= actualPrice;
+      
+      buttons.forEach(btn => {
         if (canAfford) {
           btn.removeAttribute('disabled');
           btn.style.opacity = '1';
@@ -370,62 +551,77 @@ export class ShopUI {
   }
 
   /**
-   * 购买商品
-   * @param {string} type - 商品类型 ('atk', 'def', 'hp', 'key')
+   * 购买基础服务
    */
-  buy(type) {
+  buyService(type) {
     const game = window.game;
     if (!game || !game.player) return;
     
     const basePrice = this.shopPrices[type];
-    if (basePrice == null) return;
+    const actualPrice = this.applyPriceModifiers(basePrice);
     
-    // ✅ 使用动态价格（考虑遗物折扣）
-    const actualPrice = this.getPrice(type, basePrice);
-    
-    // 检查金币是否足够
-    if ((game.player.stats.gold ?? 0) < actualPrice) {
-      // 购买失败：锁扣/拒绝反馈
-      if (AudioManager && typeof AudioManager.play === 'function') {
-        AudioManager.play('metalLatch');
-      }
-      if (game.ui && game.ui.logMessage) {
-        game.ui.logMessage('金币不足！', 'info');
-      }
+    if (game.player.stats.gold < actualPrice) {
+      if (game.ui) game.ui.logMessage('金币不足！', 'info');
       return;
     }
     
-    // 扣除金币（使用实际价格）
+    // 扣费
     game.player.stats.gold -= actualPrice;
-
-    // 购买成功：金币声
     if (AudioManager && typeof AudioManager.playCoins === 'function') {
       AudioManager.playCoins({ forceCategory: 'ui' });
     }
     
-    // 应用购买效果
-    if (type === 'atk') {
-      game.player.stats.p_atk += 3;
-    } else if (type === 'def') {
-      game.player.stats.p_def += 3;
-    } else if (type === 'hp') {
-      game.player.heal(200);
-    } else if (type === 'key') {
-      game.player.stats.keys += 1;
-    }
+    // 效果
+    if (type === 'atk') game.player.stats.p_atk += 3;
+    else if (type === 'def') game.player.stats.p_def += 3;
+    else if (type === 'hp') game.player.heal(200);
+    else if (type === 'key') game.player.stats.keys += 1;
     
-    // 提高价格（下次购买更贵）
-    if (type === 'hp') {
-      this.shopPrices.hp = Math.ceil(this.shopPrices.hp * 1.2);
-    } else {
-      this.shopPrices[type] = Math.ceil(this.shopPrices[type] * 1.25);
-    }
+    // 通胀
+    if (type === 'hp') this.shopPrices.hp = Math.ceil(this.shopPrices.hp * 1.2);
+    else this.shopPrices[type] = Math.ceil(this.shopPrices[type] * 1.25);
     
-    // 更新 UI
     this.render();
+    if (game.ui) game.ui.logMessage('购买成功！', 'gain');
+  }
+
+  /**
+   * 购买随机商品
+   */
+  buyGood(index) {
+    const item = this.goods[index];
+    if (!item) return;
+
+    const game = window.game;
+    if (!game || !game.player) return;
+
+    const price = this.calculateItemPrice(item);
+    if (game.player.stats.gold < price) {
+      if (game.ui) game.ui.logMessage('金币不足！', 'info');
+      return;
+    }
+
+    // 尝试添加到背包
+    const success = game.player.addToInventory(item);
+    if (!success) {
+      if (game.ui) game.ui.logMessage('背包已满！', 'warn');
+      return;
+    }
+
+    // 购买成功
+    game.player.stats.gold -= price;
+    this.goods[index] = null; // 标记为已售出
     
-    if (game.ui && game.ui.logMessage) {
-      game.ui.logMessage('购买成功！', 'gain');
+    if (AudioManager && typeof AudioManager.playCoins === 'function') {
+      AudioManager.playCoins({ forceCategory: 'ui' });
+    }
+
+    this.render();
+    if (game.ui) game.ui.logMessage(`购买了 ${item.nameZh || item.name}`, 'gain');
+    
+    // 更新背包UI
+    if (game.ui.renderInventory) {
+      game.ui.renderInventory(game.player);
     }
   }
 
@@ -448,32 +644,15 @@ export class ShopUI {
   updateStyle(newStyles) {
     this.style = { ...this.style, ...newStyles };
 
-    // 应用新样式（如果存在 .shop-panel，否则应用到 overlay 本身）
+    // 应用新样式
     if (this.elements.overlay && newStyles.panelScale) {
       const panel = this.elements.overlay.querySelector('.shop-panel');
-      const target = panel || this.elements.overlay;
-      target.style.transform = `scale(${newStyles.panelScale})`;
+      if (panel) {
+        panel.style.transform = `scale(${newStyles.panelScale})`;
+      }
     }
 
     // 重新渲染
-    if (this.isOpen) {
-      this.render();
-    }
-
-    console.log('✓ ShopUI 样式已更新', this.style);
-  }
-
-  /**
-   * 重置商店价格（新游戏时调用）
-   */
-  resetPrices() {
-    this.shopPrices = { 
-      atk: 200, 
-      def: 200, 
-      hp: 100, 
-      key: 500 
-    };
-    
     if (this.isOpen) {
       this.render();
     }
@@ -489,28 +668,14 @@ export class ShopUI {
   }
 
   // ========================================================================
-  // 向后兼容的方法（保留旧接口）
+  // 向后兼容
   // ========================================================================
-
-  /**
-   * @deprecated 使用 open() 代替
-   */
-  openShop() {
-    this.open();
-  }
-
-  /**
-   * @deprecated 使用 close() 代替
-   */
-  closeShop() {
-    this.close();
-  }
-
-  /**
-   * @deprecated 使用 render() 代替
-   */
-  updateShopPricesUI() {
-    this.render();
+  openShop() { this.open(); }
+  closeShop() { this.close(); }
+  updateShopPricesUI() { this.render(); }
+  resetPrices() {
+    this.shopPrices = { atk: 200, def: 200, hp: 100, key: 500 };
+    this.lastRefreshFloor = -1;
+    if (this.isOpen) this.render();
   }
 }
-

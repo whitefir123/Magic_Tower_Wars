@@ -797,6 +797,90 @@ export class LootGenerator {
     }
     return `PROCGEN_${timestampPart}_${randomPart}`;
   }
+
+  /**
+   * 生成随机宝石
+   * @param {number} floor - 当前楼层
+   * @param {SeededRandom} rng - 可选的随机数生成器
+   */
+  generateGem(floor, rng = null) {
+    // 确定当前楼层可掉落的宝石最大Tier
+    // Floor 1-4: Tier 1
+    // Floor 5-9: Tier 2
+    // Floor 10-19: Tier 3
+    // Floor 20+: Tier 4
+    let maxTier = 1;
+    if (floor >= 20) maxTier = 4;
+    else if (floor >= 10) maxTier = 3;
+    else if (floor >= 5) maxTier = 2;
+
+    // 筛选符合条件的宝石
+    const gemKeys = Object.keys(EQUIPMENT_DB).filter(key => key.startsWith('GEM_'));
+    const validGems = gemKeys.filter(key => {
+      const gem = EQUIPMENT_DB[key];
+      return gem && gem.tier <= maxTier;
+    });
+
+    if (validGems.length === 0) return null;
+
+    // 随机选择一个宝石
+    const randomValue = rng ? rng.next() : Math.random();
+    const selectedKey = validGems[Math.floor(randomValue * validGems.length)];
+    const gemDef = EQUIPMENT_DB[selectedKey];
+
+    // 返回标准化的宝石对象
+    return createStandardizedItem(gemDef, {
+      level: 1,
+      affixes: [],
+      uniqueEffect: null,
+      setId: null
+    });
+  }
+
+  /**
+   * 生成商店货物列表
+   * @param {number} floor - 当前楼层
+   * @param {number} count - 商品数量
+   * @param {SeededRandom} rng - 可选的随机数生成器
+   */
+  generateShopGoods(floor, count = 6, rng = null) {
+    const goods = [];
+    
+    for (let i = 0; i < count; i++) {
+      const rand = rng ? rng.next() : Math.random();
+      let item = null;
+
+      // 30% 消耗品
+      if (rand < 0.30) {
+        // 额外 5% 概率出钻头 (如果已解锁)
+        if (floor >= 5 && (rng ? rng.next() : Math.random()) < 0.1) {
+           item = createStandardizedItem('ITEM_STARDUST_DRILL');
+        } else {
+           item = this.generateConsumable(floor, 0, rng);
+        }
+      } 
+      // 20% 宝石 (如果已解锁)
+      else if (rand < 0.50 && floor >= 3) {
+        item = this.generateGem(floor, rng);
+      }
+      // 50% 装备
+      else {
+        item = this.generate({
+          floor: floor,
+          monsterTier: Math.min(Math.floor(floor / 5) + 1, 3),
+          playerClass: null, // 随机职业倾向
+          magicFind: 0.1, // 商店装备稍微好一点
+          rng: rng
+        });
+      }
+
+      if (item) {
+        goods.push(item);
+      }
+    }
+
+    return goods;
+  }
 }
 
 // 导出单例
