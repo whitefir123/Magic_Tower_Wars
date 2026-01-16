@@ -396,6 +396,12 @@ export class ShopUI {
    */
   createItemIcon(img, item, size = 64) {
     if (!img) return null;
+    
+    // 检查图片是否加载完成
+    if (img.complete === false || img.naturalWidth === 0) {
+      console.warn('ShopUI: Image not loaded yet', img.src);
+      return null;
+    }
 
     const canvas = document.createElement('canvas');
     canvas.width = size;
@@ -454,7 +460,12 @@ export class ShopUI {
     const offsetX = Math.round((size - destW) / 2);
     const offsetY = Math.round((size - destH) / 2);
 
-    ctx.drawImage(img, sx, sy, sw, sh, offsetX, offsetY, destW, destH);
+    try {
+        ctx.drawImage(img, sx, sy, sw, sh, offsetX, offsetY, destW, destH);
+    } catch (e) {
+        console.error('ShopUI: Failed to draw image', e);
+        return null;
+    }
 
     return canvas;
   }
@@ -472,9 +483,13 @@ export class ShopUI {
     const playerGold = game && game.player ? game.player.stats.gold : 0;
     const loader = game?.loader;
     
-    // 获取图标资源
+    // 获取图标资源 - 确保资源存在
     const imgEquip = loader?.getImage('ICONS_EQUIP');
     const imgCons = loader?.getImage('ICONS_CONSUMABLES');
+    
+    if (!imgEquip || !imgCons) {
+        console.warn('ShopUI: Icons not loaded yet');
+    }
 
     // 定义基础服务元数据
     const services = [
@@ -534,14 +549,18 @@ export class ShopUI {
       else if (service.iconType === 'CONSUMABLE') img = imgCons;
       
       // 如果找不到图片，使用文字占位
+      let canvas = null;
       if (img) {
         // 构造临时 item 对象用于绘图
         const tempItem = { 
           iconIndex: service.iconIndex, 
           type: service.iconType === 'CONSUMABLE' ? 'CONSUMABLE' : 'WEAPON' 
         };
-        const canvas = this.createItemIcon(img, tempItem, 64);
-        if (canvas) itemEl.appendChild(canvas);
+        canvas = this.createItemIcon(img, tempItem, 64);
+      }
+      
+      if (canvas) {
+        itemEl.appendChild(canvas);
       } else {
         const placeholder = document.createElement('div');
         placeholder.style.fontSize = '32px';
@@ -615,9 +634,13 @@ export class ShopUI {
       else if (item.type === 'CONSUMABLE') img = imgCons;
       
       // 绘制图标
+      let canvas = null;
       if (img) {
-        const canvas = this.createItemIcon(img, item, 64);
-        if (canvas) itemEl.appendChild(canvas);
+        canvas = this.createItemIcon(img, item, 64);
+      }
+      
+      if (canvas) {
+        itemEl.appendChild(canvas);
       } else {
         const placeholder = document.createElement('div');
         placeholder.innerText = item.nameZh ? item.nameZh[0] : '?';
@@ -686,6 +709,11 @@ export class ShopUI {
     if (type === 'hp') this.shopPrices.hp = Math.ceil(this.shopPrices.hp * 1.2);
     else this.shopPrices[type] = Math.ceil(this.shopPrices[type] * 1.25);
     
+    // 隐藏提示框（防止点击后提示框残留）
+    if (this.tooltipManager) {
+      this.tooltipManager.hide();
+    }
+
     this.render();
     if (game.ui) game.ui.logMessage('购买成功！', 'gain');
   }
@@ -719,6 +747,11 @@ export class ShopUI {
     
     if (AudioManager && typeof AudioManager.playCoins === 'function') {
       AudioManager.playCoins({ forceCategory: 'ui' });
+    }
+
+    // 隐藏提示框（防止点击后提示框残留）
+    if (this.tooltipManager) {
+      this.tooltipManager.hide();
     }
 
     this.render();
