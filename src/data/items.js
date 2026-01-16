@@ -217,16 +217,33 @@ export function createDynamicConsumable(itemDef, quality = 'COMMON') {
     isDynamicConsumable: true
   };
   
-  // ✅ FIX: 动态追加数值描述
+  // ✅ FIX: 动态追加数值描述，支持占位符替换
   if (effect) {
     let appendText = '';
-    if (effect.kind === 'heal' && effect.amount) appendText = `\n回复 ${effect.amount} 点生命值`;
-    else if (effect.kind === 'rage' && effect.amount) appendText = `\n增加 ${effect.amount} 点怒气`;
-    else if (effect.kind === 'xp' && effect.amount) appendText = `\n获得 ${effect.amount} 点经验`;
-    else if (effect.kind === 'prime_state' && effect.damage) appendText = `\n造成 ${effect.damage} 点火焰伤害`;
     
-    if (appendText) {
-       instance.descZh = (instance.descZh || '') + appendText;
+    // 优先尝试替换占位符
+    let hasPlaceholder = false;
+    if (instance.descZh) {
+      if (instance.descZh.includes('{amount}') && effect.amount) {
+        instance.descZh = instance.descZh.replace(/{amount}/g, effect.amount);
+        hasPlaceholder = true;
+      }
+      if (instance.descZh.includes('{damage}') && effect.damage) {
+        instance.descZh = instance.descZh.replace(/{damage}/g, effect.damage);
+        hasPlaceholder = true;
+      }
+    }
+    
+    // 如果没有占位符，则追加文本（回退策略）
+    if (!hasPlaceholder) {
+      if (effect.kind === 'heal' && effect.amount) appendText = `\n回复 ${effect.amount} 点生命值`;
+      else if (effect.kind === 'rage' && effect.amount) appendText = `\n增加 ${effect.amount} 点怒气`;
+      else if (effect.kind === 'xp' && effect.amount) appendText = `\n获得 ${effect.amount} 点经验`;
+      else if (effect.kind === 'prime_state' && effect.damage) appendText = `\n造成 ${effect.damage} 点火焰伤害`;
+      
+      if (appendText) {
+         instance.descZh = (instance.descZh || '') + appendText;
+      }
     }
   }
   
@@ -893,7 +910,7 @@ export const EQUIPMENT_DB = {
     rarity: 'COMMON', 
     iconIndex: 0,
     maxStack: 99,
-    descZh: '一瓶红色的小药水，喝下去后能快速愈合伤口。',
+    descZh: '一瓶红色的小药水，喝下去后能快速回复 {amount} 点生命值。',
     effect: { kind: 'heal', amount: 50 } 
   },
   POTION_RAGE: { 
@@ -904,7 +921,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     iconIndex: 1,
     maxStack: 99,
-    descZh: '这瓶药水剧烈沸腾着，饮用后会让人感到热血沸腾，充满斗志。',
+    descZh: '这瓶药水剧烈沸腾着，饮用后会让人感到热血沸腾，增加 {amount} 点怒气。',
     effect: { kind: 'rage', amount: 20 } 
   },
   SCROLL_XP: { 
@@ -915,7 +932,7 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE', 
     iconIndex: 4,
     maxStack: 99,
-    descZh: '记载着古代英雄战斗技巧的卷轴，阅读后能获得宝贵的经验。',
+    descZh: '记载着古代英雄战斗技巧的卷轴，阅读后能获得 {amount} 点经验。',
     effect: { kind: 'xp', amount: 10 } 
   },
   SCROLL_FIRE: { 
@@ -927,8 +944,8 @@ export const EQUIPMENT_DB = {
     iconIndex: 5,
     maxStack: 99,
     // 使用后：为下一次成功攻击预充能，先对目标造成火焰伤害并施加灼烧，再结算本次攻击（可触发融化等元素反应）
-    desc: '消耗品：使用后，使你的下一次成功攻击在命中前先造成火焰伤害并施加灼烧，可与技能本身的灼烧叠加并触发元素反应。',
-    descZh: '消耗品：使用后，使你的下一次成功攻击在命中前先造成火焰伤害并施加灼烧，可与技能本身的灼烧叠加并触发元素反应。',
+    desc: '消耗品：使用后，使你的下一次成功攻击在命中前先造成 {damage} 点火焰伤害并施加灼烧，可与技能本身的灼烧叠加并触发元素反应。',
+    descZh: '消耗品：使用后，使你的下一次成功攻击在命中前先造成 {damage} 点火焰伤害并施加灼烧，可与技能本身的灼烧叠加并触发元素反应。',
     effect: { kind: 'prime_state', state: 'fireScrollPrimed', damage: 30, status: 'BURN' } 
   },
   
