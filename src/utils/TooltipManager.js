@@ -157,8 +157,19 @@ export class TooltipManager {
     }
     
     // ✅ v2.0: 显示词缀信息（改进版，支持特殊词缀描述）
+    // 预计算所有词缀的总属性加成，用于后续的基础值显示
+    const totalAffixStats = {};
+
     if (item.meta && item.meta.affixes && Array.isArray(item.meta.affixes)) {
       for (const affix of item.meta.affixes) {
+        // 累加属性
+        if (affix.stats) {
+          for (const [k, v] of Object.entries(affix.stats)) {
+            if (k === 'multiplier') continue;
+            totalAffixStats[k] = (totalAffixStats[k] || 0) + v;
+          }
+        }
+
         const affixType = affix.type === 'prefix' ? '前缀' : '后缀';
         // v2.0 FIX: 确保词缀名称为中文，如果无中文名则不显示
         const affixName = affix.nameZh || '';
@@ -167,7 +178,9 @@ export class TooltipManager {
         
         // 检查是否有特殊效果（转化、触发等）
         let affixDesc = '';
-        if (affix.stats) {
+        
+        // ✅ FIX: 前缀只显示名称，不显示属性详情
+        if (affix.stats && affix.type !== 'prefix') {
           const statEntries = Object.entries(affix.stats);
           const descParts = [];
           
@@ -176,21 +189,35 @@ export class TooltipManager {
             if (statKey === 'multiplier') continue;
 
             // 检查是否是转化类词缀
-            if (statKey.includes('_to_') || statKey.includes('_percent')) {
+            // ✅ FIX: 移除 _percent，让百分比属性走通用格式化逻辑
+            if (statKey.includes('_to_')) {
               // 转化类词缀：显示完整描述
               if (statKey === 'p_def_to_p_atk') {
                 descParts.push(`将${(statValue * 100).toFixed(0)}%的护甲转化为攻击力`);
               } else if (statKey === 'm_def_to_m_atk') {
                 descParts.push(`将${(statValue * 100).toFixed(0)}%的魔法防御转化为魔法攻击`);
               } else {
-                descParts.push(`${this.statNameMap[statKey] || statKey}: ${statValue}`);
+                const name = this.statNameMap[statKey] || statKey;
+                descParts.push(`${name}: ${statValue}`);
               }
             } else {
               // 普通词缀：显示数值
-              const statName = this.statNameMap[statKey] || statKey;
+              let statName = this.statNameMap[statKey];
+              
+              // ✅ FIX: 动态处理 _percent 后缀的属性名翻译
+              if (!statName && statKey.endsWith('_percent')) {
+                 const baseKey = statKey.replace('_percent', '');
+                 const baseName = this.statNameMap[baseKey];
+                 if (baseName) {
+                   statName = `${baseName}%`;
+                 }
+              }
+              statName = statName || statKey;
+
               const isPercentage = statKey.includes('rate') || statKey.includes('dodge') || 
                                    statKey.includes('pen') || statKey.includes('gold') || 
-                                   statKey.includes('lifesteal');
+                                   statKey.includes('lifesteal') || statKey.includes('_percent');
+                                   
               const displayValue = isPercentage 
                 ? `${(statValue * 100).toFixed(1)}%` 
                 : `+${Math.floor(statValue)}`;
@@ -324,12 +351,18 @@ export class TooltipManager {
     } else {
       // ✅ V2.0: 装备属性 - 改进显示格式，区分底材和词缀加成
       const statsToShow = item.stats || {};
-      const baseStats = item.baseStats || {};
-      const enhanceLevel = item.enhanceLevel || 0;
       
       const lines = Object.entries(statsToShow)
         .map(([k, v]) => {
-          const statName = this.statNameMap[k] || k;
+          let statName = this.statNameMap[k];
+          // 动态处理属性名
+          if (!statName && k.endsWith('_percent')) {
+             const baseKey = k.replace('_percent', '');
+             const baseName = this.statNameMap[baseKey];
+             if (baseName) statName = `${baseName}%`;
+          }
+          statName = statName || k;
+
           // 百分比属性特殊处理
           const isPercentage = k.includes('rate') || k.includes('dodge') || 
                                k.includes('pen') || k.includes('gold') || 
@@ -340,62 +373,28 @@ export class TooltipManager {
             ? `${(v * 100).toFixed(1)}%` 
             : `+${Math.floor(v)}`;
           
-          // ✅ V2.0: 计算底材和词缀加成
+          // ✅ V3.0: 使用词缀统计直接计算基础值
           let subText = '';
-          if (baseStats[k] !== undefined) {
-            // ✅ V2.2: 智能计算底材数值 (兼容 Scaled 和 Unscaled 两种 baseStats 存储方式)
-            const quality = item.quality || 'COMMON';
-            const qualityMultiplier = ITEM_QUALITY[quality]?.multiplier || 1.0;
-            const enhanceMultiplier = 1 + (enhanceLevel * 0.1);
-
-            // 方案 A: 假设 baseStats 已经是经过品质放大的 (LootGen 行为)
-            let baseScaled = baseStats[k] * enhanceMultiplier;
-
-            // 方案 B: 假设 baseStats 是原始底材数值 (Blacksmith 理想行为)
-            let baseUnscaled = baseStats[k] * qualityMultiplier * enhanceMultiplier;
+          
+          // 获取该属性来自词缀的加成值
+          const affixBonus = (typeof totalAffixStats !== 'undefined' ? totalAffixStats[k] : 0) || 0;
+          
+          // 只有当存在显著的词缀加成时才显示 breakdown
+          if (Math.abs(affixBonus) > 0.001) {
+            const currentVal = v;
+            const baseVal = currentVal - affixBonus;
             
-            // 预处理数值
-            if (isPercentage) {
-              baseScaled = Math.round(baseScaled * 100) / 100;
-              baseUnscaled = Math.round(baseUnscaled * 100) / 100;
-            } else {
-              baseScaled = Math.floor(baseScaled);
-              baseUnscaled = Math.floor(baseUnscaled);
-            }
-            
-            // 智能判定：比较哪种方案更接近当前属性值 'v'
-            // v = Base + Affix. 通常 Affix 相对较小。
-            // 如果 baseUnscaled 更接近 v，说明 baseStats 很可能是未放大的原始值
-            const diffScaled = Math.abs(v - baseScaled);
-            const diffUnscaled = Math.abs(v - baseUnscaled);
-            
-            let enhancedBase = baseScaled;
-            // 只有当品质倍率显著 (>1.1) 且方案 B 明显更优时，才切换到方案 B
-            if (qualityMultiplier > 1.1 && diffUnscaled < diffScaled) {
-              enhancedBase = baseUnscaled;
-            }
-            
-            // 计算词缀带来的额外加成
-            const affixBonus = isPercentage 
-              ? (v - enhancedBase)
-              : (Math.floor(v) - enhancedBase);
-            
-            // 格式化底材数值
+            // 格式化基础值
             const baseDisplay = isPercentage 
-              ? `${(enhancedBase * 100).toFixed(1)}%`
-              : enhancedBase;
-            
-            // 如果有词缀加成，显示副说明
-            if (affixBonus > 0.001 || affixBonus < -0.001) {
-              const bonusDisplay = isPercentage 
-                ? `${(affixBonus * 100).toFixed(1)}%`
-                : `+${Math.floor(affixBonus)}`;
+              ? `${(baseVal * 100).toFixed(1)}%`
+              : Math.floor(baseVal);
               
-              subText = ` <span class="val-sub">(基础: ${baseDisplay} <span class="val-bonus">${bonusDisplay}</span>)</span>`;
-            } else {
-              // v2.1 FIX: 如果没有词缀加成，不显示冗余的“基础”数值
-              subText = '';
-            }
+            // 格式化加成值
+            const bonusDisplay = isPercentage 
+              ? `${(affixBonus * 100).toFixed(1)}%`
+              : `+${Math.floor(affixBonus)}`;
+              
+            subText = ` <span class="val-sub">(基础: ${baseDisplay} <span class="val-bonus">${bonusDisplay}</span>)</span>`;
           }
           
           return `<div class="tt-stat">${statName}: <span class="val-main">${displayValue}</span>${subText}</div>`;
