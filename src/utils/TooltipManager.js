@@ -391,7 +391,7 @@ export class TooltipManager {
                 ? `${(affixBonus * 100).toFixed(1)}%`
                 : `+${Math.floor(affixBonus)}`;
               
-              subText = ` <span class="val-sub">(基础: ${baseDisplay} <span class="val-bonus" style="color:#00ffff">${bonusDisplay}</span>)</span>`;
+              subText = ` <span class="val-sub">(基础: ${baseDisplay} <span class="val-bonus">${bonusDisplay}</span>)</span>`;
             } else {
               // v2.1 FIX: 如果没有词缀加成，不显示冗余的“基础”数值
               subText = '';
