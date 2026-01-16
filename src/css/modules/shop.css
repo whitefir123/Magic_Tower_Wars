@@ -50,12 +50,11 @@
 /* 货架通用样式 */
 .shop-shelf {
   position: absolute;
-  display: grid;
-  /* 3列 x 4行 (只用前4行) */
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(4, 1fr); 
-  gap: 4px; /* 使用像素间隙更精确 */
-  padding: 10px 15px; /* 添加内边距以适应货架边缘 */
+  /* display: grid;  <-- Removed Grid */
+  /* grid-template-columns: repeat(3, 1fr); */
+  /* grid-template-rows: repeat(4, 1fr); */
+  /* gap: 4px; */
+  padding: 0; /* Remove padding as we use absolute positioning */
   /* 调试背景色，调整好后去掉 */
   /* background: rgba(255, 0, 0, 0.1); */
 }
@@ -92,21 +91,23 @@
 
 /* 商品项样式 */
 .shop-good-item {
+  position: absolute; /* Changed to absolute */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: transform 0.2s;
-  position: relative;
+  
+  /* Default size - will be overridden by JS or fit roughly 3x4 */
+  width: 30%; 
+  height: 23%;
   
   /* 去除原有边框背景 */
   background: transparent !important;
   border: none !important;
   min-height: 0 !important; /* 覆盖原有 min-height */
   padding: 0 !important;
-  height: 100%;
-  width: 100%; /* 填满格子 */
 }
 
 .shop-good-item:hover {

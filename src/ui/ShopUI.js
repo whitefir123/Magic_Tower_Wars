@@ -42,12 +42,22 @@ export class ShopUI {
     this.shopPrices = { 
       atk: 200, 
       def: 200, 
+      matk: 200, // 新增
+      mdef: 200, // 新增
       hp: 100, 
-      key: 500 
+      key: 500,
+      drill: 500 // 新增
     };
 
     // 随机商品列表
     this.goods = [];
+    
+    // 商品位置配置 (存储格式: { services: [{left, top}, ...], goods: [{left, top}, ...] })
+    this.itemPositions = {
+        services: [],
+        goods: []
+    };
+    
     this.lastRefreshFloor = -1;
     this.refreshCount = 0;
 
@@ -79,6 +89,10 @@ export class ShopUI {
     this.initDOMElements();
     this.setupEventListeners();
     this.setupResizeHandler();
+    
+    // 暴露编辑模式钩子
+    window.shopEditMode = () => this.enableEditMode();
+    
     console.log('✓ ShopUI 已初始化', this.style);
   }
 
@@ -269,8 +283,8 @@ export class ShopUI {
    */
   initGoods(floor) {
     if (window.__lootGenerator) {
-      // 生成 6 个商品
-      this.goods = window.__lootGenerator.generateShopGoods(floor, 6);
+      // 生成 12 个商品 (3x4)
+      this.goods = window.__lootGenerator.generateShopGoods(floor, 12);
       console.log('商店货物已刷新:', this.goods);
     } else {
       console.warn('LootGenerator not found');
@@ -471,6 +485,30 @@ export class ShopUI {
   }
 
   /**
+   * 获取商品位置样式
+   */
+  getPositionStyle(index, type = 'services') {
+      let pos = null;
+      if (this.itemPositions[type] && this.itemPositions[type][index]) {
+          pos = this.itemPositions[type][index];
+      } else {
+          // 默认 3x4 网格逻辑
+          const cols = 4; // 4列
+          // const rows = 3; 
+          const col = index % cols;
+          const row = Math.floor(index / cols);
+          
+          // 简单估算百分比，留有间隙
+          // 宽度 ~25%
+          pos = {
+              left: (col * 25) + '%',
+              top: (row * 33) + '%' // 3行，每行 ~33%
+          };
+      }
+      return `left: ${pos.left}; top: ${pos.top};`;
+  }
+
+  /**
    * 渲染左货架（基础服务）
    */
   renderServiceItems() {
@@ -486,12 +524,13 @@ export class ShopUI {
     // 获取图标资源 - 确保资源存在
     const imgEquip = loader?.getImage('ICONS_EQUIP');
     const imgCons = loader?.getImage('ICONS_CONSUMABLES');
+    const imgGems = loader?.getImage('ICONS_GEMS'); // 新增引用
     
     if (!imgEquip || !imgCons) {
         console.warn('ShopUI: Icons not loaded yet');
     }
 
-    // 定义基础服务元数据
+    // 定义基础服务元数据 (现在有7个)
     const services = [
       { 
         type: 'atk', 
@@ -499,7 +538,7 @@ export class ShopUI {
         desc: '永久增加3点物理攻击力', 
         basePrice: this.shopPrices.atk,
         iconType: 'EQUIP',
-        iconIndex: 0, // WEAPON_IRON_T1 (Sword)
+        iconIndex: 0, // Sword
         stats: { p_atk: 3 }
       },
       { 
@@ -508,8 +547,26 @@ export class ShopUI {
         desc: '永久增加3点物理防御力', 
         basePrice: this.shopPrices.def,
         iconType: 'EQUIP',
-        iconIndex: 6, // ARMOR_OBSIDIAN_T1 (Plate)
+        iconIndex: 6, // Plate
         stats: { p_def: 3 }
+      },
+      { 
+        type: 'matk', 
+        name: '魔攻提升', 
+        desc: '永久增加3点魔法攻击力', 
+        basePrice: this.shopPrices.matk,
+        iconType: 'EQUIP',
+        iconIndex: 2, // Staff (WEAPON_STAFF_T1)
+        stats: { m_atk: 3 }
+      },
+      { 
+        type: 'mdef', 
+        name: '魔防提升', 
+        desc: '永久增加3点魔法防御力', 
+        basePrice: this.shopPrices.mdef,
+        iconType: 'EQUIP',
+        iconIndex: 7, // Robe (ARMOR_ROBE_T1) - 修正为使用 EQUIP 表中的 Robe
+        stats: { m_def: 3 }
       },
       { 
         type: 'hp', 
@@ -525,20 +582,37 @@ export class ShopUI {
         name: '神秘钥匙', 
         desc: '一把通用的钥匙，用于开启宝箱或门', 
         basePrice: this.shopPrices.key,
-        iconType: 'CONSUMABLE', // 假设
-        iconIndex: 20, // 假设 Drill 或其他图标作为占位，如果没有钥匙图标
+        iconType: 'CONSUMABLE', 
+        iconIndex: 20, // Drill位置? 不，Key通常没有特定图标，先用 Drill占位或查找
+        // 修正：钥匙图标通常在 ITEMS 或特殊位置。
+        // 暂时保持原样，或者如果没有 Key 图标，使用 drill 图标
+        // 假设 Consumables index 3 是 Key (常见RPG设置)，如果没有，保持 20
+        iconIndex: 3, 
         stats: { key: 1 }
+      },
+      {
+        type: 'drill',
+        name: '星尘钻头',
+        desc: '可以破坏墙壁的强力工具',
+        basePrice: this.shopPrices.drill,
+        iconType: 'CONSUMABLE',
+        iconIndex: 20, // ITEM_STARDUST_DRILL
+        stats: { item: 'ITEM_STARDUST_DRILL' }
       }
     ];
 
-    services.forEach(service => {
+    services.forEach((service, index) => {
       const price = this.applyPriceModifiers(service.basePrice);
       const canAfford = playerGold >= price;
       
       const itemEl = document.createElement('div');
       itemEl.className = 'shop-good-item';
       itemEl.dataset.serviceType = service.type;
+      itemEl.dataset.index = index; // 用于定位
       
+      // 应用绝对定位样式
+      itemEl.style.cssText = this.getPositionStyle(index, 'services');
+
       if (!canAfford) {
         itemEl.classList.add('disabled');
       }
@@ -547,11 +621,11 @@ export class ShopUI {
       let img = null;
       if (service.iconType === 'EQUIP') img = imgEquip;
       else if (service.iconType === 'CONSUMABLE') img = imgCons;
+      else if (service.iconType === 'GEM') img = imgGems;
       
-      // 如果找不到图片，使用文字占位
+      // ... (绘图逻辑)
       let canvas = null;
       if (img) {
-        // 构造临时 item 对象用于绘图
         const tempItem = { 
           iconIndex: service.iconIndex, 
           type: service.iconType === 'CONSUMABLE' ? 'CONSUMABLE' : 'WEAPON' 
@@ -577,10 +651,9 @@ export class ShopUI {
       container.appendChild(itemEl);
       
       // 绑定 Tooltip
-      // 构造符合 TooltipManager 期望的对象
       const tooltipItem = {
         nameZh: service.name,
-        type: 'CONSUMABLE', // 借用消耗品类型以显示通用样式
+        type: 'CONSUMABLE', 
         quality: 'COMMON',
         description: service.desc,
         stats: service.stats
@@ -623,6 +696,9 @@ export class ShopUI {
       const itemEl = document.createElement('div');
       itemEl.className = 'shop-good-item';
       itemEl.dataset.index = index;
+      
+      // 应用绝对定位样式
+      itemEl.style.cssText = this.getPositionStyle(index, 'goods');
       
       if (!canAfford) {
         itemEl.classList.add('disabled');
@@ -702,8 +778,23 @@ export class ShopUI {
     // 效果
     if (type === 'atk') game.player.stats.p_atk += 3;
     else if (type === 'def') game.player.stats.p_def += 3;
+    else if (type === 'matk') game.player.stats.m_atk += 3;
+    else if (type === 'mdef') game.player.stats.m_def += 3;
     else if (type === 'hp') game.player.heal(200);
     else if (type === 'key') game.player.stats.keys += 1;
+    else if (type === 'drill') {
+        const drillItem = { 
+            id: 'ITEM_STARDUST_DRILL', 
+            name: '星尘钻头', 
+            type: 'CONSUMABLE', 
+            iconIndex: 20,
+            desc: '可以破坏墙壁'
+        };
+        // 尝试添加到背包，这里可能需要从 ItemDB 获取完整数据，但为了简化先构造
+        // 最好通过 ID 查找
+        // 假设 player.addToInventory 支持对象
+        game.player.addToInventory(drillItem);
+    }
     
     // 通胀
     if (type === 'hp') this.shopPrices.hp = Math.ceil(this.shopPrices.hp * 1.2);
@@ -793,6 +884,96 @@ export class ShopUI {
     // 重新渲染
     if (this.isOpen) {
       this.render();
+    }
+  }
+
+  /**
+   * 开启编辑模式 (Dev Tool)
+   * 允许拖拽商品并导出坐标
+   */
+  enableEditMode() {
+    if (!this.isOpen) {
+        console.warn('请先打开商店界面');
+        return;
+    }
+    
+    console.log('--- 商店布局编辑模式已启动 ---');
+    console.log('拖拽商品调整位置，点击“导出坐标”获取JSON');
+    
+    const items = document.querySelectorAll('.shop-good-item');
+    items.forEach(item => {
+        item.style.border = '1px solid red';
+        item.style.zIndex = '100';
+        item.style.cursor = 'move';
+        
+        let isDragging = false;
+        
+        item.onmousedown = (e) => {
+            isDragging = true;
+            item.style.zIndex = '1000';
+            
+            const rect = item.getBoundingClientRect();
+            // offsetParent 应该是 .shop-shelf
+            const parent = item.offsetParent;
+            if (!parent) return;
+            
+            const parentRect = parent.getBoundingClientRect();
+            
+            // 鼠标点击点相对于元素左上角的偏移
+            const offsetX = e.clientX - rect.left;
+            const offsetY = e.clientY - rect.top;
+            
+            const moveHandler = (ev) => {
+                if (!isDragging) return;
+                
+                // 计算新位置（相对于父容器）
+                let x = ev.clientX - parentRect.left - offsetX;
+                let y = ev.clientY - parentRect.top - offsetY;
+                
+                // 转换为百分比
+                const leftPct = (x / parentRect.width) * 100;
+                const topPct = (y / parentRect.height) * 100;
+                
+                item.style.left = leftPct.toFixed(2) + '%';
+                item.style.top = topPct.toFixed(2) + '%';
+            };
+            
+            const upHandler = () => {
+                isDragging = false;
+                item.style.zIndex = '100';
+                document.removeEventListener('mousemove', moveHandler);
+                document.removeEventListener('mouseup', upHandler);
+                
+                // 保存位置到内存
+                const index = parseInt(item.dataset.index);
+                // 区分服务还是商品：根据 dataset.serviceType
+                const type = item.dataset.serviceType ? 'services' : 'goods';
+                
+                if (!this.itemPositions[type]) this.itemPositions[type] = [];
+                this.itemPositions[type][index] = {
+                    left: item.style.left,
+                    top: item.style.top
+                };
+            };
+            
+            document.addEventListener('mousemove', moveHandler);
+            document.addEventListener('mouseup', upHandler);
+        };
+    });
+    
+    // 添加导出按钮
+    let exportBtn = document.getElementById('shop-export-btn');
+    if (!exportBtn) {
+        exportBtn = document.createElement('button');
+        exportBtn.id = 'shop-export-btn';
+        exportBtn.innerText = '导出坐标 JSON';
+        exportBtn.style.cssText = 'position: absolute; top: 50px; right: 10px; z-index: 2000; padding: 10px; background: #333; color: #fff; border: 1px solid gold; cursor: pointer;';
+        exportBtn.onclick = () => {
+            console.log('--- 商店坐标配置 JSON ---');
+            console.log(JSON.stringify(this.itemPositions, null, 2));
+            alert('坐标已输出到控制台 (F12)');
+        };
+        this.elements.overlay.appendChild(exportBtn);
     }
   }
 
