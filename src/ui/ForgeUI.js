@@ -759,6 +759,7 @@ export class ForgeUI {
     }
 
     this.elements.overlay.classList.remove('hidden');
+    this.elements.overlay.classList.add('overlay-fade-in');
     this.elements.overlay.style.display = 'flex';
     this.isOpen = true;
     

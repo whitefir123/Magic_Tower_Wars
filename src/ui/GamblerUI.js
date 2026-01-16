@@ -305,6 +305,7 @@ export class GamblerUI {
       }
 
       this.elements.overlay.classList.remove('hidden');
+      this.elements.overlay.classList.add('overlay-fade-in');
       this.elements.overlay.style.setProperty('display', 'flex', 'important');
       this.isOpen = true;
       this.isSpinning = false;
