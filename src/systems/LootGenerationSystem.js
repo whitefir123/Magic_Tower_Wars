@@ -452,12 +452,26 @@ export class LootGenerator {
     }
     
     // === 第六步：计算最终属性 ===
-    // FinalStats = (FinalBase + AffixStats) * (1 + SuffixMultipliers)
+    // FinalStats = (FinalBase * PrefixMultiplier + AffixStats) * (1 + SuffixMultipliers)
     const finalStats = {};
     
-    // 先复制底材数值
+    // v2.1 FIX: 获取前缀倍率 (如 Rusted x0.8)
+    const prefixMult = prefix?.stats?.multiplier || 1.0;
+
+    // 先复制底材数值并应用前缀倍率
     for (const [key, value] of Object.entries(baseStats)) {
-      finalStats[key] = value;
+      // 只有数值类属性受倍率影响，百分比属性通常不受影响（除非特定设计）
+      // 这里简化处理：所有底材属性都应用倍率
+      let modifiedValue = value * prefixMult;
+      
+      // 保持精度
+      if (key.includes('rate') || key.includes('dodge') || key.includes('pen') || key.includes('gold') || key.includes('lifesteal')) {
+         modifiedValue = Math.round(modifiedValue * 100) / 100;
+      } else {
+         modifiedValue = Math.floor(modifiedValue);
+      }
+      
+      finalStats[key] = modifiedValue;
     }
     
     // 加上前缀固定加成

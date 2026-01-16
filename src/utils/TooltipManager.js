@@ -172,6 +172,9 @@ export class TooltipManager {
           const descParts = [];
           
           for (const [statKey, statValue] of statEntries) {
+            // v2.1 FIX: 隐藏 multiplier 属性，它是内部计算用的
+            if (statKey === 'multiplier') continue;
+
             // 检查是否是转化类词缀
             if (statKey.includes('_to_') || statKey.includes('_percent')) {
               // 转化类词缀：显示完整描述
