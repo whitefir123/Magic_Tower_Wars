@@ -696,7 +696,9 @@ export class InventoryUI {
       const loader = window.game?.loader;
       const imgEquip = loader?.getImage('ICONS_EQUIP');
       const imgCons = loader?.getImage('ICONS_CONSUMABLES');
-      const cols = ICON_GRID_COLS || 4;
+      const imgGems = loader?.getImage('ICONS_GEMS');
+      const defaultCols = ICON_GRID_COLS || 4;
+      const defaultRows = ICON_GRID_ROWS || 4;
 
       // 计算图标尺寸
       const natWEquip = imgEquip ? (imgEquip.naturalWidth || imgEquip.width) : 0;
@@ -822,13 +824,30 @@ export class InventoryUI {
           return;
         }
         
-        const isConsumable = item.type === 'CONSUMABLE';
-        const img = isConsumable ? imgCons : imgEquip;
-        const cellW = isConsumable ? cellWCons : cellWEquip;
-        const cellH = isConsumable ? cellHCons : cellHEquip;
+        let img = imgEquip;
+        let currentCols = defaultCols;
+        let currentRows = defaultRows;
+
+        if (item.type === 'GEM') {
+          img = imgGems;
+          currentCols = 5;
+          currentRows = 4;
+        } else if (item.type === 'CONSUMABLE') {
+          img = imgCons;
+          // Heuristic: If index >= 16, assume larger grid (e.g. 5x5) for items like Drill (index 20)
+          if (item.iconIndex >= 16) {
+            currentCols = 5;
+            currentRows = 5;
+          }
+        }
 
         if (img) {
-          const canvas = this.createItemIcon(img, item, cellW, cellH, this.style.slotSize, cols);
+          const natW = img.naturalWidth || img.width;
+          const natH = img.naturalHeight || img.height;
+          const cellW = natW / currentCols;
+          const cellH = natH / currentRows;
+          
+          const canvas = this.createItemIcon(img, item, cellW, cellH, this.style.slotSize, currentCols);
           if (canvas) slot.appendChild(canvas);
         }
 

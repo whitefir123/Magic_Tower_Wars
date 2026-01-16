@@ -249,8 +249,10 @@ export class VisualEffectsSystem {
    * @param {string} assetKey
    * @param {string} targetElementId
    * @param {number|null} iconIndex
+   * @param {number} cols - 列数 (默认4)
+   * @param {number} rows - 行数 (默认4)
    */
-  flyLoot(startX, startY, assetKey, targetElementId, iconIndex = null) {
+  flyLoot(startX, startY, assetKey, targetElementId, iconIndex = null, cols = 4, rows = 4) {
     if (!this.flyLayer) this.initDOMElements();
     if (!this.flyLayer) return;
 
@@ -320,13 +322,13 @@ export class VisualEffectsSystem {
       el.style.imageRendering = 'pixelated';
       
       if (iconIndex !== null) {
-        const cols = 4; 
-        const rows = 4;
+        // 使用传入的 cols 和 rows (默认 4x4)
         const col = iconIndex % cols;
         const row = Math.floor(iconIndex / cols);
         const posX = (col / (cols - 1)) * 100;
         const posY = (row / (rows - 1)) * 100;
-        el.style.backgroundSize = '400% 400%';
+        // 动态设置 backgroundSize
+        el.style.backgroundSize = `${cols * 100}% ${rows * 100}%`;
         el.style.backgroundPosition = `${posX}% ${posY}%`;
       } else {
         el.style.backgroundSize = 'contain';

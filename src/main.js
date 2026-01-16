@@ -1402,7 +1402,17 @@ class Game {
         // 无论是否装备，都播放飞行动画
         if (this.vfx) {
           const iconIndex = def ? (def.iconIndex !== undefined ? def.iconIndex : 0) : 0;
-          this.vfx.flyLoot(lootWorldX, lootWorldY, 'ICONS_EQUIP', 'backpack-icon', iconIndex);
+          let assetKey = 'ICONS_EQUIP';
+          let cols = 4;
+          let rows = 4;
+          
+          if (def && def.type === 'GEM') {
+            assetKey = 'ICONS_GEMS';
+            cols = 5;
+            rows = 4;
+          }
+
+          this.vfx.flyLoot(lootWorldX, lootWorldY, assetKey, 'backpack-icon', iconIndex, cols, rows);
         }
         
         this.ui.updateStats(this.player);
@@ -1454,7 +1464,12 @@ class Game {
             const iconIndex = typeof itemToAdd === 'object' 
               ? (itemToAdd.iconIndex !== undefined ? itemToAdd.iconIndex : 0)
               : 0;
-            this.vfx.flyLoot(lootWorldX, lootWorldY, 'ICONS_CONSUMABLES', 'backpack-icon', iconIndex);
+            
+            // Heuristic for larger grids
+            const cols = iconIndex >= 16 ? 5 : 4;
+            const rows = iconIndex >= 16 ? 5 : 4;
+
+            this.vfx.flyLoot(lootWorldX, lootWorldY, 'ICONS_CONSUMABLES', 'backpack-icon', iconIndex, cols, rows);
           }
           this.ui.updateStats(this.player);
         } else {

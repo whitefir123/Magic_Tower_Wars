@@ -828,6 +828,12 @@ export class MapSystem {
       }
     }
     
+    // Determine sprite config based on item type
+    const isGem = def && def.type === 'GEM';
+    const assetKey = isGem ? 'ICONS_GEMS' : 'ICONS_EQUIP';
+    const cols = isGem ? 5 : 4;
+    const rows = isGem ? 4 : 4;
+
     // 添加到物品列表
     this.items.push({
       type: 'ITEM_EQUIP',
@@ -837,10 +843,12 @@ export class MapSystem {
       visualX: dropX * TILE_SIZE,
       visualY: dropY * TILE_SIZE,
       sprite: new Sprite({
-        assetKey: 'ICONS_EQUIP',
+        assetKey: assetKey,
         loader: this.loader,
         isStatic: true,
-        iconIndex: def.iconIndex
+        iconIndex: def.iconIndex,
+        cols: cols,
+        rows: rows
       })
     });
   }
@@ -882,6 +890,12 @@ export class MapSystem {
     }
 
     // 4. 创建地图物品
+    const iconIndex = def.iconIndex !== undefined ? def.iconIndex : 0;
+    // Heuristic: Support larger grids for new items (like Drill at index 20)
+    // If index >= 16 (standard 4x4), assume 5x5 grid
+    const cols = iconIndex >= 16 ? 5 : 4;
+    const rows = iconIndex >= 16 ? 5 : 4;
+
     this.items.push({
       type: 'ITEM_CONSUMABLE',
       itemId: itemId, // 存储 UID 或 模板ID
@@ -893,7 +907,9 @@ export class MapSystem {
         assetKey: 'ICONS_CONSUMABLES',
         loader: this.loader,
         isStatic: true,
-        iconIndex: def.iconIndex !== undefined ? def.iconIndex : 0
+        iconIndex: iconIndex,
+        cols: cols,
+        rows: rows
       })
     });
   }

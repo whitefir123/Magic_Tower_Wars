@@ -9,6 +9,8 @@ export class Sprite {
     this.assetKey = config.assetKey; this.loader = config.loader;
     this.isStatic = config.isStatic || false;
     this.iconIndex = typeof config.iconIndex === 'number' ? config.iconIndex : null;
+    this.cols = config.cols || ICON_GRID_COLS || 4;
+    this.rows = config.rows || ICON_GRID_ROWS || 4;
     this.destHeight = (typeof config.destHeight === 'number') ? config.destHeight : (this.isStatic ? TILE_SIZE : 56);
     this.direction = 0; this.currentFrame = 0;
     this.animTimer = 0; this.frameInterval = 100;
@@ -123,8 +125,8 @@ export class Sprite {
 
     if (this.isStatic) {
       if (this.iconIndex != null) {
-        const cols = ICON_GRID_COLS || 4;
-        const rows = ICON_GRID_ROWS || 4;
+        const cols = this.cols;
+        const rows = this.rows;
         const cellW = natW / cols;
         const cellH = natH / rows;
         const col = this.iconIndex % cols;
