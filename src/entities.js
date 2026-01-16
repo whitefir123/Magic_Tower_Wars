@@ -2887,7 +2887,7 @@ export class Player extends Entity {
       // 不再显示MP获得飘字
     }
   }
-  takeDamage(amt, type = null) { 
+  takeDamage(amt, type = null, pierceAmt = 0) { 
     // ✅ 获取最终减伤属性
     const totals = this.getTotalStats ? this.getTotalStats() : this.stats;
     const dmgReduce = totals.final_dmg_reduce || 0;
@@ -2899,17 +2899,55 @@ export class Player extends Entity {
     // 保证至少造成 1 点伤害（除非 amt 也是 0）
     let finalAmt = amt > 0 ? Math.max(1, reducedAmt) : 0;
     
+    // 计算减伤后的有效穿透伤害 (按比例保留)
+    let effectivePierce = 0;
+    if (pierceAmt > 0 && amt > 0) {
+      const ratio = Math.min(1, pierceAmt / amt);
+      effectivePierce = Math.floor(finalAmt * ratio);
+    }
+    
     // ========== 护盾机制 ==========
     if (finalAmt > 0) {
+      // 确定可用的护盾类型
+      let shieldType = null;
       if (type === 'PHYSICAL' && this.stats.physicalShield > 0) {
-        const absorbed = Math.min(finalAmt, this.stats.physicalShield);
-        this.stats.physicalShield -= absorbed;
-        finalAmt -= absorbed;
-        // 如果有格挡音效，可以在这里播放，但 CombatSystem 已经处理了格挡
+        shieldType = 'physicalShield';
       } else if (type === 'MAGIC' && this.stats.magicShield > 0) {
-        const absorbed = Math.min(finalAmt, this.stats.magicShield);
-        this.stats.magicShield -= absorbed;
-        finalAmt -= absorbed;
+        shieldType = 'magicShield';
+      }
+      
+      if (shieldType) {
+        let currentShield = this.stats[shieldType];
+        
+        // 1. 优先处理穿透伤害 (对盾造成 2x 损耗)
+        if (effectivePierce > 0) {
+          const shieldDrain = effectivePierce * 2;
+          
+          if (currentShield >= shieldDrain) {
+            // 盾足够吸收所有穿透伤害
+            currentShield -= shieldDrain;
+            finalAmt -= effectivePierce;
+            // 穿透部分被完全吸收
+          } else {
+            // 盾不足，全部耗尽
+            // 计算能抵消多少实际伤害 (1点伤害需要2点盾)
+            const absorbedDamage = Math.floor(currentShield / 2);
+            currentShield = 0;
+            finalAmt -= absorbedDamage;
+            // 剩余的穿透伤害将直接作用于 HP
+          }
+          
+          // 更新护盾值
+          this.stats[shieldType] = currentShield;
+        }
+        
+        // 2. 处理剩余的普通伤害 (对盾 1x 损耗)
+        // 只有当盾还有剩余时才执行 (意味着穿透部分已被完全吸收)
+        if (finalAmt > 0 && this.stats[shieldType] > 0) {
+          const absorbed = Math.min(finalAmt, this.stats[shieldType]);
+          this.stats[shieldType] -= absorbed;
+          finalAmt -= absorbed;
+        }
       }
     }
 

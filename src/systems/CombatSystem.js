@@ -2579,7 +2579,16 @@ export class CombatSystem {
     }
     
     const damageType = monsterUsesMagic ? 'MAGIC' : 'PHYSICAL';
-    player.takeDamage(actualDamage, damageType);
+    
+    // 计算穿透伤害部分
+    // 如果总伤害被 Hook 修改（例如易伤/虚弱），穿透伤害也应按比例缩放
+    let scaledPierce = penetrationDamage;
+    if (finalDamage > 0 && actualDamage !== finalDamage) {
+      const ratio = actualDamage / finalDamage;
+      scaledPierce = Math.floor(penetrationDamage * ratio);
+    }
+    
+    player.takeDamage(actualDamage, damageType, scaledPierce);
     
     // ========== 怪物特性 - 黏液 (STICKY) ==========
     if (monsterTraits.includes('STICKY') && finalDamage > 0) {
