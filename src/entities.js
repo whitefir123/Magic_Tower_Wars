@@ -265,23 +265,43 @@ export class Entity {
     }
     
     // 计算图标起始位置（居中显示）
-    const totalWidth = this.statuses.length * (iconSize + iconSpacing) - iconSpacing;
-    const drawX = this.visualX;
-    const drawY = this.visualY;
-    const startX = drawX + (TILE_SIZE / 2) - (totalWidth / 2);
+    // 收集所有需要绘制的图标
+    const iconsToDraw = [];
     
-    // 渲染每个状态图标
+    // 1. 添加状态图标
     for (let i = 0; i < this.statuses.length; i++) {
       const status = this.statuses[i];
       const statusDef = STATUS_TYPES[status.type];
       if (!statusDef) continue;
       
-      // 获取图标索引
       const iconIndex = STATUS_MAP[status.type];
-      if (iconIndex === undefined) {
-        // 如果状态类型不在映射中，跳过或使用默认图标
-        continue;
+      if (iconIndex !== undefined) {
+        iconsToDraw.push({
+          index: iconIndex,
+          stacks: (statusDef.stackable && status.config) ? status.config.stacks : 0
+        });
       }
+    }
+    
+    // 2. 添加护盾图标 (如果存在护盾)
+    if (this.stats && (this.stats.physicalShield > 0 || this.stats.magicShield > 0)) {
+      iconsToDraw.push({
+        index: STATUS_MAP['DEFUP'], // 8
+        stacks: 0 // 护盾不显示层数
+      });
+    }
+    
+    if (iconsToDraw.length === 0) return;
+
+    const totalWidth = iconsToDraw.length * (iconSize + iconSpacing) - iconSpacing;
+    const drawX = this.visualX;
+    const drawY = this.visualY;
+    const startX = drawX + (TILE_SIZE / 2) - (totalWidth / 2);
+    
+    // 渲染每个状态图标
+    for (let i = 0; i < iconsToDraw.length; i++) {
+      const iconData = iconsToDraw[i];
+      const iconIndex = iconData.index;
       
       // 计算精灵图中的源坐标（从索引转换为行列）
       const row = Math.floor(iconIndex / gridCols);
@@ -303,14 +323,14 @@ export class Entity {
       ctx.restore();
       
       // 绘制堆叠数字（如果是可堆叠状态）
-      if (statusDef.stackable && status.config && status.config.stacks > 1) {
+      if (iconData.stacks > 1) {
         ctx.save();
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         // 数字显示在图标右下角
-        ctx.fillText(status.config.stacks, iconX + iconSize - 2, iconY + iconSize - 2);
+        ctx.fillText(iconData.stacks, iconX + iconSize - 2, iconY + iconSize - 2);
         ctx.restore();
       }
     }
@@ -1336,6 +1356,8 @@ export class Player extends Entity {
       m_atk: baseStats.m_atk, 
       m_def: baseStats.m_def, 
       rage: baseStats.rage || 0, 
+      physicalShield: 0, // 物理护盾
+      magicShield: 0,    // 魔法护盾
       mp: baseStats.mp ?? 100,
       maxMp: baseStats.maxMp ?? 100,
       mp_regen: baseStats.mp_regen ?? 0,
@@ -2865,7 +2887,7 @@ export class Player extends Entity {
       // 不再显示MP获得飘字
     }
   }
-  takeDamage(amt) { 
+  takeDamage(amt, type = null) { 
     // ✅ 获取最终减伤属性
     const totals = this.getTotalStats ? this.getTotalStats() : this.stats;
     const dmgReduce = totals.final_dmg_reduce || 0;
@@ -2875,8 +2897,22 @@ export class Player extends Entity {
     const reducedAmt = Math.floor(amt * (1 - effectiveReduce));
     
     // 保证至少造成 1 点伤害（除非 amt 也是 0）
-    const finalAmt = amt > 0 ? Math.max(1, reducedAmt) : 0;
+    let finalAmt = amt > 0 ? Math.max(1, reducedAmt) : 0;
     
+    // ========== 护盾机制 ==========
+    if (finalAmt > 0) {
+      if (type === 'PHYSICAL' && this.stats.physicalShield > 0) {
+        const absorbed = Math.min(finalAmt, this.stats.physicalShield);
+        this.stats.physicalShield -= absorbed;
+        finalAmt -= absorbed;
+        // 如果有格挡音效，可以在这里播放，但 CombatSystem 已经处理了格挡
+      } else if (type === 'MAGIC' && this.stats.magicShield > 0) {
+        const absorbed = Math.min(finalAmt, this.stats.magicShield);
+        this.stats.magicShield -= absorbed;
+        finalAmt -= absorbed;
+      }
+    }
+
     this.stats.hp -= finalAmt; 
     this.gainRage(5); 
     

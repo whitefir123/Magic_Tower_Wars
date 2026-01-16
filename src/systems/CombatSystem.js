@@ -2578,7 +2578,8 @@ export class CombatSystem {
       game.audio.play('metalPot1', { volume: 0.5, forceCategory: 'gameplay' });
     }
     
-    player.takeDamage(actualDamage);
+    const damageType = monsterUsesMagic ? 'MAGIC' : 'PHYSICAL';
+    player.takeDamage(actualDamage, damageType);
     
     // ========== 怪物特性 - 黏液 (STICKY) ==========
     if (monsterTraits.includes('STICKY') && finalDamage > 0) {

@@ -768,3 +768,30 @@
   filter: grayscale(100%) contrast(120%);
   transition: filter 1.5s ease-out;
 }
+
+/* ========================================================================
+   SHIELDS - HP Bar Overlays
+   ======================================================================== */
+.hp-shield-physical {
+  position: absolute;
+  height: 100%;
+  background: #808080;
+  top: 0;
+  transition: width 0.3s cubic-bezier(.25,.1,.25,1), left 0.3s cubic-bezier(.25,.1,.25,1);
+  box-shadow: none !important;
+  border: none !important;
+  z-index: 2;
+  opacity: 0.9;
+}
+
+.hp-shield-magic {
+  position: absolute;
+  height: 100%;
+  background: #6600cc; /* 深紫色 */
+  top: 0;
+  transition: width 0.3s cubic-bezier(.25,.1,.25,1), left 0.3s cubic-bezier(.25,.1,.25,1);
+  box-shadow: none !important;
+  border: none !important;
+  z-index: 2;
+  opacity: 0.9;
+}

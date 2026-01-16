@@ -86,6 +86,47 @@ export class HUD {
     // ✅ 性能优化：仅在百分比变化时更新宽度
     this.updateStyleIfChanged('hp-visual-fill', 'width', `${hpPercent}%`);
 
+    // ========== 护盾显示 ==========
+    // 动态创建护盾条DOM（如果不存在）
+    if (!this.getCachedElement('hp-shield-physical')) {
+        const hpFill = this.getCachedElement('hp-visual-fill');
+        if (hpFill && hpFill.parentElement) {
+            const container = hpFill.parentElement;
+            
+            // 物理护盾
+            const pShield = document.createElement('div');
+            pShield.id = 'hp-shield-physical';
+            pShield.className = 'hp-shield-physical';
+            container.appendChild(pShield);
+            this.domCache['hp-shield-physical'] = pShield;
+            
+            // 魔法护盾
+            const mShield = document.createElement('div');
+            mShield.id = 'hp-shield-magic';
+            mShield.className = 'hp-shield-magic';
+            container.appendChild(mShield);
+            this.domCache['hp-shield-magic'] = mShield;
+        }
+    }
+
+    // 更新护盾
+    const pShieldVal = player.stats.physicalShield || 0;
+    const mShieldVal = player.stats.magicShield || 0;
+    
+    // 计算百分比 (基于最大HP)
+    // 注意：hpPercent 已经是 (currentHp / maxHp) * 100
+    const pShieldPercent = Math.max(0, (pShieldVal / player.stats.maxHp) * 100);
+    const mShieldPercent = Math.max(0, (mShieldVal / player.stats.maxHp) * 100);
+    
+    // 物理护盾接在HP后面
+    this.updateStyleIfChanged('hp-shield-physical', 'width', `${pShieldPercent}%`);
+    this.updateStyleIfChanged('hp-shield-physical', 'left', `${hpPercent}%`);
+    
+    // 魔法护盾接在物理护盾后面
+    const mShieldLeft = hpPercent + pShieldPercent;
+    this.updateStyleIfChanged('hp-shield-magic', 'width', `${mShieldPercent}%`);
+    this.updateStyleIfChanged('hp-shield-magic', 'left', `${mShieldLeft}%`);
+
     // Rage
     const ragePercent = player.stats.rage;
     // ✅ 性能优化：仅在百分比变化时更新宽度
