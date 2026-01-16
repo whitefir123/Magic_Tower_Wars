@@ -54,8 +54,29 @@ export class ShopUI {
     
     // 商品位置配置 (存储格式: { services: [{left, top}, ...], goods: [{left, top}, ...] })
     this.itemPositions = {
-        services: [],
-        goods: []
+      services: [
+        { left: "-11.97%", top: "-39.54%" },
+        { left: "19.34%", top: "-34.09%" },
+        { left: "49.35%", top: "-29.99%" },
+        { left: "79.08%", top: "-26.54%" },
+        { left: "-12.05%", top: "0.03%" },
+        { left: "19.24%", top: "3.98%" },
+        { left: "50.07%", top: "6.13%" }
+      ],
+      goods: [
+        { left: "-9.37%", top: "-25.88%" },
+        { left: "20.35%", top: "-30.33%" },
+        { left: "50.07%", top: "-33.79%" },
+        { left: "80.33%", top: "-39.54%" },
+        { left: "-10.15%", top: "7.61%" },
+        { left: "19.64%", top: "4.98%" },
+        { left: "50.21%", top: "2.83%" },
+        { left: "79.93%", top: "0.87%" },
+        { left: "-9.76%", top: "42.09%" },
+        { left: "19.65%", top: "41.44%" },
+        { left: "50.5%", top: "41.12%" },
+        { left: "80.26%", top: "39.95%" }
+      ]
     };
     
     this.lastRefreshFloor = -1;
@@ -78,8 +99,6 @@ export class ShopUI {
     // 引用全局 TooltipManager
     this.tooltipManager = globalTooltipManager;
 
-    this.isEditMode = false; // 默认为非编辑模式
-    
     // 初始化
     this.init();
   }
@@ -91,10 +110,6 @@ export class ShopUI {
     this.initDOMElements();
     this.setupEventListeners();
     this.setupResizeHandler();
-    
-    // 暴露编辑模式钩子
-    window.shopEditMode = () => this.enableEditMode();
-    
     console.log('✓ ShopUI 已初始化', this.style);
   }
 
@@ -198,8 +213,6 @@ export class ShopUI {
     // 事件委托：基础服务购买
     if (this.elements.leftShelf) {
       this.elements.leftShelf.addEventListener('click', (e) => {
-        if (this.isEditMode) return; // 编辑模式下禁止购买
-
         const itemEl = e.target.closest('.shop-good-item');
         if (itemEl && !itemEl.disabled && itemEl.dataset.serviceType) {
           this.buyService(itemEl.dataset.serviceType);
@@ -210,8 +223,6 @@ export class ShopUI {
     // 事件委托：商品购买
     if (this.elements.rightShelf) {
       this.elements.rightShelf.addEventListener('click', (e) => {
-        if (this.isEditMode) return; // 编辑模式下禁止购买
-
         const itemEl = e.target.closest('.shop-good-item');
         if (itemEl && !itemEl.disabled && itemEl.dataset.index !== undefined) {
           const index = parseInt(itemEl.dataset.index, 10);
@@ -890,117 +901,6 @@ export class ShopUI {
     // 重新渲染
     if (this.isOpen) {
       this.render();
-    }
-  }
-
-  /**
-   * 开启编辑模式 (Dev Tool)
-   * 允许拖拽商品并导出坐标
-   */
-  enableEditMode() {
-    if (!this.isOpen) {
-        console.warn('请先打开商店界面');
-        return;
-    }
-
-    this.isEditMode = true; // 开启编辑模式标记
-    
-    console.log('--- 商店布局编辑模式已启动 ---');
-    console.log('拖拽商品调整位置，点击“导出坐标”获取JSON');
-    console.log('注意：编辑模式下无法购买商品');
-    
-    const items = document.querySelectorAll('.shop-good-item');
-    items.forEach(item => {
-        item.style.border = '1px solid red';
-        item.style.zIndex = '100';
-        item.style.cursor = 'move';
-        
-        let isDragging = false;
-        
-        item.onmousedown = (e) => {
-            isDragging = true;
-            item.style.zIndex = '1000';
-            
-            const rect = item.getBoundingClientRect();
-            // offsetParent 应该是 .shop-shelf
-            const parent = item.offsetParent;
-            if (!parent) return;
-            
-            const parentRect = parent.getBoundingClientRect();
-            
-            // 鼠标点击点相对于元素左上角的偏移
-            const offsetX = e.clientX - rect.left;
-            const offsetY = e.clientY - rect.top;
-            
-            const moveHandler = (ev) => {
-                if (!isDragging) return;
-                
-                // 计算新位置（相对于父容器）
-                let x = ev.clientX - parentRect.left - offsetX;
-                let y = ev.clientY - parentRect.top - offsetY;
-                
-                // 转换为百分比
-                const leftPct = (x / parentRect.width) * 100;
-                const topPct = (y / parentRect.height) * 100;
-                
-                item.style.left = leftPct.toFixed(2) + '%';
-                item.style.top = topPct.toFixed(2) + '%';
-            };
-            
-            const upHandler = () => {
-                isDragging = false;
-                item.style.zIndex = '100';
-                document.removeEventListener('mousemove', moveHandler);
-                document.removeEventListener('mouseup', upHandler);
-                
-                // 保存位置到内存
-                const index = parseInt(item.dataset.index);
-                // 区分服务还是商品：根据 dataset.serviceType
-                const type = item.dataset.serviceType ? 'services' : 'goods';
-                
-                if (!this.itemPositions[type]) this.itemPositions[type] = [];
-                this.itemPositions[type][index] = {
-                    left: item.style.left,
-                    top: item.style.top
-                };
-            };
-            
-            document.addEventListener('mousemove', moveHandler);
-            document.addEventListener('mouseup', upHandler);
-        };
-    });
-    
-    // 添加导出按钮
-    let exportBtn = document.getElementById('shop-export-btn');
-    if (!exportBtn) {
-        exportBtn = document.createElement('button');
-        exportBtn.id = 'shop-export-btn';
-        exportBtn.innerText = '导出坐标 JSON';
-        exportBtn.style.cssText = 'position: absolute; top: 50px; right: 10px; z-index: 2000; padding: 10px; background: #333; color: #fff; border: 1px solid gold; cursor: pointer;';
-        exportBtn.onclick = () => {
-            console.log('--- 商店坐标配置 JSON ---');
-            console.log(JSON.stringify(this.itemPositions, null, 2));
-            alert('坐标已输出到控制台 (F12)');
-        };
-        this.elements.overlay.appendChild(exportBtn);
-    }
-    // 添加关闭编辑模式按钮
-    let closeEditBtn = document.getElementById('shop-close-edit-btn');
-    if (!closeEditBtn) {
-        closeEditBtn = document.createElement('button');
-        closeEditBtn.id = 'shop-close-edit-btn';
-        closeEditBtn.innerText = '退出编辑模式';
-        closeEditBtn.style.cssText = 'position: absolute; top: 100px; right: 10px; z-index: 2000; padding: 10px; background: #600; color: #fff; border: 1px solid red; cursor: pointer;';
-        closeEditBtn.onclick = () => {
-            this.isEditMode = false;
-            // 刷新页面或重新渲染以清除事件绑定和样式
-            this.render();
-            // 移除按钮
-            exportBtn.remove();
-            closeEditBtn.remove();
-            console.log('--- 编辑模式已退出 ---');
-        };
-        this.elements.overlay.appendChild(closeEditBtn);
     }
   }
 
