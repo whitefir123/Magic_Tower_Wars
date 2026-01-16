@@ -269,6 +269,7 @@ export class ShopUI {
       }
       
       this.elements.overlay.classList.add('hidden');
+      this.elements.overlay.classList.remove('overlay-fade-in');
       this.elements.overlay.style.display = 'none';
       this.isOpen = false;
 

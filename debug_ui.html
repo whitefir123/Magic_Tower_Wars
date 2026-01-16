@@ -95,8 +95,57 @@
 
   <!-- Tooltip Container -->
   <div id="tooltip" class="hidden"></div>
+  
+  <!-- Debug Console Output -->
+  <div id="debug-console" style="
+      position: fixed; 
+      bottom: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 150px; 
+      background: rgba(0,0,0,0.85); 
+      color: #0f0; 
+      font-family: monospace; 
+      font-size: 12px; 
+      overflow-y: auto; 
+      padding: 10px; 
+      border-top: 2px solid #333;
+      z-index: 20000;
+      pointer-events: none; /* Let clicks pass through unless we want to scroll */
+      pointer-events: auto;
+  ">
+    <div style="color: #888; border-bottom: 1px solid #444; margin-bottom: 5px;">Debug Console (System Logs & Errors)</div>
+  </div>
 
   <!-- Scripts -->
+  <script>
+    // Global Error Handler
+    window.onerror = function(message, source, lineno, colno, error) {
+      const consoleEl = document.getElementById('debug-console');
+      if (consoleEl) {
+        const msg = document.createElement('div');
+        msg.style.color = '#ff5555';
+        msg.innerText = `[ERROR] ${message} at ${source}:${lineno}:${colno}`;
+        consoleEl.appendChild(msg);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+      }
+      return false;
+    };
+    
+    // Capture console.log
+    const originalLog = console.log;
+    console.log = function(...args) {
+        originalLog.apply(console, args);
+        const consoleEl = document.getElementById('debug-console');
+        if (consoleEl) {
+            const msg = document.createElement('div');
+            msg.innerText = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+            consoleEl.appendChild(msg);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+    };
+  </script>
+
   <script type="module">
     import { ShopUI } from './src/ui/ShopUI.js';
     import { GamblerUI } from './src/ui/GamblerUI.js';
@@ -109,6 +158,12 @@
 
     // Mock Game Object
     window.game = {
+      settings: {
+        audioEnabled: true,
+        bgmVolume: 50,
+        sfxVolume: 80,
+        uiSfxVolume: 80
+      },
       player: {
         stats: {
           gold: 5000,
@@ -314,12 +369,14 @@
       cardsEl.appendChild(declineDiv);
       
       overlayEl.classList.remove('hidden');
+      overlayEl.classList.add('overlay-fade-in');
       overlayEl.style.display = 'flex';
     };
 
     function closeShrine() {
       const overlayEl = document.getElementById('shrine-overlay');
       overlayEl.classList.add('hidden');
+      overlayEl.classList.remove('overlay-fade-in');
       overlayEl.style.display = 'none';
     }
 

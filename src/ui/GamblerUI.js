@@ -328,6 +328,7 @@ export class GamblerUI {
   close() {
     if (this.elements.overlay) {
       this.elements.overlay.classList.add('hidden');
+      this.elements.overlay.classList.remove('overlay-fade-in');
       this.elements.overlay.style.setProperty('display', 'none', 'important');
       this.isOpen = false;
 

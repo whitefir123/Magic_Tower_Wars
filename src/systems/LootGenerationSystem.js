@@ -4,7 +4,7 @@
 import { ARCHETYPES, AFFIXES, getAvailableAffixes, weightedRandom } from '../data/procgen.js';
 import { ITEM_QUALITY } from '../data/loot.js';
 import { getAllSetIds } from '../data/sets.js';
-import { EQUIPMENT_DB, CONSUMABLE_IDS, createDynamicConsumable } from '../data/items.js';
+import { EQUIPMENT_DB, CONSUMABLE_IDS, createDynamicConsumable, createStandardizedItem } from '../data/items.js';
 
 /**
  * LootGenerator - 程序化生成装备的核心系统
