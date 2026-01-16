@@ -1112,11 +1112,12 @@ export class ForgeUI {
     }
     
     // 检查是否可以打孔
+    // V2.2: 钻头打孔无上限
     const currentSockets = sockets.length;
-    const canUnlock = currentSockets < 3;
-    const unlockCost = currentSockets + 1; // 消耗星尘钻数量
+    const canUnlock = true; 
+    const unlockCost = currentSockets + 1; // 消耗钻头数量
     
-    // 检查玩家拥有的星尘钻数量
+    // 检查玩家拥有的钻头数量
     let drillCount = 0;
     if (this.player.inventory) {
       this.player.inventory.forEach(invItem => {
@@ -1132,11 +1133,11 @@ export class ForgeUI {
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <span style="color: #aaa;">解锁第 ${currentSockets + 1} 个槽位</span>
             <span style="color: ${drillCount >= unlockCost ? '#4caf50' : '#e74c3c'};">
-              星尘钻: ${drillCount} / ${unlockCost}
+              钻头: ${drillCount} / ${unlockCost}
             </span>
           </div>
           <button class="forge-btn forge-btn-enhance" id="btn-unlock-socket" ${drillCount < unlockCost ? 'disabled' : ''}>
-            使用星尘钻打孔
+            使用钻头打孔
           </button>
         </div>
       `;
@@ -1149,7 +1150,7 @@ export class ForgeUI {
           <div>
             <h4 style="color: ${itemColor}; margin: 0;">${itemName}</h4>
             <div style="font-size: 12px; color: #aaa; margin-top: 5px;">
-              镶嵌槽: ${sockets.length} / 3 个
+              镶嵌槽: ${sockets.length} 个
             </div>
           </div>
         </div>

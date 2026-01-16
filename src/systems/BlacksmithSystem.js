@@ -927,20 +927,20 @@ export class BlacksmithSystem {
 
     const currentSockets = item.meta.sockets.length;
     
-    // 检查是否已达上限
-    if (currentSockets >= 3) {
-      return { success: false, message: '该装备已达到最大孔位数 (3)' };
-    }
+    // 移除孔位上限限制 (V2.2: 钻头打孔无上限)
+    // if (currentSockets >= 3) {
+    //   return { success: false, message: '该装备已达到最大孔位数 (3)' };
+    // }
 
-    // 计算费用 (第1孔: 1, 第2孔: 2, 第3孔: 3)
+    // 计算费用 (第1孔: 1, 第2孔: 2, 第3孔: 3...)
     const cost = currentSockets + 1;
     const drillId = 'ITEM_STARDUST_DRILL';
 
-    // 检查是否有足够的星尘钻
+    // 检查是否有足够的钻头
     const inventory = player.inventory || [];
     let drillCount = 0;
     
-    // 统计星尘钻数量
+    // 统计钻头数量
     for (const invItem of inventory) {
       if (invItem && (invItem.itemId === drillId || invItem.id === drillId)) {
         drillCount += (invItem.count || 1);
@@ -948,7 +948,7 @@ export class BlacksmithSystem {
     }
 
     if (drillCount < cost) {
-      return { success: false, message: `星尘钻不足！解锁第 ${cost} 个孔位需要 ${cost} 个星尘钻` };
+      return { success: false, message: `钻头不足！解锁第 ${currentSockets + 1} 个孔位需要 ${cost} 个钻头` };
     }
 
     // 扣除星尘钻

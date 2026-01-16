@@ -620,36 +620,43 @@ export class LootGenerator {
     }
     
     // ✅ 宝石镶嵌系统：生成sockets数组
-    // V2.1: 默认不生成孔位，需要使用星尘钻打孔
+    // V2.2: 随机生成孔位，高品质保底2孔，最大5孔
     const sockets = [];
-    // 移除原有的随机孔位逻辑
-    /*
-    let socketCount = 0;
-    const randomValue = rng ? rng.next() : Math.random();
     
+    let socketCount = 0;
+    const socketRandom = rng ? rng.next() : Math.random();
+    
+    // 根据品质决定孔位数量分布
     if (quality === 'COMMON' || quality === 'UNCOMMON') {
-      // 10% 几率 1 孔
-      if (randomValue < 0.10) {
+      // 普通/优秀: 0-2孔 (50% 0, 40% 1, 10% 2)
+      if (socketRandom < 0.50) {
+        socketCount = 0;
+      } else if (socketRandom < 0.90) {
         socketCount = 1;
+      } else {
+        socketCount = 2;
       }
     } else if (quality === 'RARE') {
-      // 30% 1 孔, 10% 2 孔
-      if (randomValue < 0.10) {
-        socketCount = 2;
-      } else if (randomValue < 0.40) {
+      // 稀有: 0-3孔 (30% 0, 40% 1, 25% 2, 5% 3)
+      if (socketRandom < 0.30) {
+        socketCount = 0;
+      } else if (socketRandom < 0.70) {
         socketCount = 1;
+      } else if (socketRandom < 0.95) {
+        socketCount = 2;
+      } else {
+        socketCount = 3;
       }
-    } else if (quality === 'EPIC') {
-      // 50% 1-2 孔
-      if (randomValue < 0.50) {
-        const socketRandom = rng ? rng.next() : Math.random();
-        socketCount = socketRandom < 0.5 ? 1 : 2;
-      }
-    } else if (quality === 'LEGENDARY' || quality === 'MYTHIC') {
-      // 80% 2-3 孔
-      if (randomValue < 0.80) {
-        const socketRandom = rng ? rng.next() : Math.random();
-        socketCount = socketRandom < 0.5 ? 2 : 3;
+    } else {
+      // 史诗/传说/神话: 保底2孔，最大5孔 (40% 2, 30% 3, 20% 4, 10% 5)
+      if (socketRandom < 0.40) {
+        socketCount = 2;
+      } else if (socketRandom < 0.70) {
+        socketCount = 3;
+      } else if (socketRandom < 0.90) {
+        socketCount = 4;
+      } else {
+        socketCount = 5;
       }
     }
     
@@ -657,7 +664,6 @@ export class LootGenerator {
     for (let i = 0; i < socketCount; i++) {
       sockets.push({ status: 'EMPTY', gemId: null });
     }
-    */
     
     // ✅ v2.0: 构建标准化的 meta 对象
     const meta = {

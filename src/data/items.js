@@ -898,6 +898,19 @@ export const EQUIPMENT_DB = {
   descZh: '消耗品：使用后，使你的下一次成功攻击在命中前先造成30点火焰伤害并施加灼烧，可与技能本身的灼烧叠加并触发元素反应。',
   effect: { kind: 'prime_state', state: 'fireScrollPrimed', damage: 30, status: 'BURN' } 
   },
+  
+  ITEM_STARDUST_DRILL: {
+    id: 'ITEM_STARDUST_DRILL',
+    name: 'Drill',
+    nameZh: '钻头',
+    type: 'CONSUMABLE',
+    rarity: 'RARE',
+    iconIndex: 20, // 假设使用索引20
+    maxStack: 99,
+    desc: 'A sturdy drill used to create new sockets in equipment.',
+    descZh: '坚固的钻头，可以给装备打孔，增加镶嵌槽位。',
+    effect: { kind: 'special' }
+  },
 
   // ========== GEMS (宝石系统) ==========
   // 宝石图集布局：5列 (红/蓝/黄/绿/白) x 4行 (碎裂/完整/无瑕/完美)
