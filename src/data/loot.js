@@ -62,12 +62,16 @@ export const ITEM_QUALITY = {
 
 // Loot table for chests
 export const LOOT_TABLE = {
-  GOLD: { weight: 30, minAmount: 10, maxAmount: 50, rarityScaling: true },
-  POTION: { weight: 30 },
+  GOLD: { weight: 25, minAmount: 10, maxAmount: 50, rarityScaling: true },
+  POTION: { weight: 20 },
   EQUIPMENT: { weight: 20 },
-  STAT_BOOST: { weight: 10 }, // HP or Rage boost
-  RELIC: { weight: 5 }, // ✅ 遗物系统：稀有掉落（5% 概率）
-  NOTHING: { weight: 5 } // Nothing or minor trap (降低权重以平衡遗物)
+  BUNDLE: { weight: 10 }, // 大礼包：金币+药水+概率装备
+  PICKAXE: { weight: 10 }, // 钻头：用于打孔
+  SOUL_CRYSTAL: { weight: 5 }, // 灵魂结晶：元进度货币
+  RUNE: { weight: 5 }, // 符文：强力被动
+  STAT_BOOST: { weight: 5 }, // HP or Rage boost
+  RELIC: { weight: 3 }, // ✅ 遗物系统：稀有掉落（3% 概率）
+  NOTHING: { weight: 2 } // Nothing or minor trap (大幅降低权重)
 };
 
 // Loot table for destructible objects

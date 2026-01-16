@@ -27,6 +27,48 @@ export class RoguelikeSystem {
   }
   
   /**
+   * 直接添加指定符文（用于宝箱/事件奖励）
+   * @param {string} runeId - 符文ID
+   */
+  addRune(runeId) {
+    const rune = RUNE_POOL.find(r => r.id === runeId);
+    if (!rune) {
+      console.warn(`[RoguelikeSystem] 尝试添加不存在的符文: ${runeId}`);
+      return;
+    }
+
+    // 计算数值 (逻辑与 generateRuneOptions 保持一致)
+    const floor = (this.game && this.game.player) ? (this.game.player.stats.floor || 1) : 1;
+    const multiplier = RUNE_RARITY_MULTIPLIERS[rune.rarity] || 1.0;
+    
+    let value = 1;
+    if (rune.type === 'STAT') {
+        if (rune.id.includes('might') || rune.id.includes('brutal') || 
+            rune.id.includes('iron') || rune.id.includes('fortress') ||
+            rune.id.includes('arcana') || rune.id.includes('arcane') || 
+            rune.id.includes('ward') || rune.id.includes('barrier')) {
+          value = Math.floor(1 * multiplier * (1 + floor * 0.1));
+        } else if (rune.id.includes('vitality') || rune.id.includes('life')) {
+          value = Math.floor(10 * multiplier * (1 + floor * 0.1));
+        } else if (rune.id.includes('precision') || rune.id.includes('deadly') || 
+                   rune.id.includes('assassin') || rune.id.includes('agility') || 
+                   rune.id.includes('phantom')) {
+          value = Math.floor(5 * multiplier);
+        }
+    }
+
+    const option = {
+      rune,
+      value,
+      name: rune.name,
+      rarity: rune.rarity,
+      type: rune.type
+    };
+
+    this.applyRune(option);
+  }
+
+  /**
    * ✅ v2.1: 重置刷新费用（进入下一层或重开游戏时调用）
    */
   resetRerollCost() {

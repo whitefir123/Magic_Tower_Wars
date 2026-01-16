@@ -30,6 +30,7 @@ import { SettingsUI } from './ui/SettingsUI.js';
 import { FLOOR_ZONES } from './data/config.js';
 import { VisualEffectsSystem } from './systems/VisualEffectsSystem.js';
 import { MenuVisuals } from './ui/MenuVisuals.js';
+import { RUNES } from './data/Runes.js';
 
 class Game {
   constructor() {
@@ -3414,6 +3415,83 @@ class Game {
     }
     
     switch (lootType) {
+      case 'BUNDLE': {
+        // 大礼包：必定金币+药水，概率装备
+        // 1. 金币
+        const baseAmount = LOOT_TABLE.GOLD.minAmount;
+        const maxAmount = LOOT_TABLE.GOLD.maxAmount;
+        const goldAmount = Math.floor((baseAmount + Math.random() * (maxAmount - baseAmount)) * 1.5); // 1.5倍金币
+        this.player.stats.gold = (this.player.stats.gold || 0) + goldAmount;
+        
+        // 2. 药水
+        const magicFind = this.player.stats.magicFind || 0;
+        const potionItem = generateConsumableLoot(this.player.stats.floor || 1, { magicFind });
+        if (potionItem) {
+          this.map.addConsumableAt(potionItem, chestX, chestY);
+          if (this.questSystem) this.questSystem.check('onLoot', { itemId: potionItem.id || potionItem, itemType: 'POTION' });
+        }
+        
+        // 3. 概率装备 (50%)
+        let equipName = '';
+        if (Math.random() < 0.5) {
+          const equipment = selectRandomEquipment();
+          if (equipment) {
+            this.map.addEquipAt(equipment.id, chestX, chestY);
+            if (this.questSystem) this.questSystem.check('onLoot', { itemId: equipment.id || equipment, itemType: 'EQUIPMENT' });
+            equipName = ` + 装备`;
+          }
+        }
+
+        this.ui.logMessage(`✨ 获得【豪华大礼包】！包含 <span style="color: #ffd700;">${goldAmount} 金币</span> + 药水${equipName}`, 'gain');
+        
+        if (this.settings && this.settings.showDamageNumbers !== false) {
+          this.floatingTextPool.create(chestX * TILE_SIZE, chestY * TILE_SIZE - 20, `豪华大礼包!`, '#ff00ff');
+        }
+        break;
+      }
+
+      case 'PICKAXE': {
+        // 钻头：1-2个
+        const count = 1 + (Math.random() < 0.3 ? 1 : 0); // 30%概率给2个
+        this.player.addToInventory({ id: 'ITEM_STARDUST_DRILL', count: count, name: '星尘钻头', type: 'CONSUMABLE' });
+        
+        this.ui.logMessage(`宝箱打开！获得 <span style="color: #00ffff;">${count} x 星尘钻头</span>`, 'gain');
+        if (this.settings && this.settings.showDamageNumbers !== false) {
+          this.floatingTextPool.create(chestX * TILE_SIZE, chestY * TILE_SIZE - 10, `+${count} 钻头`, '#00ffff');
+        }
+        break;
+      }
+
+      case 'SOUL_CRYSTAL': {
+        // 灵魂结晶：10-30个
+        const amount = 10 + Math.floor(Math.random() * 21);
+        if (this.metaSaveSystem) {
+          this.metaSaveSystem.addSoulCrystals(amount);
+          this.ui.logMessage(`宝箱打开！获得 <span style="color: #b19cd9;">${amount} 灵魂结晶</span>`, 'gain');
+          if (this.settings && this.settings.showDamageNumbers !== false) {
+            this.floatingTextPool.create(chestX * TILE_SIZE, chestY * TILE_SIZE - 10, `+${amount} 灵魂`, '#b19cd9');
+          }
+        }
+        break;
+      }
+
+      case 'RUNE': {
+        // 随机符文
+        const allRunes = Object.values(RUNES);
+        if (allRunes.length > 0) {
+          const rune = allRunes[Math.floor(Math.random() * allRunes.length)];
+          // 添加符文到玩家 (假设 RoguelikeSystem 有 addRune 方法)
+          if (this.roguelike && this.roguelike.addRune) {
+            this.roguelike.addRune(rune.id);
+            this.ui.logMessage(`宝箱打开！习得符文 <span style="color: #ffa500;">${rune.name}</span>`, 'gain');
+            if (this.settings && this.settings.showDamageNumbers !== false) {
+              this.floatingTextPool.create(chestX * TILE_SIZE, chestY * TILE_SIZE - 10, `${rune.name}`, '#ffa500');
+            }
+          }
+        }
+        break;
+      }
+
       case 'GOLD': {
         // Gold amount scales with rarity
         const rarityRoll = Math.random();
@@ -3433,7 +3511,19 @@ class Game {
         const goldAmount = Math.floor((baseAmount + Math.random() * (maxAmount - baseAmount)) * rarityMultiplier);
         
         this.player.stats.gold = (this.player.stats.gold || 0) + goldAmount;
-        this.ui.logMessage(`宝箱打开！获得 <span style="color: #ffd700;">${goldAmount} 金币</span> [${rarity.name}]`, 'gain');
+        
+        // 20% 概率额外获得小药水
+        let extraMsg = '';
+        if (Math.random() < 0.2) {
+           const magicFind = this.player.stats.magicFind || 0;
+           const potion = generateConsumableLoot(this.player.stats.floor || 1, { magicFind });
+           if (potion) {
+             this.map.addConsumableAt(potion, chestX, chestY);
+             extraMsg = ' (并发现了一瓶药水!)';
+           }
+        }
+
+        this.ui.logMessage(`宝箱打开！获得 <span style="color: #ffd700;">${goldAmount} 金币</span> [${rarity.name}]${extraMsg}`, 'gain');
         
         // Show floating text with rarity color
         if (this.settings && this.settings.showDamageNumbers !== false) {
@@ -3569,7 +3659,17 @@ class Game {
             this.floatingTexts.push(floatingText);
           }
         } else {
-          this.ui.logMessage('宝箱是空的...', 'info');
+          // 安慰奖逻辑：MagicFind 高则给 1 金币
+          const magicFind = this.player.stats.magicFind || 0;
+          if (magicFind > 10) {
+             this.player.stats.gold = (this.player.stats.gold || 0) + 1;
+             this.ui.logMessage('宝箱里只有一枚生锈的金币...', 'info');
+             if (this.settings && this.settings.showDamageNumbers !== false) {
+                this.floatingTextPool.create(chestX * TILE_SIZE, chestY * TILE_SIZE - 10, `+1G`, '#cccccc');
+             }
+          } else {
+             this.ui.logMessage('宝箱是空的...', 'info');
+          }
         }
         break;
       }
