@@ -6,6 +6,38 @@ import { RUNE_POOL } from '../data/Runes.js';
 
 export class CombatSystem {
   /**
+   * 判断攻击是否来自背后
+   * @param {Entity} attacker - 攻击者
+   * @param {Entity} defender - 防御者
+   * @returns {boolean} 是否为背击
+   */
+  static isBackAttack(attacker, defender) {
+    if (!attacker || !defender) return false;
+    
+    // 获取 defender 的朝向 (0: Down, 1: Up, 2: Left, 3: Right)
+    // 如果没有 direction 属性，默认为 0
+    const defDir = defender.direction !== undefined ? defender.direction : 0;
+    
+    // 计算相对位置
+    // 注意：使用的是网格坐标 (x, y)
+    const dx = attacker.x - defender.x;
+    const dy = attacker.y - defender.y;
+    
+    // 判定规则：
+    // 朝下(0) -> 攻击者在上方(dy = -1)
+    // 朝上(1) -> 攻击者在下方(dy = 1)
+    // 朝左(2) -> 攻击者在右方(dx = 1)
+    // 朝右(3) -> 攻击者在左方(dx = -1)
+    
+    if (defDir === 0 && dx === 0 && dy === -1) return true;
+    if (defDir === 1 && dx === 0 && dy === 1) return true;
+    if (defDir === 2 && dx === 1 && dy === 0) return true;
+    if (defDir === 3 && dx === -1 && dy === 0) return true;
+    
+    return false;
+  }
+
+  /**
    * ✅ v2.0: 处理装备 Hook 系统
    * ✅ v2.1: 扩展支持符文系统 hooks
    * 遍历装备的 uniqueEffect 和 affixes，执行对应的触发器
@@ -1461,6 +1493,17 @@ export class CombatSystem {
       // 基础伤害 = 攻击力 - 有效防御 (含协同防御和穿透)
       let dmgToMon = Math.max(1, atkValue - resonance.effectiveDef);
       
+      // ========== 通用背击加成 (Generic Back Attack Bonus) ==========
+      // 所有从背后发动的攻击（无论是否使用技能）都获得 15% 伤害加成
+      // 如果使用了背刺技能且成功，这里的加成会叠乘（2.0 * 1.15 = 2.3倍），或者我们可以选择只应用背刺技能的倍率
+      // 这里选择叠加，奖励叠加爽感
+      const isGenericBackAttack = CombatSystem.isBackAttack(player, monster);
+      if (isGenericBackAttack) {
+        dmgToMon = Math.floor(dmgToMon * 1.15);
+        // 可以添加一个小的视觉提示，比如日志
+        // game.ui.logMessage('背击！伤害+15%', 'combat');
+      }
+      
       // ========== STEP A0.4: 武器精通系统 - 法杖逻辑（怒气增益和过载） ==========
       // Staff Logic: Add Rage (+5), then check if rage >= 100 for Overload bonus
       // ✅ FIX: 法杖过载机制说明：满怒气时提供额外伤害但不消耗怒气（这是预期行为）
@@ -1713,9 +1756,29 @@ export class CombatSystem {
               // Scorch: 火元素
               incomingElement = ELEMENTS.PYRO;
             } else if (activeSkillId === 'backstab') {
-              // Backstab: 纯物理伤害，200%伤害
+              // Backstab: 只有在背后攻击时才造成 200% 伤害并必爆
+              // 否则造成 120% 伤害
+              const isBack = CombatSystem.isBackAttack(player, monster);
               incomingElement = null;
-              skillDamageMultiplier = 2.0;
+              
+              if (isBack) {
+                skillDamageMultiplier = 2.0;
+                // 强制暴击
+                isCrit = true; // 注意：这会覆盖后续的暴击计算
+                
+                // 视觉反馈
+                if (game.ui && game.ui.logMessage) {
+                  // game.ui.logMessage('背刺成功！', 'combat');
+                }
+                
+                // 添加特殊的飘字类型标记，稍后处理
+                player.combatState.isBackstabSuccess = true;
+              } else {
+                skillDamageMultiplier = 1.2;
+                if (game.ui && game.ui.logMessage) {
+                  game.ui.logMessage('背刺位置错误！伤害降低。', 'info');
+                }
+              }
             }
             // 其他职业的主动技能可以在这里扩展
             // 如果技能数据中包含元素信息，可以从 player.skills.ACTIVE.element 读取
@@ -2064,7 +2127,15 @@ export class CombatSystem {
       let critIcon = null; // 暴击图标索引
       if (skillUsed && activeSkillId) {
         const skillName = player.skills?.ACTIVE?.name || activeSkillId;
-        if (isCrit) {
+        
+        // 检查背刺特殊飘字
+        if (activeSkillId === 'backstab' && player.combatState && player.combatState.isBackstabSuccess) {
+           damageText = `背刺! -${dmgToMon}`;
+           damageColor = '#FF00FF'; // 紫色高亮
+           critIcon = 6; // 暴击图标
+           // 清除标记
+           player.combatState.isBackstabSuccess = false;
+        } else if (isCrit) {
           damageText = `${skillName}暴击 -${dmgToMon}`;
           damageColor = '#FF2424'; // 红色
           critIcon = 6; // 暴击图标索引
@@ -2081,6 +2152,10 @@ export class CombatSystem {
         damageColor = '#FF2424'; // 深红色
         floatingTextType = 'CRIT'; // 使用暴击类型
         critIcon = 6; // 暴击图标索引
+      } else if (isGenericBackAttack) {
+        // 通用背击飘字
+        damageText = `背击 -${dmgToMon}`;
+        damageColor = '#FF4500'; // 橙红色
       }
       
       if (game.settings && game.settings.showDamageNumbers !== false) {
@@ -2463,7 +2538,7 @@ export class CombatSystem {
     let direction = 0;
     if (Math.abs(dx) > Math.abs(dy)) direction = dx > 0 ? 3 : 2;
     else direction = dy > 0 ? 0 : 1;
-    if (monster.sprite) monster.sprite.setDirection(direction);
+    monster.setDirection(direction);
     
       // 闪避判定
       // ✅ FIX: 使用 RNG（如果存在，每日挑战模式需要确定性）

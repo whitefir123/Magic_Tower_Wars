@@ -1527,10 +1527,10 @@ class Game {
 
     // 3. 计算坐标 (保留原有的 dx/dy 计算逻辑)
     let dx = 0, dy = 0;
-    if (key === 'ArrowUp') { dy = -1; this.player.sprite.setDirection(1); }
-    if (key === 'ArrowDown') { dy = 1; this.player.sprite.setDirection(0); }
-    if (key === 'ArrowLeft') { dx = -1; this.player.sprite.setDirection(2); }
-    if (key === 'ArrowRight') { dx = 1; this.player.sprite.setDirection(3); }
+    if (key === 'ArrowUp') { dy = -1; this.player.setDirection(1); }
+    if (key === 'ArrowDown') { dy = 1; this.player.setDirection(0); }
+    if (key === 'ArrowLeft') { dx = -1; this.player.setDirection(2); }
+    if (key === 'ArrowRight') { dx = 1; this.player.setDirection(3); }
     
     if (dx === 0 && dy === 0) {
       return false; // 不是有效的方向键

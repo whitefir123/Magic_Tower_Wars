@@ -10,6 +10,7 @@ export class Entity {
     this.visualX = x * TILE_SIZE; this.visualY = y * TILE_SIZE;
     this.destX = this.visualX; this.destY = this.visualY;
     this.isMoving = false; this.moveSpeed = 0.2; this.sprite = null;
+    this.direction = 0; // 0: Down, 1: Up, 2: Left, 3: Right
     this.statuses = []; // Array of active status effects
     this.activeDoTs = []; // Array of active DoT effects (damage over time)
     this.dodgeOffset = { x: 0, y: 0 }; // 闪避动画偏移
@@ -169,6 +170,14 @@ export class Entity {
   // Override in subclasses to handle status tick effects
   onStatusTick(type, status) {
     // Default implementation - can be overridden
+  }
+  
+  // 设置实体朝向
+  setDirection(dir) {
+    this.direction = dir;
+    if (this.sprite) {
+      this.sprite.setDirection(dir);
+    }
   }
   
   updateVisuals(dt) {
@@ -1131,7 +1140,7 @@ export class Monster extends Entity {
     this.destX = nx*TILE_SIZE; 
     this.destY = ny*TILE_SIZE; 
     this.isMoving = true; 
-    this.sprite.setDirection(randomDir.dir);
+    this.setDirection(randomDir.dir);
     this.moveTimer = this.generateWanderInterval();
   }
 
@@ -1239,13 +1248,13 @@ export class Monster extends Entity {
       this.destX = altX*TILE_SIZE; 
       this.destY = altY*TILE_SIZE; 
       this.isMoving = true; 
-      this.sprite.setDirection(altDir.dir);
+      this.setDirection(altDir.dir);
       this.moveTimer = 300;
       return;
     }
     
     // 移动
-    this.x = nx; this.y = ny; this.destX = nx*TILE_SIZE; this.destY = ny*TILE_SIZE; this.isMoving = true; this.sprite.setDirection(moveDir.dir);
+    this.x = nx; this.y = ny; this.destX = nx*TILE_SIZE; this.destY = ny*TILE_SIZE; this.isMoving = true; this.setDirection(moveDir.dir);
     this.moveTimer = 300; // 追击时更频繁地移动
   }
   
@@ -1858,6 +1867,29 @@ export class Player extends Entity {
       total.p_atk = Math.floor(total.p_atk * 1.5);
     }
     
+    // Apply Shadow Clone buff: 50% Attack Speed boost (additive)
+    if (this.buffs && this.buffs.shadowClone && this.buffs.shadowClone.active) {
+      if (total.atk_speed === undefined) total.atk_speed = 0;
+      total.atk_speed += 0.5;
+    }
+
+    // Apply Divine Protection buff: 50% DEF boost
+    if (this.buffs && this.buffs.divineProtection && this.buffs.divineProtection.active) {
+      total.p_def = Math.floor(total.p_def * 1.5);
+      total.m_def = Math.floor(total.m_def * 1.5);
+    }
+
+    // Apply Arrow Rain buff: 50% Attack Speed boost
+    if (this.buffs && this.buffs.arrowRain && this.buffs.arrowRain.active) {
+      if (total.atk_speed === undefined) total.atk_speed = 0;
+      total.atk_speed += 0.5;
+    }
+
+    // Apply Undead Army buff: 50% Magic Atk boost
+    if (this.buffs && this.buffs.undeadArmy && this.buffs.undeadArmy.active) {
+      total.m_atk = Math.floor(total.m_atk * 1.5);
+    }
+    
     // ========== 第三阶段：套装激活 ==========
     // 根据setId计数，从sets.js获取激活的套装效果
     for (const [setId, count] of Object.entries(setCounts)) {
@@ -2037,6 +2069,13 @@ export class Player extends Entity {
     }
     // 限制闪避率上限（防止超过100%）
     total.dodge = Math.min(total.dodge, 1.0);
+    
+    // Apply Shadow Clone buff: 50% Dodge (additive)
+    if (this.buffs && this.buffs.shadowClone && this.buffs.shadowClone.active) {
+      total.dodge = (total.dodge || 0) + 0.5;
+      // Cap at 90% to avoid invincibility (unless intended)
+      total.dodge = Math.min(total.dodge, 0.9);
+    }
     
     // ========== 第四阶段：符文属性加成 ==========
     // ✅ 命运符文系统 2.1：累加符文提供的属性加成
@@ -2336,6 +2375,52 @@ export class Player extends Entity {
         }
       }
     }
+    
+    // Update Shadow Clone timer
+    if (this.buffs && this.buffs.shadowClone) {
+      if (this.buffs.shadowClone.active && this.buffs.shadowClone.timer > 0) {
+        this.buffs.shadowClone.timer -= dt;
+        if (this.buffs.shadowClone.timer <= 0) {
+          this.buffs.shadowClone.active = false;
+          if (window.game && window.game.ui) {
+            window.game.ui.logMessage('影分身已消失', 'info');
+          }
+        }
+      }
+    }
+
+    // Update Divine Protection timer
+    if (this.buffs && this.buffs.divineProtection) {
+      if (this.buffs.divineProtection.active && this.buffs.divineProtection.timer > 0) {
+        this.buffs.divineProtection.timer -= dt;
+        if (this.buffs.divineProtection.timer <= 0) {
+          this.buffs.divineProtection.active = false;
+          if (window.game && window.game.ui) window.game.ui.logMessage('神圣庇护已结束', 'info');
+        }
+      }
+    }
+
+    // Update Arrow Rain timer
+    if (this.buffs && this.buffs.arrowRain) {
+      if (this.buffs.arrowRain.active && this.buffs.arrowRain.timer > 0) {
+        this.buffs.arrowRain.timer -= dt;
+        if (this.buffs.arrowRain.timer <= 0) {
+          this.buffs.arrowRain.active = false;
+          if (window.game && window.game.ui) window.game.ui.logMessage('箭雨已结束', 'info');
+        }
+      }
+    }
+
+    // Update Undead Army timer
+    if (this.buffs && this.buffs.undeadArmy) {
+      if (this.buffs.undeadArmy.active && this.buffs.undeadArmy.timer > 0) {
+        this.buffs.undeadArmy.timer -= dt;
+        if (this.buffs.undeadArmy.timer <= 0) {
+          this.buffs.undeadArmy.active = false;
+          if (window.game && window.game.ui) window.game.ui.logMessage('亡灵军团已消散', 'info');
+        }
+      }
+    }
 
     // ========== 怒气溢出自动回填 ==========
     if (this.stats && typeof this.stats.rage === 'number' && this.rageOverflow > 0 && this.stats.rage < 100) {
@@ -2580,6 +2665,41 @@ export class Player extends Entity {
     }
   }
   
+  activateShadowClone() {
+    if (!this.buffs) this.buffs = {};
+    if (!this.buffs.shadowClone) this.buffs.shadowClone = { active: false, timer: 0 };
+    
+    this.buffs.shadowClone.active = true;
+    this.buffs.shadowClone.timer = 10000; // 10 seconds
+    if (window.game && window.game.ui) {
+      window.game.ui.logMessage('影分身已激活！闪避大幅提升。', 'ultimate');
+    }
+  }
+
+  activateDivineProtection() {
+    if (!this.buffs) this.buffs = {};
+    if (!this.buffs.divineProtection) this.buffs.divineProtection = { active: false, timer: 0 };
+    this.buffs.divineProtection.active = true;
+    this.buffs.divineProtection.timer = 10000;
+    if (window.game && window.game.ui) window.game.ui.logMessage('神圣庇护已激活！防御大幅提升。', 'ultimate');
+  }
+
+  activateArrowRain() {
+    if (!this.buffs) this.buffs = {};
+    if (!this.buffs.arrowRain) this.buffs.arrowRain = { active: false, timer: 0 };
+    this.buffs.arrowRain.active = true;
+    this.buffs.arrowRain.timer = 8000;
+    if (window.game && window.game.ui) window.game.ui.logMessage('箭雨已激活！攻击速度大幅提升。', 'ultimate');
+  }
+
+  activateUndeadArmy() {
+    if (!this.buffs) this.buffs = {};
+    if (!this.buffs.undeadArmy) this.buffs.undeadArmy = { active: false, timer: 0 };
+    this.buffs.undeadArmy.active = true;
+    this.buffs.undeadArmy.timer = 12000;
+    if (window.game && window.game.ui) window.game.ui.logMessage('亡灵军团已召唤！魔攻大幅提升。', 'ultimate');
+  }
+  
   canUseActive() {
     return this.cooldowns && this.cooldowns.active <= 0;
   }
@@ -2628,7 +2748,9 @@ export class Player extends Entity {
     }
     
     // ✅ FIX: 防止重复按键重置状态 - 如果技能已就绪但未打出，不允许再次按键
-    if (this.states && (this.states.slashPrimed || this.states.scorchPrimed)) {
+    // 检查是否有任何 "Primed" 状态为 true
+    const isAnySkillPrimed = this.states && Object.keys(this.states).some(key => key.endsWith('Primed') && this.states[key]);
+    if (isAnySkillPrimed) {
       // 技能已就绪，等待玩家攻击，不允许重复按键
       return false;
     }
@@ -2728,6 +2850,41 @@ export class Player extends Entity {
         const scorchText = window.game.floatingTextPool.create(pos.x, pos.y - 15 + microScatterY, '火球术!', '#8B0000');
         window.game.floatingTexts.push(scorchText);
       }
+    } else if (this.charConfig && this.charConfig.id === 'ROGUE') {
+      // Rogue: Backstab
+      this.states.backstabPrimed = true;
+      this.states.activeElement = null;
+      
+      if (window.game && window.game.ui) {
+        window.game.ui.logMessage('背刺准备就绪！下次攻击造成高额伤害。', 'ultimate');
+        window.game.ui.updateStats(this);
+      }
+      if (window.game && window.game.floatingTextPool && window.game.settings && window.game.settings.showDamageNumbers !== false) {
+        const pos = this.getFloatingTextPosition();
+        const readyText = window.game.floatingTextPool.create(pos.x, pos.y - 15, '已准备!', '#ffff00');
+        window.game.floatingTexts.push(readyText);
+      }
+    } else if (this.charConfig && this.charConfig.id === 'PALADIN') {
+      this.states.shieldBashPrimed = true;
+      this.states.activeElement = null; // 物理
+      if (window.game && window.game.ui) {
+        window.game.ui.logMessage('盾击准备就绪！', 'ultimate');
+        window.game.ui.updateStats(this);
+      }
+    } else if (this.charConfig && this.charConfig.id === 'RANGER') {
+      this.states.multiShotPrimed = true;
+      this.states.activeElement = null; // 物理
+      if (window.game && window.game.ui) {
+        window.game.ui.logMessage('多重射击准备就绪！', 'ultimate');
+        window.game.ui.updateStats(this);
+      }
+    } else if (this.charConfig && this.charConfig.id === 'NECROMANCER') {
+      this.states.curseBoltPrimed = true;
+      this.states.activeElement = 'POISON'; // 毒元素
+      if (window.game && window.game.ui) {
+        window.game.ui.logMessage('诅咒箭准备就绪！', 'ultimate');
+        window.game.ui.updateStats(this);
+      }
     }
     
     return true;
@@ -2809,6 +2966,23 @@ export class Player extends Entity {
       // ✅ FIX: Berserk是立即生效的buff，不是预备技能，所以立即设置CD
       this.activateBerserk();
       this.cooldowns.ult = 20000;
+      return true;
+    } else if (this.charConfig && this.charConfig.id === 'ROGUE') {
+      // Rogue: Shadow Clone
+      this.activateShadowClone();
+      this.cooldowns.ult = 22000;
+      return true;
+    } else if (this.charConfig && this.charConfig.id === 'PALADIN') {
+      this.activateDivineProtection();
+      this.cooldowns.ult = 23000;
+      return true;
+    } else if (this.charConfig && this.charConfig.id === 'RANGER') {
+      this.activateArrowRain();
+      this.cooldowns.ult = 24000;
+      return true;
+    } else if (this.charConfig && this.charConfig.id === 'NECROMANCER') {
+      this.activateUndeadArmy();
+      this.cooldowns.ult = 26000;
       return true;
     }
     return false;
