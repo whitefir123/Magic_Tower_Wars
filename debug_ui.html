@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UI Component Debugger</title>
+  <!-- Import core styles to match game look -->
+  <link rel="stylesheet" href="./src/css/main.css" />
+  <link rel="stylesheet" href="./mobile-adapt.css" />
+  <style>
+    /* Debug Control Panel Styles */
+    #debug-controls {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #1a1a1a;
+      border-bottom: 2px solid #d4af37;
+      padding: 10px 20px;
+      z-index: 10000;
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+    #debug-controls h1 {
+      margin: 0 20px 0 0;
+      color: #d4af37;
+      font-size: 18px;
+      font-family: 'Cinzel', serif;
+    }
+    #debug-controls button {
+      padding: 8px 16px;
+      cursor: pointer;
+      background: #333;
+      color: #fff;
+      border: 1px solid #666;
+      border-radius: 4px;
+      font-family: sans-serif;
+      transition: all 0.2s;
+    }
+    #debug-controls button:hover {
+      background: #444;
+      border-color: #d4af37;
+      color: #d4af37;
+    }
+    body {
+      padding-top: 80px; /* Space for debug controls */
+      background-color: #050505;
+      background-image: none; /* Override game bg */
+      min-height: 100vh;
+    }
+    /* Ensure overlays are visible above debug controls if needed, or below */
+    .modal-overlay {
+      z-index: 9000; 
+    }
+    
+    /* Mock background for better visualization */
+    .mock-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      opacity: 0.2;
+      background: radial-gradient(circle at center, #222 0%, #000 100%);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Control Panel -->
+  <div id="debug-controls">
+    <h1>UI Debugger</h1>
+    <button onclick="openShop()">Open Shop (商店)</button>
+    <button onclick="openGambler()">Open Gambler (赌徒)</button>
+    <button onclick="openForge()">Open Forge (铁匠铺)</button>
+    <button onclick="openShrine('HEAL')">Open Shrine (Heal)</button>
+    <button onclick="openShrine('POWER')">Open Shrine (Power)</button>
+    <button onclick="addDummyItem()" style="margin-left: auto;">+ Add Dummy Item</button>
+    <button onclick="resetPlayer()" style="background: #522;">Reset Player</button>
+  </div>
+
+  <div class="mock-bg"></div>
+
+  <!-- Shrine Overlay (Hardcoded in index.html, so we copy it here) -->
+  <div id="shrine-overlay" class="modal-overlay hidden">
+    <h2 id="shrine-title" class="modal-title">圣殿</h2>
+    <div class="card-container" id="shrine-cards"></div>
+  </div>
+
+  <!-- Tooltip Container -->
+  <div id="tooltip" class="hidden"></div>
+
+  <!-- Scripts -->
+  <script type="module">
+    import { ShopUI } from './src/ui/ShopUI.js';
+    import { GamblerUI } from './src/ui/GamblerUI.js';
+    import { ForgeUI } from './src/ui/ForgeUI.js';
+    import { BlacksmithSystem } from './src/systems/BlacksmithSystem.js';
+    import { OBJ_SHRINE_HEAL, OBJ_SHRINE_POWER } from './src/data/system.js';
+    import AudioManager from './src/audio/AudioManager.js';
+    // Import loot generator to ensure window.__lootGenerator is set
+    import './src/systems/LootGenerationSystem.js';
+
+    // Mock Game Object
+    window.game = {
+      player: {
+        stats: {
+          gold: 5000,
+          hp: 50,
+          maxHp: 100,
+          p_atk: 10,
+          keys: 1,
+          gamblerJackpotPool: 1000,
+          gamblerPityCount: 0,
+          floor: 5
+        },
+        inventory: [], 
+        equipment: {
+          WEAPON: null,
+          ARMOR: null,
+          HELM: null,
+          BOOTS: null,
+          RING: null,
+          AMULET: null
+        },
+        heal: function(amount) {
+          this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + amount);
+          console.log(`Healed ${amount}, HP: ${this.stats.hp}`);
+          window.game.ui.logMessage(`恢复了 ${amount} 生命值`, 'heal');
+          window.game.ui.updateStats(this);
+        },
+        takeDamage: function(amount) {
+          this.stats.hp = Math.max(0, this.stats.hp - amount);
+          console.log(`Took damage ${amount}, HP: ${this.stats.hp}`);
+          window.game.ui.logMessage(`受到了 ${amount} 点伤害`, 'damage');
+          window.game.ui.updateStats(this);
+        },
+        addToInventory: function(item) {
+          console.log('Added to inventory:', item);
+          // Simple finding empty slot logic
+          for (let i = 0; i < 20; i++) {
+            if (!this.inventory[i]) {
+              this.inventory[i] = item;
+              window.game.ui.logMessage(`获得物品: ${item.nameZh || item.name}`, 'gain');
+              return true;
+            }
+          }
+          window.game.ui.logMessage('背包已满！', 'warn');
+          return false;
+        },
+        hasRelic: function(relicId) { return false; }
+      },
+      ui: {
+        logMessage: function(msg, type) {
+          console.log(`[UI LOG] ${type}: ${msg}`);
+          // Create a simple toast notification
+          const toast = document.createElement('div');
+          toast.style.cssText = `
+            position: fixed; bottom: 20px; right: 20px;
+            background: rgba(0,0,0,0.8); color: #fff; padding: 10px 20px;
+            border-left: 4px solid ${type === 'gain' ? '#4caf50' : (type === 'warn' ? '#ff9800' : '#2196f3')};
+            border-radius: 4px; z-index: 11000; animation: fadeUp 3s forwards;
+          `;
+          toast.textContent = msg;
+          document.body.appendChild(toast);
+          setTimeout(() => toast.remove(), 3000);
+        },
+        updateStats: function(player) {
+          console.log('Stats updated:', player.stats);
+        },
+        updateEquipmentSockets: function(player) {
+           console.log('Sockets updated');
+        },
+        renderInventory: function(player) {
+           console.log('Inventory render requested');
+        },
+        shopUI: null, 
+        gamblerUI: null
+      },
+      audio: AudioManager,
+      loader: {
+        getImage: function(key) {
+          // Return a placeholder canvas if image not found
+          // This prevents errors when rendering icons
+          const canvas = document.createElement('canvas');
+          canvas.width = 64;
+          canvas.height = 64;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#333';
+          ctx.fillRect(0,0,64,64);
+          ctx.fillStyle = '#666';
+          ctx.font = '10px Arial';
+          ctx.fillText(key, 5, 35);
+          return canvas; 
+        }
+      },
+      // Mock Map for Shrine
+      map: {
+        removeObject: function(obj) {
+          console.log('Removed object from map:', obj);
+        }
+      },
+      isPaused: false,
+      tooltipManager: {
+        bind: function(el, id) {
+            el.title = `Item ID: ${id}`; // Simple fallback
+        }
+      }
+    };
+
+    // Fill inventory with empty slots
+    for(let i=0; i<20; i++) window.game.player.inventory.push(null);
+
+    // Initialize Systems
+    const blacksmithSystem = new BlacksmithSystem();
+    
+    // Initialize UIs
+    const shopUI = new ShopUI();
+    const gamblerUI = new GamblerUI();
+    const forgeUI = new ForgeUI(blacksmithSystem);
+
+    window.game.ui.shopUI = shopUI;
+    window.game.ui.gamblerUI = gamblerUI;
+
+    // Expose functions to global scope for buttons
+    window.openShop = () => shopUI.open();
+    window.openGambler = () => gamblerUI.open();
+    window.openForge = () => forgeUI.open();
+    
+    // Add dummy item for testing
+    window.addDummyItem = () => {
+        const dummyItem = {
+            id: 'ITEM_SWORD_TEST',
+            itemId: 'ITEM_SWORD_TEST',
+            name: 'Test Sword',
+            nameZh: '测试之剑',
+            type: 'WEAPON',
+            quality: 'RARE',
+            stats: { p_atk: 20 },
+            baseStats: { p_atk: 20 },
+            enhanceLevel: 0,
+            uid: 'TEST_' + Date.now(),
+            description: 'A sword for testing purposes.'
+        };
+        window.game.player.addToInventory(dummyItem);
+        // Refresh Forge UI if open
+        if (forgeUI.isOpen) forgeUI.renderItemList();
+    };
+
+    window.resetPlayer = () => {
+        window.game.player.stats.gold = 5000;
+        window.game.player.stats.hp = 50;
+        window.game.ui.logMessage('Player stats reset', 'info');
+    };
+    
+    // Shrine Logic
+    window.openShrine = (type) => {
+      const shrineDef = type === 'HEAL' ? OBJ_SHRINE_HEAL : OBJ_SHRINE_POWER;
+      
+      const overlayEl = document.getElementById('shrine-overlay');
+      const titleEl = document.getElementById('shrine-title');
+      const cardsEl = document.getElementById('shrine-cards');
+      
+      if (!overlayEl || !titleEl || !cardsEl) return;
+      
+      cardsEl.innerHTML = '';
+      
+      // Logic from main.js (simplified)
+      if (type === 'HEAL') {
+        titleEl.innerText = 'SHRINE OF HEALING';
+        const canAfford = window.game.player.stats.gold >= shrineDef.cost;
+        
+        const acceptDiv = document.createElement('div');
+        acceptDiv.className = 'card' + (canAfford ? '' : ' disabled');
+        acceptDiv.innerHTML = `<h3>接受祝福</h3><p>消耗 ${shrineDef.cost} 金币<br/>恢复 ${shrineDef.heal} HP</p>`;
+        acceptDiv.onclick = () => {
+          if (canAfford) {
+            window.game.player.stats.gold -= shrineDef.cost;
+            window.game.player.heal(shrineDef.heal);
+            window.game.ui.logMessage(`祈祷于神殿！恢复 ${shrineDef.heal} HP`, 'gain');
+            closeShrine();
+          }
+        };
+        cardsEl.appendChild(acceptDiv);
+      } else {
+        titleEl.innerText = 'SHRINE OF POWER';
+        const canAfford = window.game.player.stats.hp > shrineDef.cost;
+        
+        const acceptDiv = document.createElement('div');
+        acceptDiv.className = 'card' + (canAfford ? '' : ' disabled');
+        acceptDiv.innerHTML = `<h3>接受祝福</h3><p>消耗 ${shrineDef.cost} HP<br/>获得 ${shrineDef.gainAtk} 攻击力</p>`;
+        acceptDiv.onclick = () => {
+          if (canAfford) {
+            window.game.player.takeDamage(shrineDef.cost);
+            window.game.player.stats.p_atk += shrineDef.gainAtk;
+            window.game.ui.logMessage(`祈祷于神殿！获得 ${shrineDef.gainAtk} 攻击力`, 'gain');
+            closeShrine();
+          }
+        };
+        cardsEl.appendChild(acceptDiv);
+      }
+      
+      // Decline button
+      const declineDiv = document.createElement('div');
+      declineDiv.className = 'card';
+      declineDiv.innerHTML = `<h3>离开</h3><p>放弃祝福</p>`;
+      declineDiv.onclick = closeShrine;
+      cardsEl.appendChild(declineDiv);
+      
+      overlayEl.classList.remove('hidden');
+      overlayEl.style.display = 'flex';
+    };
+
+    function closeShrine() {
+      const overlayEl = document.getElementById('shrine-overlay');
+      overlayEl.classList.add('hidden');
+      overlayEl.style.display = 'none';
+    }
+
+    // Add CSS animation for toast
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeUp {
+            0% { opacity: 0; transform: translateY(20px); }
+            10% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+    `;
+    document.head.appendChild(style);
+
+    console.log('Debug UI Initialized. Click buttons to test interfaces.');
+    // Add an initial dummy item
+    window.addDummyItem();
+  </script>
+</body>
+</html>
