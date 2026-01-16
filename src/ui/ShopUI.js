@@ -4,6 +4,7 @@
 import AudioManager from '../audio/AudioManager.js';
 import { globalTooltipManager } from '../utils/TooltipManager.js';
 import { ICON_GRID_COLS, ICON_GRID_ROWS } from '../constants.js';
+import { EQUIPMENT_DB, createDynamicConsumable } from '../data/items.js';
 
 /**
  * ShopUI - 商店界面管理器
@@ -437,8 +438,8 @@ export class ShopUI {
           img.onload = () => {
               if (originalOnLoad) originalOnLoad();
               // 图片加载完成后，尝试重新渲染商店
-              if (window.game && window.game.shopUI && window.game.shopUI.isVisible) {
-                  window.game.shopUI.renderShopGoods();
+              if (window.game && window.game.shopUI && window.game.shopUI.isOpen) {
+                  window.game.shopUI.render();
               }
           };
       }
@@ -540,229 +541,269 @@ export class ShopUI {
    * 渲染左货架（基础服务）
    */
   renderServiceItems() {
-    const container = this.elements.leftShelf;
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    const game = window.game;
-    const playerGold = game && game.player ? game.player.stats.gold : 0;
-    const loader = game?.loader;
-    
-    // 获取图标资源 - 确保资源存在
-    const imgEquip = loader?.getImage('ICONS_EQUIP');
-    const imgCons = loader?.getImage('ICONS_CONSUMABLES');
-    const imgGems = loader?.getImage('ICONS_GEMS'); // 新增引用
-    
-    if (!imgEquip || !imgCons) {
-        console.warn('ShopUI: Icons not loaded yet');
-    }
-
-    // 定义基础服务元数据 (现在有7个)
-    const services = [
-      { 
-        type: 'atk', 
-        name: '攻击提升', 
-        desc: '永久增加3点物理攻击力', 
-        basePrice: this.shopPrices.atk,
-        iconType: 'EQUIP',
-        iconIndex: 0, // Sword
-        stats: { p_atk: 3 }
-      },
-      { 
-        type: 'def', 
-        name: '防御提升', 
-        desc: '永久增加3点物理防御力', 
-        basePrice: this.shopPrices.def,
-        iconType: 'EQUIP',
-        iconIndex: 6, // Plate
-        stats: { p_def: 3 }
-      },
-      { 
-        type: 'matk', 
-        name: '魔攻提升', 
-        desc: '永久增加3点魔法攻击力', 
-        basePrice: this.shopPrices.matk,
-        iconType: 'EQUIP',
-        iconIndex: 2, // Staff (WEAPON_STAFF_T1)
-        stats: { m_atk: 3 }
-      },
-      { 
-        type: 'mdef', 
-        name: '魔防提升', 
-        desc: '永久增加3点魔法防御力', 
-        basePrice: this.shopPrices.mdef,
-        iconType: 'EQUIP',
-        iconIndex: 7, // Robe (ARMOR_ROBE_T1) - 修正为使用 EQUIP 表中的 Robe
-        stats: { m_def: 3 }
-      },
-      { 
-        type: 'hp', 
-        name: '生命恢复', 
-        desc: '立即恢复200点生命值', 
-        basePrice: this.shopPrices.hp,
-        iconType: 'CONSUMABLE',
-        iconIndex: 0, // POTION_HP_S
-        stats: { heal: 200 }
-      },
-      { 
-        type: 'key', 
-        name: '神秘钥匙', 
-        desc: '一把通用的钥匙，用于开启宝箱或门', 
-        basePrice: this.shopPrices.key,
-        iconType: 'CONSUMABLE', 
-        iconIndex: 20, // Drill位置? 不，Key通常没有特定图标，先用 Drill占位或查找
-        // 修正：钥匙图标通常在 ITEMS 或特殊位置。
-        // 暂时保持原样，或者如果没有 Key 图标，使用 drill 图标
-        // 假设 Consumables index 3 是 Key (常见RPG设置)，如果没有，保持 20
-        iconIndex: 3, 
-        stats: { key: 1 }
-      },
-      {
-        type: 'drill',
-        name: '钻头', // 修正名称
-        desc: '可以给装备打孔的工具', // 修正描述
-        quality: 'COMMON', // ✅ Explicitly set quality
-        basePrice: this.shopPrices.drill,
-        iconType: 'CONSUMABLE',
-        iconIndex: 20, // ITEM_STARDUST_DRILL
-        stats: { item: 'ITEM_STARDUST_DRILL' }
+    try {
+      const container = this.elements.leftShelf;
+      if (!container) return;
+      
+      container.innerHTML = '';
+      
+      const game = window.game;
+      const playerGold = game && game.player ? game.player.stats.gold : 0;
+      const loader = game?.loader;
+      
+      // 获取图标资源 - 确保资源存在
+      const imgEquip = loader?.getImage('ICONS_EQUIP');
+      const imgCons = loader?.getImage('ICONS_CONSUMABLES');
+      const imgGems = loader?.getImage('ICONS_GEMS'); // 新增引用
+      
+      // 如果图片尚未加载，尝试稍后重绘
+      if ((!imgEquip || !imgCons || !imgGems) && (!this._retryCount || this._retryCount < 20)) {
+          console.warn(`ShopUI: Icons not loaded yet, retrying... (${this._retryCount || 0})`);
+          this._retryCount = (this._retryCount || 0) + 1;
+          setTimeout(() => {
+              if (this.isOpen) this.render();
+          }, 200);
+      } else if (imgEquip && imgCons && imgGems) {
+          this._retryCount = 0;
       }
-    ];
 
-    services.forEach((service, index) => {
-      const price = this.applyPriceModifiers(service.basePrice);
-      const canAfford = playerGold >= price;
-      
-      const itemEl = document.createElement('div');
-      itemEl.className = 'shop-good-item';
-      itemEl.dataset.serviceType = service.type;
-      itemEl.dataset.index = index; // 用于定位
-      
-      // 应用绝对定位样式
-      itemEl.style.cssText = this.getPositionStyle(index, 'services');
-
-      if (!canAfford) {
-        itemEl.classList.add('disabled');
+      if (!imgEquip || !imgCons) {
+          console.warn('ShopUI: Icons not loaded yet');
       }
-      
-      // 创建图标
-      let img = null;
-      if (service.iconType === 'EQUIP') img = imgEquip;
-      else if (service.iconType === 'CONSUMABLE') img = imgCons;
-      else if (service.iconType === 'GEM') img = imgGems;
-      
-      // ... (绘图逻辑)
-      let canvas = null;
-      if (img) {
-        const tempItem = { 
-          iconIndex: service.iconIndex, 
-          type: service.iconType === 'CONSUMABLE' ? 'CONSUMABLE' : 'WEAPON' 
+
+      // 动态生成标准钻头对象 (Common品质) - 安全检查
+      let standardDrill = null;
+      try {
+        if (EQUIPMENT_DB && EQUIPMENT_DB.ITEM_STARDUST_DRILL) {
+          standardDrill = createDynamicConsumable(EQUIPMENT_DB.ITEM_STARDUST_DRILL, 'COMMON');
+        } else {
+          console.warn('ShopUI: ITEM_STARDUST_DRILL definition missing');
+        }
+      } catch (e) {
+        console.error('ShopUI: Failed to create drill item', e);
+      }
+
+      // 定义基础服务元数据 (现在有7个)
+      const services = [
+        { 
+          type: 'atk', 
+          name: '攻击提升', 
+          desc: '永久增加3点物理攻击力', 
+          basePrice: this.shopPrices.atk,
+          iconType: 'EQUIP',
+          iconIndex: 0, // Sword
+          stats: { p_atk: 3 }
+        },
+        { 
+          type: 'def', 
+          name: '防御提升', 
+          desc: '永久增加3点物理防御力', 
+          basePrice: this.shopPrices.def,
+          iconType: 'EQUIP',
+          iconIndex: 6, // Plate
+          stats: { p_def: 3 }
+        },
+        { 
+          type: 'matk', 
+          name: '魔攻提升', 
+          desc: '永久增加3点魔法攻击力', 
+          basePrice: this.shopPrices.matk,
+          iconType: 'EQUIP',
+          iconIndex: 2, // Staff (WEAPON_STAFF_T1)
+          stats: { m_atk: 3 }
+        },
+        { 
+          type: 'mdef', 
+          name: '魔防提升', 
+          desc: '永久增加3点魔法防御力', 
+          basePrice: this.shopPrices.mdef,
+          iconType: 'EQUIP',
+          iconIndex: 7, // Robe (ARMOR_ROBE_T1) - 修正为使用 EQUIP 表中的 Robe
+          stats: { m_def: 3 }
+        },
+        { 
+          type: 'hp', 
+          name: '生命恢复', 
+          desc: '立即恢复200点生命值', 
+          basePrice: this.shopPrices.hp,
+          iconType: 'CONSUMABLE',
+          iconIndex: 0, // POTION_HP_S
+          stats: { heal: 200 }
+        },
+        { 
+          type: 'key', 
+          name: '神秘钥匙', 
+          desc: '一把通用的钥匙，用于开启宝箱或门', 
+          basePrice: this.shopPrices.key,
+          iconType: 'CONSUMABLE', 
+          iconIndex: 3, 
+          stats: { key: 1 }
+        },
+        {
+          type: 'drill',
+          name: standardDrill ? standardDrill.nameZh : '钻头', // 使用标准名称
+          desc: standardDrill ? standardDrill.descZh : '可以给装备打孔的工具', // 使用标准描述
+          quality: standardDrill ? standardDrill.quality : 'COMMON', // 使用标准品质
+          basePrice: this.shopPrices.drill,
+          iconType: 'CONSUMABLE',
+          iconIndex: standardDrill ? standardDrill.iconIndex : 20, // ITEM_STARDUST_DRILL
+          stats: { item: 'ITEM_STARDUST_DRILL' }
+        }
+      ];
+
+      services.forEach((service, index) => {
+        const price = this.applyPriceModifiers(service.basePrice);
+        const canAfford = playerGold >= price;
+        
+        const itemEl = document.createElement('div');
+        itemEl.className = 'shop-good-item';
+        itemEl.dataset.serviceType = service.type;
+        itemEl.dataset.index = index; // 用于定位
+        
+        // 应用绝对定位样式
+        itemEl.style.cssText = this.getPositionStyle(index, 'services');
+
+        if (!canAfford) {
+          itemEl.classList.add('disabled');
+        }
+        
+        // 创建图标
+        let img = null;
+        if (service.iconType === 'EQUIP') img = imgEquip;
+        else if (service.iconType === 'CONSUMABLE') img = imgCons;
+        else if (service.iconType === 'GEM') img = imgGems;
+        
+        // ... (绘图逻辑)
+        let canvas = null;
+        if (img) {
+          const tempItem = { 
+            iconIndex: service.iconIndex, 
+            type: service.iconType === 'GEM' ? 'GEM' : (service.iconType === 'CONSUMABLE' ? 'CONSUMABLE' : 'WEAPON')
+          };
+          canvas = this.createItemIcon(img, tempItem, 64);
+        }
+        
+        if (canvas) {
+          itemEl.appendChild(canvas);
+        } else {
+          const placeholder = document.createElement('div');
+          placeholder.style.fontSize = '32px';
+          placeholder.style.color = '#fff';
+          placeholder.style.display = 'flex';
+          placeholder.style.justifyContent = 'center';
+          placeholder.style.alignItems = 'center';
+          placeholder.style.width = '100%';
+          placeholder.style.height = '100%';
+          placeholder.innerText = '❓';
+          itemEl.appendChild(placeholder);
+        }
+        
+        // 价格标签
+        const priceEl = document.createElement('div');
+        priceEl.className = 'shop-good-price';
+        priceEl.innerText = price;
+        itemEl.appendChild(priceEl);
+        
+        container.appendChild(itemEl);
+        
+        // 绑定 Tooltip
+        const tooltipItem = {
+          nameZh: service.name,
+          type: 'CONSUMABLE', 
+          quality: service.quality || 'COMMON',
+          rarity: service.quality || 'COMMON',
+          description: service.desc,
+          stats: service.stats
         };
-        canvas = this.createItemIcon(img, tempItem, 64);
-      }
-      
-      if (canvas) {
-        itemEl.appendChild(canvas);
-      } else {
-        const placeholder = document.createElement('div');
-        placeholder.style.fontSize = '32px';
-        placeholder.innerText = '❓';
-        itemEl.appendChild(placeholder);
-      }
-      
-      // 价格标签
-      const priceEl = document.createElement('div');
-      priceEl.className = 'shop-good-price';
-      priceEl.innerText = price;
-      itemEl.appendChild(priceEl);
-      
-      container.appendChild(itemEl);
-      
-      // 绑定 Tooltip
-      const tooltipItem = {
-        nameZh: service.name,
-        type: 'CONSUMABLE', 
-        quality: service.quality || 'COMMON',
-        rarity: service.quality || 'COMMON',
-        description: service.desc,
-        stats: service.stats
-      };
-      this.tooltipManager.bind(itemEl, tooltipItem);
-    });
+        this.tooltipManager.bind(itemEl, tooltipItem);
+      });
+    } catch (err) {
+      console.error('ShopUI: Fatal error in renderServiceItems', err);
+    }
   }
 
   /**
    * 渲染右货架（随机商品）
    */
   renderGoods() {
-    const container = this.elements.rightShelf;
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    const game = window.game;
-    const playerGold = game && game.player ? game.player.stats.gold : 0;
-    const loader = game?.loader;
-    
-    const imgEquip = loader?.getImage('ICONS_EQUIP');
-    const imgCons = loader?.getImage('ICONS_CONSUMABLES');
-    const imgGems = loader?.getImage('ICONS_GEMS');
-
-    this.goods.forEach((item, index) => {
-      if (!item) {
-        // 已售出的格子，显示空占位 (不再显示“已售”文字)
-        const emptyEl = document.createElement('div');
-        emptyEl.className = 'shop-good-item disabled';
-        emptyEl.style.cssText = this.getPositionStyle(index, 'goods') + 'opacity: 0; pointer-events: none;';
-        container.appendChild(emptyEl);
-        return;
-      }
-
-      const price = this.calculateItemPrice(item);
-      const canAfford = playerGold >= price;
+    try {
+      const container = this.elements.rightShelf;
+      if (!container) return;
+  
+      container.innerHTML = '';
+  
+      const game = window.game;
+      const playerGold = game && game.player ? game.player.stats.gold : 0;
+      const loader = game?.loader;
       
-      const itemEl = document.createElement('div');
-      itemEl.className = 'shop-good-item';
-      itemEl.dataset.index = index;
-      
-      // 应用绝对定位样式
-      itemEl.style.cssText = this.getPositionStyle(index, 'goods');
-      
-      if (!canAfford) {
-        itemEl.classList.add('disabled');
-      }
-
-      // 确定使用的图片资源
-      let img = imgEquip;
-      if (item.type === 'GEM') img = imgGems;
-      else if (item.type === 'CONSUMABLE') img = imgCons;
-      
-      // 绘制图标
-      let canvas = null;
-      if (img) {
-        canvas = this.createItemIcon(img, item, 64);
-      }
-      
-      if (canvas) {
-        itemEl.appendChild(canvas);
-      } else {
-        const placeholder = document.createElement('div');
-        placeholder.innerText = item.nameZh ? item.nameZh[0] : '?';
-        itemEl.appendChild(placeholder);
-      }
-      
-      // 价格标签
-      const priceEl = document.createElement('div');
-      priceEl.className = 'shop-good-price';
-      priceEl.innerText = price;
-      itemEl.appendChild(priceEl);
-      
-      container.appendChild(itemEl);
-      
-      // 绑定 Tooltip
-      this.tooltipManager.bind(itemEl, item);
-    });
+      const imgEquip = loader?.getImage('ICONS_EQUIP');
+      const imgCons = loader?.getImage('ICONS_CONSUMABLES');
+      const imgGems = loader?.getImage('ICONS_GEMS');
+  
+      this.goods.forEach((item, index) => {
+        if (!item) {
+          // 已售出的格子，显示空占位 (不再显示“已售”文字)
+          const emptyEl = document.createElement('div');
+          emptyEl.className = 'shop-good-item disabled';
+          emptyEl.style.cssText = this.getPositionStyle(index, 'goods') + 'opacity: 0; pointer-events: none;';
+          container.appendChild(emptyEl);
+          return;
+        }
+  
+        const price = this.calculateItemPrice(item);
+        const canAfford = playerGold >= price;
+        
+        const itemEl = document.createElement('div');
+        itemEl.className = 'shop-good-item';
+        itemEl.dataset.index = index;
+        
+        // 应用绝对定位样式
+        itemEl.style.cssText = this.getPositionStyle(index, 'goods');
+        
+        if (!canAfford) {
+          itemEl.classList.add('disabled');
+        }
+  
+        // 确定使用的图片资源
+        let img = imgEquip;
+        if (item.type === 'GEM') img = imgGems;
+        else if (item.type === 'CONSUMABLE') img = imgCons;
+        
+        // 绘制图标
+        let canvas = null;
+        if (img) {
+          canvas = this.createItemIcon(img, item, 64);
+        }
+        
+        if (canvas) {
+          itemEl.appendChild(canvas);
+        } else {
+          const placeholder = document.createElement('div');
+          placeholder.innerText = item.nameZh ? item.nameZh[0] : '?';
+          placeholder.style.color = '#fff';
+          placeholder.style.fontSize = '24px';
+          placeholder.style.display = 'flex';
+          placeholder.style.justifyContent = 'center';
+          placeholder.style.alignItems = 'center';
+          placeholder.style.width = '100%';
+          placeholder.style.height = '100%';
+          itemEl.appendChild(placeholder);
+        }
+        
+        // 价格标签
+        const priceEl = document.createElement('div');
+        priceEl.className = 'shop-good-price';
+        priceEl.innerText = price;
+        itemEl.appendChild(priceEl);
+        
+        container.appendChild(itemEl);
+        
+        // 绑定 Tooltip
+        this.tooltipManager.bind(itemEl, item);
+      });
+    } catch (err) {
+      console.error('ShopUI: Fatal error in renderGoods', err);
+    }
   }
 
   /**
