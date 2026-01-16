@@ -366,7 +366,8 @@ export class TooltipManager {
               
               subText = ` <span class="val-sub">(基础: ${baseDisplay} <span class="val-bonus" style="color:#00ffff">${bonusDisplay}</span>)</span>`;
             } else {
-              subText = ` <span class="val-sub">(基础: ${baseDisplay})</span>`;
+              // v2.1 FIX: 如果没有词缀加成，不显示冗余的“基础”数值
+              subText = '';
             }
           }
           
