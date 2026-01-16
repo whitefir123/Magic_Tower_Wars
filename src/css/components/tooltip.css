@@ -11,7 +11,7 @@
   background-color: rgba(20, 20, 25, 0.8); /* 半透明背景色作为衬底，防止图片加载失败或透明区域看不清 */
   border: 1px solid #4a4a50;
   border-radius: 4px;
-  padding: 12px;
+  padding: 24px 20px 24px 20px; /* 调整内边距：上下拉大间距，左侧增加缩进 */
   color: #e0e0e0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: 14px;

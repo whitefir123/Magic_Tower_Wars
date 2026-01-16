@@ -222,7 +222,7 @@ export class TooltipManager {
                                    
               const displayValue = isPercentage 
                 ? `${(statValue * 100).toFixed(1)}%` 
-                : `+${Math.floor(statValue)}`;
+                : `${statValue > 0 ? '+' : ''}${Math.floor(statValue)}`;
               descParts.push(`${statName} ${displayValue}`);
             }
           }
@@ -283,7 +283,7 @@ export class TooltipManager {
                                        statKey.includes('lifesteal');
                   const displayValue = isPercentage 
                     ? `${(statValue * 100).toFixed(0)}%` 
-                    : `+${Math.floor(statValue)}`;
+                    : `${statValue > 0 ? '+' : ''}${Math.floor(statValue)}`;
                   effectParts.push(`${statName} ${displayValue}`);
                 }
                 
@@ -374,7 +374,7 @@ export class TooltipManager {
           // 主数值（最终值）
           const displayValue = isPercentage 
             ? `${(v * 100).toFixed(1)}%` 
-            : `+${Math.floor(v)}`;
+            : `${v > 0 ? '+' : ''}${Math.floor(v)}`;
           
           // ✅ V3.0: 使用词缀统计直接计算基础值
           let subText = '';
