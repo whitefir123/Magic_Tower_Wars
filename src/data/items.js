@@ -217,22 +217,26 @@ export function createDynamicConsumable(itemDef, quality = 'COMMON') {
     isDynamicConsumable: true
   };
   
-  // ✅ FIX: 为不同品质的钻头添加专属描述
+  // ✅ FIX: 为不同品质的钻头添加专属描述和使用次数
   if (templateId === 'ITEM_STARDUST_DRILL') {
-    const drillDescriptions = {
-      COMMON: '普通的钻头，虽然有些生锈，但勉强能用。可以给装备打孔。',
-      UNCOMMON: '锋利的钻头，经过精心打磨，使用起来更顺手。可以给装备打孔。',
-      RARE: '坚固的钻头，由精钢合金打造，硬度极高。可以给装备打孔。',
-      EPIC: '附魔的钻头，表面流转着魔法光芒，能轻易穿透护甲。可以给装备打孔。',
-      LEGENDARY: '传奇钻头，传说能钻开巨龙的鳞片，无坚不摧。可以给装备打孔。',
-      MYTHIC: '神话钻头，据说连时空壁垒都能钻破，是工匠梦寐以求的神器。可以给装备打孔。'
+    const drillConfig = {
+      COMMON: { count: 1, desc: '普通的钻头，虽然有些生锈，但勉强能用。' },
+      UNCOMMON: { count: 2, desc: '锋利的钻头，经过精心打磨，使用起来更顺手。' },
+      RARE: { count: 3, desc: '坚固的钻头，由精钢合金打造，硬度极高。' },
+      EPIC: { count: 5, desc: '附魔的钻头，表面流转着魔法光芒，能轻易穿透护甲。' },
+      LEGENDARY: { count: 8, desc: '传奇钻头，传说能钻开巨龙的鳞片，无坚不摧。' },
+      MYTHIC: { count: 12, desc: '神话钻头，据说连时空壁垒都能钻破，是工匠梦寐以求的神器。' }
     };
-    instance.descZh = drillDescriptions[qKey] || drillDescriptions.COMMON;
+
+    const config = drillConfig[qKey] || drillConfig.COMMON;
+    
+    // 设置堆叠数量（即使用次数）
+    instance.count = config.count;
+    
+    // 更新描述，包含数量信息
+    instance.descZh = `${config.desc} (包含 ${config.count} 个钻头)`;
   }
   
-  return instance;
-}
-
   return instance;
 }
 
