@@ -622,6 +622,7 @@ export class ShopUI {
         type: 'drill',
         name: '钻头', // 修正名称
         desc: '可以给装备打孔的工具', // 修正描述
+        quality: 'COMMON', // ✅ Explicitly set quality
         basePrice: this.shopPrices.drill,
         iconType: 'CONSUMABLE',
         iconIndex: 20, // ITEM_STARDUST_DRILL
@@ -682,7 +683,8 @@ export class ShopUI {
       const tooltipItem = {
         nameZh: service.name,
         type: 'CONSUMABLE', 
-        quality: 'COMMON',
+        quality: service.quality || 'COMMON',
+        rarity: service.quality || 'COMMON',
         description: service.desc,
         stats: service.stats
       };

@@ -249,7 +249,8 @@ export const AFFIXES = {
       nameZh: '锈蚀的',
       tier: 1,
       stats: {
-        multiplier: 0.8  // 基础属性 x0.8
+        multiplier: 0.8,
+        p_atk: -1  // 稍微降低攻击
       },
       weight: 100
     },
@@ -258,7 +259,8 @@ export const AFFIXES = {
       nameZh: '破损的',
       tier: 1,
       stats: {
-        multiplier: 0.85
+        multiplier: 0.85,
+        p_def: -1  // 稍微降低防御
       },
       weight: 100
     },
@@ -267,7 +269,8 @@ export const AFFIXES = {
       nameZh: '粗糙的',
       tier: 1,
       stats: {
-        multiplier: 0.9
+        multiplier: 0.9,
+        maxHp: -5
       },
       weight: 120
     },
@@ -278,7 +281,8 @@ export const AFFIXES = {
       nameZh: '铁制',
       tier: 2,
       stats: {
-        multiplier: 1.0
+        multiplier: 1.0,
+        p_def: 1
       },
       weight: 150
     },
@@ -287,7 +291,8 @@ export const AFFIXES = {
       nameZh: '普通',
       tier: 2,
       stats: {
-        multiplier: 1.0
+        multiplier: 1.0,
+        maxHp: 10
       },
       weight: 150
     },
@@ -296,7 +301,9 @@ export const AFFIXES = {
       nameZh: '坚固的',
       tier: 2,
       stats: {
-        multiplier: 1.05
+        multiplier: 1.05,
+        p_def: 2,
+        maxHp: 15
       },
       weight: 130
     },
@@ -308,7 +315,7 @@ export const AFFIXES = {
       tier: 3,
       stats: {
         multiplier: 1.2,
-        p_def: 2  // 额外固定防御
+        p_def: 3  // 额外固定防御
       },
       weight: 100
     },
@@ -318,7 +325,7 @@ export const AFFIXES = {
       tier: 3,
       stats: {
         multiplier: 1.2,
-        p_atk: 2  // 额外固定物攻
+        p_atk: 3  // 额外固定物攻
       },
       weight: 100
     },
@@ -327,7 +334,9 @@ export const AFFIXES = {
       nameZh: '强化',
       tier: 3,
       stats: {
-        multiplier: 1.25
+        multiplier: 1.25,
+        p_def: 4,
+        p_atk: 1
       },
       weight: 90
     },
@@ -336,7 +345,9 @@ export const AFFIXES = {
       nameZh: '大师',
       tier: 3,
       stats: {
-        multiplier: 1.3
+        multiplier: 1.3,
+        p_atk: 4,
+        m_atk: 4
       },
       weight: 80
     },
@@ -348,7 +359,8 @@ export const AFFIXES = {
       tier: 4,
       stats: {
         multiplier: 1.5,
-        armor_pen: 0.05
+        armor_pen: 0.05,
+        m_atk: 5
       },
       weight: 40
     },
@@ -358,7 +370,8 @@ export const AFFIXES = {
       tier: 4,
       stats: {
         multiplier: 1.5,
-        maxHp: 30
+        maxHp: 50,
+        p_def: 5
       },
       weight: 40
     },
@@ -368,7 +381,8 @@ export const AFFIXES = {
       tier: 4,
       stats: {
         multiplier: 1.5,
-        m_atk: 5
+        m_atk: 8,
+        maxMp: 20
       },
       weight: 40
     },
@@ -377,7 +391,10 @@ export const AFFIXES = {
       nameZh: '天界',
       tier: 4,
       stats: {
-        multiplier: 1.6
+        multiplier: 1.6,
+        p_atk: 8,
+        m_atk: 8,
+        maxHp: 40
       },
       weight: 30
     },

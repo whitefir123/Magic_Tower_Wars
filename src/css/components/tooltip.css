@@ -5,7 +5,10 @@
 /* Tooltip */
 #tooltip {
   position: fixed;
-  background-color: rgba(20, 20, 25, 0.95);
+  background-image: url('https://i.postimg.cc/mkszT7tr/tishikuang2.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-color: rgba(20, 20, 25, 0.8); /* 半透明背景色作为衬底，防止图片加载失败或透明区域看不清 */
   border: 1px solid #4a4a50;
   border-radius: 4px;
   padding: 12px;

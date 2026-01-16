@@ -217,6 +217,19 @@ export function createDynamicConsumable(itemDef, quality = 'COMMON') {
     isDynamicConsumable: true
   };
   
+  // ✅ FIX: 动态追加数值描述
+  if (effect) {
+    let appendText = '';
+    if (effect.kind === 'heal' && effect.amount) appendText = `\n回复 ${effect.amount} 点生命值`;
+    else if (effect.kind === 'rage' && effect.amount) appendText = `\n增加 ${effect.amount} 点怒气`;
+    else if (effect.kind === 'xp' && effect.amount) appendText = `\n获得 ${effect.amount} 点经验`;
+    else if (effect.kind === 'prime_state' && effect.damage) appendText = `\n造成 ${effect.damage} 点火焰伤害`;
+    
+    if (appendText) {
+       instance.descZh = (instance.descZh || '') + appendText;
+    }
+  }
+  
   // ✅ FIX: 为不同品质的钻头添加专属描述和使用次数
   if (templateId === 'ITEM_STARDUST_DRILL') {
     const drillConfig = {
@@ -911,12 +924,12 @@ export const EQUIPMENT_DB = {
     nameZh: '火焰卷轴', 
     type: 'CONSUMABLE', 
     rarity: 'EPIC', 
-  iconIndex: 5,
-  maxStack: 99,
-  // 使用后：为下一次成功攻击预充能，先对目标造成30点火焰伤害并施加灼烧，再结算本次攻击（可触发融化等元素反应）
-  desc: '消耗品：使用后，使你的下一次成功攻击在命中前先造成30点火焰伤害并施加灼烧，可与技能本身的灼烧叠加并触发元素反应。',
-  descZh: '消耗品：使用后，使你的下一次成功攻击在命中前先造成30点火焰伤害并施加灼烧，可与技能本身的灼烧叠加并触发元素反应。',
-  effect: { kind: 'prime_state', state: 'fireScrollPrimed', damage: 30, status: 'BURN' } 
+    iconIndex: 5,
+    maxStack: 99,
+    // 使用后：为下一次成功攻击预充能，先对目标造成火焰伤害并施加灼烧，再结算本次攻击（可触发融化等元素反应）
+    desc: '消耗品：使用后，使你的下一次成功攻击在命中前先造成火焰伤害并施加灼烧，可与技能本身的灼烧叠加并触发元素反应。',
+    descZh: '消耗品：使用后，使你的下一次成功攻击在命中前先造成火焰伤害并施加灼烧，可与技能本身的灼烧叠加并触发元素反应。',
+    effect: { kind: 'prime_state', state: 'fireScrollPrimed', damage: 30, status: 'BURN' } 
   },
   
   ITEM_STARDUST_DRILL: {
