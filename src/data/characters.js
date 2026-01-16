@@ -39,7 +39,8 @@ export const CHARACTERS = {
       ACTIVE: { id: 'backstab', name: '背刺', key: 'Q', cd: 6000, iconIndex: 7, manaCost: 25, desc: '下次攻击从背后发动，造成200%伤害' },
       ULT: { id: 'shadow_clone', name: '影分身', key: 'SPACE', cd: 22000, iconIndex: 8 }
     },
-    asset: 'PLAYER'
+    asset: 'PLAYER_ROGUE',
+    portrait: 'PORTRAIT_ROGUE'
   },
   PALADIN: {
     id: 'PALADIN',

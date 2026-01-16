@@ -41,6 +41,9 @@ export const CRITICAL_ASSETS = {
 export const GAMEPLAY_ASSETS = {
   // 玩家和怪物
   PLAYER: { url: "https://i.postimg.cc/9fw34ZLg/zhanshi1.png" },
+  PLAYER_WARRIOR: { url: "https://i.postimg.cc/9fw34ZLg/zhanshi1.png" },
+  PLAYER_MAGE: { url: "https://i.postimg.cc/9MKs2226/fashi1.png" },
+  PLAYER_ROGUE: { url: "https://i.postimg.cc/wMFfvdY6/daozei1.png" },
   MONSTER_SLIME: { url: "https://i.postimg.cc/2jnmns7W/shilaimu1.png" },
   MONSTER_BAT: { url: "https://i.postimg.cc/6QwP5MMp/bat1.png" },
   MONSTER_SKELETON: { url: "https://i.postimg.cc/J7SCZMPH/kuloubing.png" },

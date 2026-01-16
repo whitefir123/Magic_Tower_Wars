@@ -1375,7 +1375,8 @@ export class Player extends Entity {
     this.inventory = new Array(20).fill(null);
     this.map = map; 
     this.loader = loader;
-    this.sprite = new Sprite({ assetKey: 'PLAYER', loader, animationType: 'player' });
+    const assetKey = (charConfig && charConfig.asset) ? charConfig.asset : 'PLAYER';
+    this.sprite = new Sprite({ assetKey: assetKey, loader, animationType: 'player' });
     this.moveSpeed = 0.25; 
     this.pendingCombat = null;
     this.charConfig = charConfig; // Store character config for reference

@@ -4086,7 +4086,12 @@ class Game {
     const previewSprite = document.getElementById('ror-preview-sprite');
     if (previewSprite) {
       // Ensure the container is visible and uses the animated portrait asset
-      previewSprite.style.backgroundImage = `url('https://i.postimg.cc/PJBxvYD0/zhanshilihui1.png')`;
+      // Get portrait URL from character data
+      const portraitKey = charData.portrait;
+      const portraitAsset = ASSETS[portraitKey];
+      if (portraitAsset) {
+        previewSprite.style.backgroundImage = `url('${portraitAsset.url}')`;
+      }
       // CSS animation handles background-position changes, no need to set it here
     }
   }
