@@ -136,18 +136,20 @@ export class TooltipManager {
     content += `<div class="tt-type">${typeZh}</div>`;
     
     // 显示品质和强化等级（如果有）
-    if (item.quality || item.rarity) {
-      content += `<div class="tt-quality" style="color: ${displayColor};">${qualityName}</div>`;
-    }
+    // v2.0 FIX: 移除重复的品质显示，只保留强化等级
+    // if (item.quality || item.rarity) {
+    //   content += `<div class="tt-quality" style="color: ${displayColor};">${qualityName}</div>`;
+    // }
     
     if (item.enhanceLevel && item.enhanceLevel > 0) {
       content += `<div class="tt-enhance">强化等级: +${item.enhanceLevel}</div>`;
     }
     
     // 显示物品等级（程序化生成）
-    if (item.itemPower) {
-      content += `<div class="tt-ipower">物品等级: ${item.itemPower}</div>`;
-    }
+    // v2.0 FIX: 移除 iPwr 显示
+    // if (item.itemPower) {
+    //   content += `<div class="tt-ipower">物品等级: ${item.itemPower}</div>`;
+    // }
     
     // 显示描述（包括 Jackpot 等特殊标记）
     if (item.description) {
@@ -158,6 +160,7 @@ export class TooltipManager {
     if (item.meta && item.meta.affixes && Array.isArray(item.meta.affixes)) {
       for (const affix of item.meta.affixes) {
         const affixType = affix.type === 'prefix' ? '前缀' : '后缀';
+        // v2.0 FIX: 确保词缀名称为中文（如果数据源包含英文，需在此处映射或确保上游提供中文）
         const affixName = affix.nameZh || affix.name || '';
         
         // 检查是否有特殊效果（转化、触发等）
@@ -200,10 +203,11 @@ export class TooltipManager {
       }
     } else if (item.meta) {
       // 兼容旧格式（只有 prefix/suffix 字符串）
-      if (item.meta.prefix) {
+      // v2.0 FIX: 不显示未翻译的英文词缀字符串
+      if (item.meta.prefix && /[\u4e00-\u9fa5]/.test(item.meta.prefix)) {
         content += `<div class="tt-affix tt-prefix">前缀: ${item.meta.prefix}</div>`;
       }
-      if (item.meta.suffix) {
+      if (item.meta.suffix && /[\u4e00-\u9fa5]/.test(item.meta.suffix)) {
         content += `<div class="tt-affix tt-suffix">后缀: ${item.meta.suffix}</div>`;
       }
     }
@@ -509,17 +513,20 @@ export class TooltipManager {
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     
-    let left = mouseX + this.config.offsetX;
-    let top = mouseY + this.config.offsetY;
+    // 增加默认偏移量，避免离目标太近
+    const safePadding = 20; // 新增间距
+    
+    let left = mouseX + this.config.offsetX + safePadding;
+    let top = mouseY + this.config.offsetY + safePadding;
     
     // 如果 tooltip 会超出右边界，则显示在鼠标左侧
     if (left + tooltipWidth > windowWidth) {
-      left = mouseX - tooltipWidth - this.config.offsetX;
+      left = mouseX - tooltipWidth - this.config.offsetX - safePadding;
     }
     
     // 如果 tooltip 会超出下边界，则显示在鼠标上方
     if (top + tooltipHeight > windowHeight) {
-      top = mouseY - tooltipHeight - this.config.offsetY;
+      top = mouseY - tooltipHeight - this.config.offsetY - safePadding;
     }
     
     // 确保不会超出左边界和上边界

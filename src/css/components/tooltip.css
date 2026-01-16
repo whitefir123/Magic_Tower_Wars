@@ -19,7 +19,8 @@
   color: #ddd; 
   font-family: var(--font-body); 
   font-size: .95rem; 
-  padding: 20px 20px; 
+  /* 调整 padding 以避开背景图边框 */
+  padding: 30px 25px; 
   pointer-events: none; 
   box-shadow: 0 10px 30px rgba(0,0,0,0.7); 
   display: none; /* 默认隐藏 */

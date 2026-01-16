@@ -609,8 +609,8 @@ export class ShopUI {
       },
       {
         type: 'drill',
-        name: '星尘钻头',
-        desc: '可以破坏墙壁的强力工具',
+        name: '钻头', // 修正名称
+        desc: '可以给装备打孔的工具', // 修正描述
         basePrice: this.shopPrices.drill,
         iconType: 'CONSUMABLE',
         iconIndex: 20, // ITEM_STARDUST_DRILL
@@ -698,11 +698,10 @@ export class ShopUI {
 
     this.goods.forEach((item, index) => {
       if (!item) {
-        // 已售出的格子，显示空占位或“已售”
+        // 已售出的格子，显示空占位 (不再显示“已售”文字)
         const emptyEl = document.createElement('div');
         emptyEl.className = 'shop-good-item disabled';
-        emptyEl.style.opacity = '0.3';
-        emptyEl.innerHTML = '<span style="color:#666; font-size:12px;">已售</span>';
+        emptyEl.style.cssText = this.getPositionStyle(index, 'goods') + 'opacity: 0; pointer-events: none;';
         container.appendChild(emptyEl);
         return;
       }
@@ -802,10 +801,10 @@ export class ShopUI {
     else if (type === 'drill') {
         const drillItem = { 
             id: 'ITEM_STARDUST_DRILL', 
-            name: '星尘钻头', 
+            name: '钻头', 
             type: 'CONSUMABLE', 
             iconIndex: 20,
-            desc: '可以破坏墙壁'
+            desc: '可以给装备打孔的工具'
         };
         // 尝试添加到背包，这里可能需要从 ItemDB 获取完整数据，但为了简化先构造
         // 最好通过 ID 查找

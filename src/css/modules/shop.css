@@ -33,10 +33,10 @@
   display: block !important;
 }
 
-/* 隐藏原有标题，或者将其重新定位/样式化 */
+/* 标题上移 */
 .modal-title-shop {
   position: absolute;
-  top: 5%;
+  top: 2%; /* 原5% */
   left: 0;
   width: 100%;
   text-align: center;
@@ -78,7 +78,7 @@
 /* 柜台操作区 (按钮) - 下移 */
 #shop-counter-surface {
   position: absolute;
-  bottom: 15%; /* 再往下一点 */
+  bottom: 12%; /* 再往下一点 (原15%) */
   left: 35%;
   width: 30%;
   height: 10%;
