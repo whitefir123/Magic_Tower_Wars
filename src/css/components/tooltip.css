@@ -3,48 +3,43 @@
    ======================================================================== */
 
 /* Tooltip */
-#tooltip { 
-  position: fixed; 
-  z-index: 1000000; /* 提高到最高层级，确保在所有元素之上（包括加载界面） */
-  min-width: 200px; 
+#tooltip {
+  position: fixed;
+  background-color: rgba(20, 20, 25, 0.95);
+  border: 1px solid #4a4a50;
+  border-radius: 4px;
+  padding: 12px;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 14px;
+  z-index: 1000000; /* Ensure tooltip is always on top */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  pointer-events: none; /* ✅ v2.0: 默认不接收鼠标事件，防止闪烁 */
+  min-width: 200px;
   max-width: 280px; /* ✅ v2.0: 稍微增加最大宽度以容纳套装信息 */
   max-height: 80vh; /* ✅ v2.0: 限制最大高度，防止溢出屏幕 */
-  overflow-y: auto; /* ✅ v2.0: 内容过多时显示滚动条 */
+  
+  /* ✅ v3.0: 优化滚动条体验 */
+  overflow-y: auto; /* 内容过多时显示滚动条 */
   overflow-x: hidden;
-  background-image: url('https://i.postimg.cc/mkszT7tr/tishikuang2.png');
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 100% 100%;
-  border: none;
-  color: #ddd; 
-  font-family: var(--font-body); 
-  font-size: .95rem; 
-  /* 调整 padding 以避开背景图边框 */
-  padding: 30px 25px; 
-  pointer-events: none; 
-  box-shadow: 0 10px 30px rgba(0,0,0,0.7); 
-  display: none; /* 默认隐藏 */
-  /* ✅ v2.0: 自定义滚动条样式 */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(212, 175, 55, 0.5) rgba(0, 0, 0, 0.3);
+  
+  /* 隐藏默认滚动条但保留功能 (Chrome/Safari/Edge) */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
 
-/* ✅ v2.0: Webkit 浏览器滚动条样式 */
+/* Chrome/Safari/Edge 滚动条样式 */
 #tooltip::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 #tooltip::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.3);
+  background: transparent;
 }
 
 #tooltip::-webkit-scrollbar-thumb {
-  background: rgba(212, 175, 55, 0.5);
-  border-radius: 3px;
-}
-
-#tooltip::-webkit-scrollbar-thumb:hover {
-  background: rgba(212, 175, 55, 0.7);
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
 }
 
 #tooltip .tt-name { 

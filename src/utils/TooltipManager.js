@@ -166,6 +166,7 @@ export class TooltipManager {
         if (affix.stats) {
           for (const [k, v] of Object.entries(affix.stats)) {
             if (k === 'multiplier') continue;
+            // v3.0 FIX: 确保所有数值都被累加，不区分前后缀
             totalAffixStats[k] = (totalAffixStats[k] || 0) + v;
           }
         }
@@ -209,7 +210,8 @@ export class TooltipManager {
                  const baseKey = statKey.replace('_percent', '');
                  const baseName = this.statNameMap[baseKey];
                  if (baseName) {
-                   statName = `${baseName}%`;
+                   // v3.0 FIX: 属性名不加%，因为数值已经有%了
+                   statName = baseName;
                  }
               }
               statName = statName || statKey;
@@ -359,7 +361,8 @@ export class TooltipManager {
           if (!statName && k.endsWith('_percent')) {
              const baseKey = k.replace('_percent', '');
              const baseName = this.statNameMap[baseKey];
-             if (baseName) statName = `${baseName}%`;
+             // v3.0 FIX: 属性名不加%，因为数值已经有%了
+             if (baseName) statName = baseName;
           }
           statName = statName || k;
 
@@ -390,9 +393,11 @@ export class TooltipManager {
               : Math.floor(baseVal);
               
             // 格式化加成值
+            // v3.0 FIX: 百分比加成也显示 + 号
+            const bonusPrefix = affixBonus > 0 ? '+' : '';
             const bonusDisplay = isPercentage 
-              ? `${(affixBonus * 100).toFixed(1)}%`
-              : `+${Math.floor(affixBonus)}`;
+              ? `${bonusPrefix}${(affixBonus * 100).toFixed(1)}%`
+              : `${bonusPrefix}${Math.floor(affixBonus)}`;
               
             subText = ` <span class="val-sub">(基础: ${baseDisplay} <span class="val-bonus">${bonusDisplay}</span>)</span>`;
           }
