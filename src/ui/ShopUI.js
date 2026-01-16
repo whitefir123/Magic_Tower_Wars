@@ -78,6 +78,8 @@ export class ShopUI {
     // 引用全局 TooltipManager
     this.tooltipManager = globalTooltipManager;
 
+    this.isEditMode = false; // 默认为非编辑模式
+    
     // 初始化
     this.init();
   }
@@ -196,6 +198,8 @@ export class ShopUI {
     // 事件委托：基础服务购买
     if (this.elements.leftShelf) {
       this.elements.leftShelf.addEventListener('click', (e) => {
+        if (this.isEditMode) return; // 编辑模式下禁止购买
+
         const itemEl = e.target.closest('.shop-good-item');
         if (itemEl && !itemEl.disabled && itemEl.dataset.serviceType) {
           this.buyService(itemEl.dataset.serviceType);
@@ -206,6 +210,8 @@ export class ShopUI {
     // 事件委托：商品购买
     if (this.elements.rightShelf) {
       this.elements.rightShelf.addEventListener('click', (e) => {
+        if (this.isEditMode) return; // 编辑模式下禁止购买
+
         const itemEl = e.target.closest('.shop-good-item');
         if (itemEl && !itemEl.disabled && itemEl.dataset.index !== undefined) {
           const index = parseInt(itemEl.dataset.index, 10);
@@ -896,9 +902,12 @@ export class ShopUI {
         console.warn('请先打开商店界面');
         return;
     }
+
+    this.isEditMode = true; // 开启编辑模式标记
     
     console.log('--- 商店布局编辑模式已启动 ---');
     console.log('拖拽商品调整位置，点击“导出坐标”获取JSON');
+    console.log('注意：编辑模式下无法购买商品');
     
     const items = document.querySelectorAll('.shop-good-item');
     items.forEach(item => {
@@ -974,6 +983,24 @@ export class ShopUI {
             alert('坐标已输出到控制台 (F12)');
         };
         this.elements.overlay.appendChild(exportBtn);
+    }
+    // 添加关闭编辑模式按钮
+    let closeEditBtn = document.getElementById('shop-close-edit-btn');
+    if (!closeEditBtn) {
+        closeEditBtn = document.createElement('button');
+        closeEditBtn.id = 'shop-close-edit-btn';
+        closeEditBtn.innerText = '退出编辑模式';
+        closeEditBtn.style.cssText = 'position: absolute; top: 100px; right: 10px; z-index: 2000; padding: 10px; background: #600; color: #fff; border: 1px solid red; cursor: pointer;';
+        closeEditBtn.onclick = () => {
+            this.isEditMode = false;
+            // 刷新页面或重新渲染以清除事件绑定和样式
+            this.render();
+            // 移除按钮
+            exportBtn.remove();
+            closeEditBtn.remove();
+            console.log('--- 编辑模式已退出 ---');
+        };
+        this.elements.overlay.appendChild(closeEditBtn);
     }
   }
 
