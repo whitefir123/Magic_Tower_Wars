@@ -2,6 +2,8 @@
 // 独立管理商店UI的所有渲染和交互逻辑
 
 import AudioManager from '../audio/AudioManager.js';
+import { globalTooltipManager } from '../utils/TooltipManager.js';
+import { ICON_GRID_COLS, ICON_GRID_ROWS } from '../constants.js';
 
 /**
  * ShopUI - 商店界面管理器
@@ -57,10 +59,14 @@ export class ShopUI {
     this.elements = {
       overlay: null,
       priceElements: {},
-      goodsContainer: null,
+      leftShelf: null,
+      rightShelf: null,
       refreshBtn: null,
       refreshPrice: null
     };
+    
+    // 引用全局 TooltipManager
+    this.tooltipManager = globalTooltipManager;
 
     // 初始化
     this.init();
@@ -82,46 +88,26 @@ export class ShopUI {
    */
   getHTML() {
     return `
-    <div class="shop-panel" style="background: rgba(0,0,0,0.9); padding: 20px; border: 2px solid #666; border-radius: 10px; max-width: 800px; width: 90%; display: flex; flex-direction: column; gap: 15px;">
-      <h2 class="modal-title-shop" style="color: #ffd700; text-align: center; margin: 0 0 10px 0;">地精商店</h2>
+    <div class="shop-panel">
+      <!-- 标题 (可选，已在CSS中定位或隐藏) -->
+      <h2 class="modal-title-shop">地精商店</h2>
       
-      <!-- 基础服务区域 -->
-      <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #444; padding-bottom: 15px;">
-        <button class="btn-core btn-transaction" data-shop-item="atk" style="flex: 1; min-width: 120px;">
-          <div style="font-weight: bold;">攻击 +3</div>
-          <div style="font-size: 0.9em; color: #aaa;">价格: <span id="price-atk">200</span></div>
-        </button>
-        <button class="btn-core btn-transaction" data-shop-item="def" style="flex: 1; min-width: 120px;">
-          <div style="font-weight: bold;">防御 +3</div>
-          <div style="font-size: 0.9em; color: #aaa;">价格: <span id="price-def">200</span></div>
-        </button>
-        <button class="btn-core btn-transaction" data-shop-item="hp" style="flex: 1; min-width: 120px;">
-          <div style="font-weight: bold;">治疗 +200HP</div>
-          <div style="font-size: 0.9em; color: #aaa;">价格: <span id="price-hp">100</span></div>
-        </button>
-        <button class="btn-core btn-transaction" data-shop-item="key" style="flex: 1; min-width: 120px;">
-          <div style="font-weight: bold;">钥匙 +1</div>
-          <div style="font-size: 0.9em; color: #aaa;">价格: <span id="price-key">500</span></div>
-        </button>
+      <!-- 左侧货架：基础服务 -->
+      <div id="shop-left-shelf" class="shop-shelf">
+        <!-- 基础服务将动态生成在这里 -->
       </div>
 
-      <!-- 限时货物区域 -->
-      <div style="display: flex; flex-direction: column; gap: 5px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="color: #fff; margin: 0; font-size: 16px;">限时货物</h3>
-          <div style="font-size: 12px; color: #888;">每天自动刷新</div>
-        </div>
-        <div id="shop-goods-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; min-height: 200px;">
-          <!-- 动态生成的商品将在这里 -->
-        </div>
+      <!-- 右侧货架：随机商品 -->
+      <div id="shop-right-shelf" class="shop-shelf">
+        <!-- 随机商品将动态生成在这里 -->
       </div>
 
-      <!-- 底部操作栏 -->
-      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #444; padding-top: 15px;">
+      <!-- 柜台操作区：按钮 -->
+      <div id="shop-counter-surface">
         <button id="btn-shop-refresh" class="btn-core" style="background: #4a3b18; border-color: #ffd700;">
-          刷新货物 (<span id="price-refresh">100</span> G)
+          刷新 (<span id="price-refresh">100</span> G)
         </button>
-        <button class="btn-core btn-modal-close" style="background: #333;">离开商店</button>
+        <button class="btn-core btn-modal-close" style="background: #333;">离开</button>
       </div>
     </div>
     `;
@@ -141,8 +127,6 @@ export class ShopUI {
       overlay.id = 'shop-overlay';
       overlay.className = 'modal-overlay hidden';
       overlay.style.display = 'none';
-      overlay.style.justifyContent = 'center';
-      overlay.style.alignItems = 'center';
       overlay.style.zIndex = '1000';
       
       // 注入 HTML 内容
@@ -153,14 +137,9 @@ export class ShopUI {
       this.elements.overlay = overlay;
     }
     
-    // 缓存价格显示元素
-    this.elements.priceElements = {
-      atk: document.getElementById('price-atk'),
-      def: document.getElementById('price-def'),
-      hp: document.getElementById('price-hp'),
-      key: document.getElementById('price-key')
-    };
-    this.elements.goodsContainer = document.getElementById('shop-goods-grid');
+    // 缓存元素引用
+    this.elements.leftShelf = document.getElementById('shop-left-shelf');
+    this.elements.rightShelf = document.getElementById('shop-right-shelf');
     this.elements.refreshBtn = document.getElementById('btn-shop-refresh');
     this.elements.refreshPrice = document.getElementById('price-refresh');
 
@@ -195,24 +174,27 @@ export class ShopUI {
       }
     });
 
-    // 基础服务购买
-    const buyButtons = this.elements.overlay.querySelectorAll('[data-shop-item]');
-    buyButtons.forEach(btn => {
-      const itemType = btn.dataset.shopItem;
-      btn.addEventListener('click', () => this.buyService(itemType));
-    });
-
     // 刷新按钮
     if (this.elements.refreshBtn) {
       this.elements.refreshBtn.addEventListener('click', () => this.refreshGoods());
     }
 
-    // 商品点击委托（动态生成的按钮）
-    if (this.elements.goodsContainer) {
-      this.elements.goodsContainer.addEventListener('click', (e) => {
-        const btn = e.target.closest('.shop-good-item');
-        if (btn && !btn.disabled) {
-          const index = parseInt(btn.dataset.index, 10);
+    // 事件委托：基础服务购买
+    if (this.elements.leftShelf) {
+      this.elements.leftShelf.addEventListener('click', (e) => {
+        const itemEl = e.target.closest('.shop-good-item');
+        if (itemEl && !itemEl.disabled && itemEl.dataset.serviceType) {
+          this.buyService(itemEl.dataset.serviceType);
+        }
+      });
+    }
+
+    // 事件委托：商品购买
+    if (this.elements.rightShelf) {
+      this.elements.rightShelf.addEventListener('click', (e) => {
+        const itemEl = e.target.closest('.shop-good-item');
+        if (itemEl && !itemEl.disabled && itemEl.dataset.index !== undefined) {
+          const index = parseInt(itemEl.dataset.index, 10);
           this.buyGood(index);
         }
       });
@@ -400,110 +382,259 @@ export class ShopUI {
    * 渲染界面
    */
   render() {
-    this.renderServicePrices();
+    this.renderServiceItems();
     this.renderGoods();
     this.renderRefreshButton();
-    this.updateButtonStates();
   }
 
   /**
-   * 渲染基础服务价格
+   * 创建物品图标 canvas
+   * @param {Image} img - 图标图片
+   * @param {object} item - 物品数据
+   * @param {number} size - 目标尺寸
+   * @returns {HTMLCanvasElement}
    */
-  renderServicePrices() {
-    for (const [type, basePrice] of Object.entries(this.shopPrices)) {
-      const el = this.elements.priceElements[type];
-      if (el) {
-        const actualPrice = this.applyPriceModifiers(basePrice);
-        el.innerText = actualPrice;
-        // 简单删除线效果略，保持清晰
+  createItemIcon(img, item, size = 64) {
+    if (!img) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    canvas.className = 'shop-good-icon';
+    const ctx = canvas.getContext('2d');
+
+    const defaultCols = ICON_GRID_COLS || 4;
+    const defaultRows = ICON_GRID_ROWS || 4;
+    
+    let currentCols = defaultCols;
+    let currentRows = defaultRows;
+
+    // 根据物品类型确定网格布局
+    if (item.type === 'GEM') {
+      currentCols = 5;
+      currentRows = 4;
+    } else if (item.type === 'CONSUMABLE') {
+      // 启发式：如果 index >= 16，假设是大网格 (e.g. 5x5)
+      if (item.iconIndex >= 16) {
+        currentCols = 5;
+        currentRows = 5;
       }
     }
+
+    const idxIcon = item.iconIndex || 0;
+    const col = idxIcon % currentCols;
+    const row = Math.floor(idxIcon / currentCols);
+    
+    const natW = img.naturalWidth || img.width;
+    const natH = img.naturalHeight || img.height;
+    const cellW = natW / currentCols;
+    const cellH = natH / currentRows;
+
+    // 使用整数像素切割
+    const sx = Math.round(col * cellW);
+    const sy = Math.round(row * cellH);
+    const sw = Math.round(cellW);
+    const sh = Math.round(cellH);
+
+    ctx.imageSmoothingEnabled = false;
+
+    // 保持宽高比并居中显示
+    const cellAspect = sw / sh;
+    let destW = size;
+    let destH = size;
+
+    if (cellAspect > 1) {
+      destH = size;
+      destW = size * cellAspect;
+    } else if (cellAspect < 1) {
+      destW = size;
+      destH = size / cellAspect;
+    }
+
+    const offsetX = Math.round((size - destW) / 2);
+    const offsetY = Math.round((size - destH) / 2);
+
+    ctx.drawImage(img, sx, sy, sw, sh, offsetX, offsetY, destW, destH);
+
+    return canvas;
   }
 
   /**
-   * 渲染商品网格
+   * 渲染左货架（基础服务）
+   */
+  renderServiceItems() {
+    const container = this.elements.leftShelf;
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const game = window.game;
+    const playerGold = game && game.player ? game.player.stats.gold : 0;
+    const loader = game?.loader;
+    
+    // 获取图标资源
+    const imgEquip = loader?.getImage('ICONS_EQUIP');
+    const imgCons = loader?.getImage('ICONS_CONSUMABLES');
+
+    // 定义基础服务元数据
+    const services = [
+      { 
+        type: 'atk', 
+        name: '攻击提升', 
+        desc: '永久增加3点物理攻击力', 
+        basePrice: this.shopPrices.atk,
+        iconType: 'EQUIP',
+        iconIndex: 0, // WEAPON_IRON_T1 (Sword)
+        stats: { p_atk: 3 }
+      },
+      { 
+        type: 'def', 
+        name: '防御提升', 
+        desc: '永久增加3点物理防御力', 
+        basePrice: this.shopPrices.def,
+        iconType: 'EQUIP',
+        iconIndex: 6, // ARMOR_OBSIDIAN_T1 (Plate)
+        stats: { p_def: 3 }
+      },
+      { 
+        type: 'hp', 
+        name: '生命恢复', 
+        desc: '立即恢复200点生命值', 
+        basePrice: this.shopPrices.hp,
+        iconType: 'CONSUMABLE',
+        iconIndex: 0, // POTION_HP_S
+        stats: { heal: 200 }
+      },
+      { 
+        type: 'key', 
+        name: '神秘钥匙', 
+        desc: '一把通用的钥匙，用于开启宝箱或门', 
+        basePrice: this.shopPrices.key,
+        iconType: 'CONSUMABLE', // 假设
+        iconIndex: 20, // 假设 Drill 或其他图标作为占位，如果没有钥匙图标
+        stats: { key: 1 }
+      }
+    ];
+
+    services.forEach(service => {
+      const price = this.applyPriceModifiers(service.basePrice);
+      const canAfford = playerGold >= price;
+      
+      const itemEl = document.createElement('div');
+      itemEl.className = 'shop-good-item';
+      itemEl.dataset.serviceType = service.type;
+      
+      if (!canAfford) {
+        itemEl.classList.add('disabled');
+      }
+      
+      // 创建图标
+      let img = null;
+      if (service.iconType === 'EQUIP') img = imgEquip;
+      else if (service.iconType === 'CONSUMABLE') img = imgCons;
+      
+      // 如果找不到图片，使用文字占位
+      if (img) {
+        // 构造临时 item 对象用于绘图
+        const tempItem = { 
+          iconIndex: service.iconIndex, 
+          type: service.iconType === 'CONSUMABLE' ? 'CONSUMABLE' : 'WEAPON' 
+        };
+        const canvas = this.createItemIcon(img, tempItem, 64);
+        if (canvas) itemEl.appendChild(canvas);
+      } else {
+        const placeholder = document.createElement('div');
+        placeholder.style.fontSize = '32px';
+        placeholder.innerText = '❓';
+        itemEl.appendChild(placeholder);
+      }
+      
+      // 价格标签
+      const priceEl = document.createElement('div');
+      priceEl.className = 'shop-good-price';
+      priceEl.innerText = price;
+      itemEl.appendChild(priceEl);
+      
+      container.appendChild(itemEl);
+      
+      // 绑定 Tooltip
+      // 构造符合 TooltipManager 期望的对象
+      const tooltipItem = {
+        nameZh: service.name,
+        type: 'CONSUMABLE', // 借用消耗品类型以显示通用样式
+        quality: 'COMMON',
+        description: service.desc,
+        stats: service.stats
+      };
+      this.tooltipManager.bind(itemEl, tooltipItem);
+    });
+  }
+
+  /**
+   * 渲染右货架（随机商品）
    */
   renderGoods() {
-    const container = this.elements.goodsContainer;
+    const container = this.elements.rightShelf;
     if (!container) return;
 
     container.innerHTML = '';
 
     const game = window.game;
     const playerGold = game && game.player ? game.player.stats.gold : 0;
+    const loader = game?.loader;
+    
+    const imgEquip = loader?.getImage('ICONS_EQUIP');
+    const imgCons = loader?.getImage('ICONS_CONSUMABLES');
+    const imgGems = loader?.getImage('ICONS_GEMS');
 
     this.goods.forEach((item, index) => {
-      if (!item) return; // 已购买的可能是 null
+      if (!item) {
+        // 已售出的格子，显示空占位或“已售”
+        const emptyEl = document.createElement('div');
+        emptyEl.className = 'shop-good-item disabled';
+        emptyEl.style.opacity = '0.3';
+        emptyEl.innerHTML = '<span style="color:#666; font-size:12px;">已售</span>';
+        container.appendChild(emptyEl);
+        return;
+      }
 
       const price = this.calculateItemPrice(item);
       const canAfford = playerGold >= price;
       
-      // 稀有度颜色
-      const rarityColors = {
-        'COMMON': '#ffffff', 'UNCOMMON': '#00ff00', 'RARE': '#0070dd', 
-        'EPIC': '#a335ee', 'LEGENDARY': '#ff8000', 'MYTHIC': '#ff0000'
-      };
-      const color = rarityColors[item.rarity || item.quality] || '#ffffff';
-      
       const itemEl = document.createElement('div');
-      itemEl.className = 'shop-good-item btn-core';
+      itemEl.className = 'shop-good-item';
       itemEl.dataset.index = index;
-      itemEl.style.cssText = `
-        display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-        padding: 10px; background: #222; border: 1px solid ${canAfford ? '#444' : '#333'};
-        border-radius: 5px; cursor: ${canAfford ? 'pointer' : 'not-allowed'};
-        opacity: ${canAfford ? 1 : 0.6}; transition: all 0.2s;
-        min-height: 120px; position: relative;
-      `;
       
-      // 图标 (简单用首字母或 Emoji 替代，如果有 iconIndex 更好)
-      // 这里简化处理，显示名称
-      let icon = '📦';
-      if (item.type === 'WEAPON') icon = '⚔️';
-      else if (item.type === 'ARMOR') icon = '🛡️';
-      else if (item.type === 'CONSUMABLE') icon = '🧪';
-      else if (item.type === 'GEM') icon = '💎';
-
-      itemEl.innerHTML = `
-        <div style="font-size: 24px; margin-bottom: 5px;">${icon}</div>
-        <div style="color: ${color}; font-weight: bold; text-align: center; font-size: 14px; margin-bottom: 5px;">
-          ${item.nameZh || item.name}
-        </div>
-        ${item.type === 'GEM' ? `<div style="font-size:12px; color:#aaa;">Tier ${item.tier}</div>` : ''}
-        <div style="color: #ffd700; font-size: 14px;">💰 ${price}</div>
-      `;
-      
-      // Tooltip (简单 title 属性，或自定义 tooltip)
-      const statsStr = this.formatItemStats(item);
-      itemEl.title = `${item.nameZh || item.name}\n${item.descZh || item.desc || ''}\n\n${statsStr}`;
-
       if (!canAfford) {
-        itemEl.disabled = true;
+        itemEl.classList.add('disabled');
       }
 
+      // 确定使用的图片资源
+      let img = imgEquip;
+      if (item.type === 'GEM') img = imgGems;
+      else if (item.type === 'CONSUMABLE') img = imgCons;
+      
+      // 绘制图标
+      if (img) {
+        const canvas = this.createItemIcon(img, item, 64);
+        if (canvas) itemEl.appendChild(canvas);
+      } else {
+        const placeholder = document.createElement('div');
+        placeholder.innerText = item.nameZh ? item.nameZh[0] : '?';
+        itemEl.appendChild(placeholder);
+      }
+      
+      // 价格标签
+      const priceEl = document.createElement('div');
+      priceEl.className = 'shop-good-price';
+      priceEl.innerText = price;
+      itemEl.appendChild(priceEl);
+      
       container.appendChild(itemEl);
+      
+      // 绑定 Tooltip
+      this.tooltipManager.bind(itemEl, item);
     });
-
-    if (this.goods.every(g => g === null)) {
-      container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #666; padding: 20px;">货物已售罄</div>';
-    }
-  }
-
-  /**
-   * 格式化物品属性用于显示
-   */
-  formatItemStats(item) {
-    if (!item.stats) return '';
-    return Object.entries(item.stats)
-      .map(([k, v]) => {
-        if (v === 0) return null;
-        // 简单映射
-        const map = { p_atk: '攻击', p_def: '防御', m_atk: '魔攻', m_def: '魔防', maxHp: '生命', crit_rate: '暴击' };
-        const label = map[k] || k;
-        return `${label}: +${v}`;
-      })
-      .filter(Boolean)
-      .join('\n');
   }
 
   /**
@@ -521,34 +652,6 @@ export class ShopUI {
       
       this.elements.refreshBtn.style.opacity = canAfford ? '1' : '0.5';
       this.elements.refreshBtn.style.cursor = canAfford ? 'pointer' : 'not-allowed';
-    }
-  }
-
-  /**
-   * 更新基础服务按钮状态
-   */
-  updateButtonStates() {
-    const game = window.game;
-    if (!game || !game.player) return;
-
-    const playerGold = game.player.stats.gold;
-
-    for (const [type, basePrice] of Object.entries(this.shopPrices)) {
-      const buttons = this.elements.overlay.querySelectorAll(`[data-shop-item="${type}"]`);
-      const actualPrice = this.applyPriceModifiers(basePrice);
-      const canAfford = playerGold >= actualPrice;
-      
-      buttons.forEach(btn => {
-        if (canAfford) {
-          btn.removeAttribute('disabled');
-          btn.style.opacity = '1';
-          btn.style.cursor = 'pointer';
-        } else {
-          btn.setAttribute('disabled', 'true');
-          btn.style.opacity = '0.5';
-          btn.style.cursor = 'not-allowed';
-        }
-      });
     }
   }
 

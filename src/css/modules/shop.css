@@ -1,14 +1,159 @@
-/* Shop, Gambler, and Roguelike Card Selection Styles */
-
 /* ========================================
    Shop Overlay
    ======================================== */
 #shop-overlay {
   /* Styles inherited from modal-overlay */
+  /* 确保覆盖层居中 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.7);
 }
 
+.shop-panel {
+  position: relative;
+  /* 背景图设置 */
+  background-image: url('https://i.postimg.cc/DzLSLrfr/dijingshangdian1.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  /* 尺寸设置 - 保持宽高比，适应屏幕 */
+  width: 90vw;
+  max-width: 1100px;
+  aspect-ratio: 1.77; /* 16:9 比例 */
+  
+  /* 清除原有边框和背景色 */
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  
+  /* 布局容器 */
+  display: block !important;
+}
+
+/* 隐藏原有标题，或者将其重新定位/样式化 */
 .modal-title-shop {
-  /* Inherits from .modal-title in components/modal.css */
+  position: absolute;
+  top: 5%;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: #ffd700;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  margin: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* 货架通用样式 */
+.shop-shelf {
+  position: absolute;
+  display: grid;
+  /* 3列 x 4行 (只用前4行) */
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr); 
+  gap: 2%;
+  padding: 2%;
+  /* 调试背景色，调整好后去掉 */
+  /* background: rgba(255, 0, 0, 0.1); */
+}
+
+/* 左货架 (基础服务) - 位置估算 */
+#shop-left-shelf {
+  top: 18%;
+  left: 10%;
+  width: 25%;
+  height: 45%;
+}
+
+/* 右货架 (随机商品) - 位置估算 */
+#shop-right-shelf {
+  top: 18%;
+  right: 10%;
+  width: 25%;
+  height: 45%;
+}
+
+/* 柜台操作区 (按钮) - 位置估算 */
+#shop-counter-surface {
+  position: absolute;
+  bottom: 25%; /* 往下一点的外表处 */
+  left: 35%;
+  width: 30%;
+  height: 10%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  z-index: 20;
+}
+
+/* 商品项样式 */
+.shop-good-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+  position: relative;
+  
+  /* 去除原有边框背景 */
+  background: transparent !important;
+  border: none !important;
+  min-height: 0 !important; /* 覆盖原有 min-height */
+  padding: 0 !important;
+  height: 100%;
+}
+
+.shop-good-item:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+.shop-good-item:active {
+  transform: scale(0.95);
+}
+
+.shop-good-item.disabled {
+  filter: grayscale(1) opacity(0.6);
+  cursor: not-allowed;
+}
+
+/* 商品图标 (Canvas) */
+.shop-good-icon {
+  width: 80%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5));
+}
+
+/* 商品价格 */
+.shop-good-price {
+  color: #C5A059; /* 暗金色 */
+  font-family: 'Times New Roman', serif;
+  font-weight: bold;
+  font-size: 14px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
+  margin-top: 5px;
+  background: rgba(0,0,0,0.6);
+  padding: 2px 6px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* 按钮样式微调 */
+#shop-counter-surface .btn-core {
+  font-size: 14px;
+  padding: 8px 16px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+}
+
+/* 隐藏原有结构中不需要的部分（如果 JS 没有完全清理的话） */
+.shop-panel > div:not(#shop-left-shelf):not(#shop-right-shelf):not(#shop-counter-surface):not(.modal-title-shop) {
+  display: none !important;
 }
 
 .modal-title-small {
