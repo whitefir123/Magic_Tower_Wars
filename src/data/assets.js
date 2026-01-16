@@ -14,6 +14,12 @@ export const CRITICAL_ASSETS = {
   // 角色选择界面
   BG_CHAR_SELECT: { url: "https://i.postimg.cc/9MMMcygx/chooseherobackground1.png" },
   UI_PORTRAITS: { url: "https://i.postimg.cc/gkXswY1V/jueselihui1.png" },
+  
+  // 角色立绘 (动态加载)
+  PORTRAIT_WARRIOR: { url: "https://i.postimg.cc/PJBxvYD0/zhanshilihui1.png" },
+  PORTRAIT_MAGE: { url: "https://i.postimg.cc/G280fQV0/fashilihuidonghua1.png" },
+  PORTRAIT_ROGUE: { url: "https://i.postimg.cc/D0DG5CqQ/daozeilihuidonghua1.png" },
+  
   UI_ICONS_CLASS: { url: "https://i.postimg.cc/XqGvNS3k/yingxiongtubiao1.png" },
   ICONS_SKILLS: { url: "https://i.postimg.cc/pLKsSmNP/yingxiongjinengtubiao1.png" },
   UI_DIAL: { url: "https://i.postimg.cc/YqqY1jRQ/nanduxuanzelunpan1.png" },

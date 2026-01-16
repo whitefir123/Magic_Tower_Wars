@@ -340,7 +340,7 @@
 
 .ror-preview-sprite {
   width: 280px;
-  height: 350px;
+  height: 420px;
   background-size: 400% 100%;
   background-repeat: no-repeat;
   background-position: 0% 0%;
@@ -351,7 +351,7 @@
   box-shadow: none;
   animation: portrait-idle 1.2s linear infinite;
   position: relative;
-  bottom: 60px;
+  bottom: 95px;
 }
 
 /* ========================================================================

@@ -13,7 +13,8 @@ export const CHARACTERS = {
       ACTIVE: { id: 'slash', name: '斩击', key: 'Q', cd: 5000, iconIndex: 1, manaCost: 20, desc: '下次攻击造成150%伤害' },
       ULT: { id: 'berserk', name: '狂暴', key: 'SPACE', cd: 20000, iconIndex: 2, desc: '进入5秒狂暴：物攻+50%，下5次攻击必定暴击' }
     },
-    asset: 'PLAYER'
+    asset: 'PLAYER_WARRIOR',
+    portrait: 'PORTRAIT_WARRIOR'
   },
   MAGE: {
     id: 'MAGE',
@@ -26,7 +27,8 @@ export const CHARACTERS = {
       ACTIVE: { id: 'scorch', name: '灼烧', key: 'Q', cd: 8000, iconIndex: 4, manaCost: 30, desc: '下次攻击附加灼烧：每秒造成目标最大生命2%伤害，持续5秒' },
       ULT: { id: 'glacial', name: '冰墓', key: 'SPACE', cd: 25000, iconIndex: 5, desc: '下次攻击附加冰封：冻结目标并每秒造成最大生命3%伤害，持续5秒' }
     },
-    asset: 'PLAYER'
+    asset: 'PLAYER_MAGE',
+    portrait: 'PORTRAIT_MAGE'
   },
   ROGUE: {
     id: 'ROGUE',

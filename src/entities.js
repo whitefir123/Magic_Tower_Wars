@@ -1376,7 +1376,18 @@ export class Player extends Entity {
     this.map = map; 
     this.loader = loader;
     const assetKey = (charConfig && charConfig.asset) ? charConfig.asset : 'PLAYER';
-    this.sprite = new Sprite({ assetKey: assetKey, loader, animationType: 'player' });
+    
+    // Allow character-specific sprite configuration (e.g., dimensions)
+    const spriteConfig = {
+      assetKey: assetKey, 
+      loader, 
+      animationType: 'player'
+    };
+    
+    if (charConfig && charConfig.spriteCols) spriteConfig.cols = charConfig.spriteCols;
+    if (charConfig && charConfig.spriteRows) spriteConfig.rows = charConfig.spriteRows;
+    
+    this.sprite = new Sprite(spriteConfig);
     this.moveSpeed = 0.25; 
     this.pendingCombat = null;
     this.charConfig = charConfig; // Store character config for reference
