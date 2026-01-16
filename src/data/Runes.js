@@ -1020,3 +1020,12 @@ export const RUNE_RARITY_MULTIPLIERS = {
   CURSED: 2.5 // 诅咒符文虽然有负面效果，但正面效果也更强
 };
 
+/**
+ * 符文ID映射表
+ * 用于快速查找符文定义
+ */
+export const RUNES = RUNE_POOL.reduce((acc, rune) => {
+  acc[rune.id] = rune;
+  return acc;
+}, {});
+
