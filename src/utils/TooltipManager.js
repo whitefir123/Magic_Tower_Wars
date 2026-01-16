@@ -343,14 +343,36 @@ export class TooltipManager {
           // ✅ V2.0: 计算底材和词缀加成
           let subText = '';
           if (baseStats[k] !== undefined) {
-            // 计算当前强化后的底材数值
+            // ✅ V2.2: 智能计算底材数值 (兼容 Scaled 和 Unscaled 两种 baseStats 存储方式)
+            const quality = item.quality || 'COMMON';
+            const qualityMultiplier = ITEM_QUALITY[quality]?.multiplier || 1.0;
             const enhanceMultiplier = 1 + (enhanceLevel * 0.1);
-            let enhancedBase = baseStats[k] * enhanceMultiplier;
+
+            // 方案 A: 假设 baseStats 已经是经过品质放大的 (LootGen 行为)
+            let baseScaled = baseStats[k] * enhanceMultiplier;
+
+            // 方案 B: 假设 baseStats 是原始底材数值 (Blacksmith 理想行为)
+            let baseUnscaled = baseStats[k] * qualityMultiplier * enhanceMultiplier;
             
+            // 预处理数值
             if (isPercentage) {
-              enhancedBase = Math.round(enhancedBase * 100) / 100;
+              baseScaled = Math.round(baseScaled * 100) / 100;
+              baseUnscaled = Math.round(baseUnscaled * 100) / 100;
             } else {
-              enhancedBase = Math.floor(enhancedBase);
+              baseScaled = Math.floor(baseScaled);
+              baseUnscaled = Math.floor(baseUnscaled);
+            }
+            
+            // 智能判定：比较哪种方案更接近当前属性值 'v'
+            // v = Base + Affix. 通常 Affix 相对较小。
+            // 如果 baseUnscaled 更接近 v，说明 baseStats 很可能是未放大的原始值
+            const diffScaled = Math.abs(v - baseScaled);
+            const diffUnscaled = Math.abs(v - baseUnscaled);
+            
+            let enhancedBase = baseScaled;
+            // 只有当品质倍率显著 (>1.1) 且方案 B 明显更优时，才切换到方案 B
+            if (qualityMultiplier > 1.1 && diffUnscaled < diffScaled) {
+              enhancedBase = baseUnscaled;
             }
             
             // 计算词缀带来的额外加成
