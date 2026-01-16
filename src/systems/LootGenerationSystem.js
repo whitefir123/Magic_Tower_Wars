@@ -736,7 +736,7 @@ export class LootGenerator {
    * 生成描述
    */
   buildDescription(archetype, prefix, suffix, quality, iPwr, fateRoll) {
-    let desc = `${ITEM_QUALITY[quality]?.name || quality} • iPwr ${iPwr}`;
+    let desc = `${ITEM_QUALITY[quality]?.name || quality}`;
     
     if (fateRoll.isJackpot) {
       desc += ' 🎰JACKPOT';

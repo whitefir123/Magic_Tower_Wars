@@ -160,8 +160,10 @@ export class TooltipManager {
     if (item.meta && item.meta.affixes && Array.isArray(item.meta.affixes)) {
       for (const affix of item.meta.affixes) {
         const affixType = affix.type === 'prefix' ? '前缀' : '后缀';
-        // v2.0 FIX: 确保词缀名称为中文（如果数据源包含英文，需在此处映射或确保上游提供中文）
-        const affixName = affix.nameZh || affix.name || '';
+        // v2.0 FIX: 确保词缀名称为中文，如果无中文名则不显示
+        const affixName = affix.nameZh || '';
+        
+        if (!affixName) continue; // 如果没有中文名，跳过显示
         
         // 检查是否有特殊效果（转化、触发等）
         let affixDesc = '';

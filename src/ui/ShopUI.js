@@ -430,7 +430,18 @@ export class ShopUI {
     
     // 检查图片是否加载完成
     if (img.complete === false || img.naturalWidth === 0) {
-      console.warn('ShopUI: Image not loaded yet', img.src);
+      // 尝试添加加载监听器，以便加载完成后刷新
+      if (!img.hasLoadListener) {
+          img.hasLoadListener = true;
+          const originalOnLoad = img.onload;
+          img.onload = () => {
+              if (originalOnLoad) originalOnLoad();
+              // 图片加载完成后，尝试重新渲染商店
+              if (window.game && window.game.shopUI && window.game.shopUI.isVisible) {
+                  window.game.shopUI.renderShopGoods();
+              }
+          };
+      }
       return null;
     }
 
