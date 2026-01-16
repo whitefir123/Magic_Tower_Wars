@@ -212,10 +212,26 @@ export function createDynamicConsumable(itemDef, quality = 'COMMON') {
     // 兼容字段（保留原有描述等）
     desc: itemDef.desc,
     descZh: itemDef.descZh,
-
+    
     // 标记为动态消耗品，方便调试与序列化策略
     isDynamicConsumable: true
   };
+  
+  // ✅ FIX: 为不同品质的钻头添加专属描述
+  if (templateId === 'ITEM_STARDUST_DRILL') {
+    const drillDescriptions = {
+      COMMON: '普通的钻头，虽然有些生锈，但勉强能用。可以给装备打孔。',
+      UNCOMMON: '锋利的钻头，经过精心打磨，使用起来更顺手。可以给装备打孔。',
+      RARE: '坚固的钻头，由精钢合金打造，硬度极高。可以给装备打孔。',
+      EPIC: '附魔的钻头，表面流转着魔法光芒，能轻易穿透护甲。可以给装备打孔。',
+      LEGENDARY: '传奇钻头，传说能钻开巨龙的鳞片，无坚不摧。可以给装备打孔。',
+      MYTHIC: '神话钻头，据说连时空壁垒都能钻破，是工匠梦寐以求的神器。可以给装备打孔。'
+    };
+    instance.descZh = drillDescriptions[qKey] || drillDescriptions.COMMON;
+  }
+  
+  return instance;
+}
 
   return instance;
 }
