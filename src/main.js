@@ -1374,18 +1374,24 @@ class Game {
       const lootWorldY = (it.y + 0.5) * TILE_SIZE;
 
       if (it.type === 'ITEM_EQUIP') {
-        const def = getItemDefinition(it.itemId);
+        // 1. 尝试从动态池获取完整对象
+        let itemToAdd = it.itemId;
+        if (window.__dynamicItems && window.__dynamicItems.has(it.itemId)) {
+          itemToAdd = window.__dynamicItems.get(it.itemId);
+        }
+
+        const def = (typeof itemToAdd === 'object') ? itemToAdd : getItemDefinition(itemToAdd);
         // 调试日志
         // console.log('[Main] Pickup item:', it.type, it.itemId);
         let picked = false;
 
         if (def && !this.player.equipment[def.type]) {
-          this.player.equip(it.itemId);
+          this.player.equip(itemToAdd);
           this.map.removeItem(it);
           if (this.audio) this.audio.playCloth();
           picked = true;
         } else {
-          const added = this.player.addToInventory(it.itemId);
+          const added = this.player.addToInventory(itemToAdd);
           if (added) {
             this.map.removeItem(it);
             if (def) {
@@ -1397,6 +1403,11 @@ class Game {
           } else {
             this.ui.logMessage('背包已满！', 'info');
           }
+        }
+        
+        // 清理动态池引用
+        if (picked && window.__dynamicItems && window.__dynamicItems.has(it.itemId)) {
+          window.__dynamicItems.delete(it.itemId);
         }
         
         // 无论是否装备，都播放飞行动画
