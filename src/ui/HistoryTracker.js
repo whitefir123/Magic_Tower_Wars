@@ -80,7 +80,7 @@ export class HistoryTracker {
     containerElement.innerHTML = '';
 
     if (this.history.length === 0) {
-      containerElement.innerHTML = '<div style="color: #666; font-size: 12px; text-align: center;">暂无历史记录</div>';
+      containerElement.innerHTML = '<div style="color: #8b7355; font-size: 12px; text-align: center;">暂无历史记录</div>';
       return;
     }
 
@@ -182,13 +182,8 @@ export class HistoryTracker {
    * @returns {boolean} 是否成功渲染
    */
   renderItemIcon(container, item) {
-    console.log('HistoryTracker: 尝试渲染图标', item);
-    console.log('  - type:', item.type);
-    console.log('  - data:', item.data);
-    
     const game = window.game;
     if (!game || !game.loader) {
-      console.log('HistoryTracker: game或loader不存在');
       return false;
     }
 
@@ -197,20 +192,15 @@ export class HistoryTracker {
 
     if (item.type === 'equipment') {
       img = game.loader.getImage('ICONS_EQUIP');
-      console.log('HistoryTracker: 获取装备图标', img ? '成功' : '失败');
     } else if (item.type === 'consumable') {
       img = game.loader.getImage('ICONS_CONSUMABLES');
-      console.log('HistoryTracker: 获取消耗品图标', img ? '成功' : '失败');
     } else if (item.type === 'gem') {
       img = game.loader.getImage('ICONS_GEMS');
-      console.log('HistoryTracker: 获取宝石图标', img ? '成功' : '失败');
     } else {
-      console.log('HistoryTracker: 物品类型不支持图标渲染:', item.type);
       return false;
     }
 
     if (!img) {
-      console.log('HistoryTracker: 未找到sprite sheet');
       return false;
     }
 
@@ -219,11 +209,9 @@ export class HistoryTracker {
     
     if (canvas) {
       container.appendChild(canvas);
-      console.log('HistoryTracker: 图标渲染成功');
       return true;
     }
 
-    console.log('HistoryTracker: canvas创建失败');
     return false;
   }
 

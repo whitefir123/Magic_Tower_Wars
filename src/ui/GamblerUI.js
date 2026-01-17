@@ -325,7 +325,7 @@ export class GamblerUI {
       <div class="slot-machine-container" id="slot-machine-bg" style="position: relative; background-size: contain; background-repeat: no-repeat; background-position: center center; padding: 0; min-height: 700px; display: block; overflow: visible;">
         
         <!-- 标题 -->
-        <h2 class="modal-title-shop" style="position: absolute; left: 8px; top: 14px; width: 900px; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); font-size: 22px; color: #ffd700; margin: 0;">命运的老虎机</h2>
+        <h2 class="modal-title-shop" style="position: absolute; left: 8px; top: 14px; width: 900px; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); font-size: 22px; color: #ffd700; margin: 0;">赌徒的游戏</h2>
         
         <!-- Jackpot 显示 -->
         <div style="position: absolute; left: 155px; top: 140px; width: 620px; text-align: center;">
@@ -357,24 +357,27 @@ export class GamblerUI {
           获得：[物品名称]
         </div>
         
-        <!-- 右侧信息区域 -->
-        <div style="position: absolute; left: 933px; top: 77px; width: 180px; display: flex; flex-direction: column; gap: 10px;">
-          <!-- 保底进度条 -->
-          <div style="background: rgba(0,0,0,0.75); padding: 8px 10px; border-radius: 6px; border: 2px solid #666; width: 180px; box-sizing: border-box;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <div style="color: #aaa; font-size: 11px;">保底进度</div>
-              <div id="gambler-pity-count" style="color: #ff6600; font-size: 11px; font-weight: bold;">0/8</div>
+        <!-- 右侧信息区域（带背景图） -->
+        <div style="position: absolute; left: 800px; top: 0px; width: 480px; height: 745px; background-image: url('https://i.postimg.cc/65XdSvXQ/dutukuang2.png'); background-size: contain; background-repeat: no-repeat; background-position: center; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding-top: 150px; box-sizing: border-box;">
+          <!-- 内容容器（保持原始大小） -->
+          <div style="width: 180px; display: flex; flex-direction: column; padding: 15px 10px; box-sizing: border-box;">
+            <!-- 保底进度条 -->
+            <div style="background: transparent; padding: 8px 10px; border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div style="color: #5c4033; font-size: 11px; font-weight: bold;">保底进度</div>
+                <div id="gambler-pity-count" style="color: #ff6600; font-size: 11px; font-weight: bold;">0/8</div>
+              </div>
+              <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px; overflow: hidden;">
+                <div id="gambler-pity-bar" style="height: 100%; background: linear-gradient(90deg, #ff6600, #ffaa00); width: 0%; transition: width 0.3s ease-out;"></div>
+              </div>
+              <div id="gambler-pity-hint" style="color: #888; font-size: 9px; margin-top: 2px; text-align: center; min-height: 10px;"></div>
             </div>
-            <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px; overflow: hidden;">
-              <div id="gambler-pity-bar" style="height: 100%; background: linear-gradient(90deg, #ff6600, #ffaa00); width: 0%; transition: width 0.3s ease-out;"></div>
+            
+            <!-- 历史记录显示 -->
+            <div style="background: transparent; padding: 8px 10px; border-radius: 6px; min-height: 150px; width: 100%; box-sizing: border-box;">
+              <div style="color: #5c4033; font-size: 11px; text-align: center; margin-bottom: 6px; font-weight: bold;">最近结果</div>
+              <div id="gambler-history" style="min-height: 50px;"></div>
             </div>
-            <div id="gambler-pity-hint" style="color: #888; font-size: 9px; margin-top: 2px; text-align: center; min-height: 10px;"></div>
-          </div>
-          
-          <!-- 历史记录显示 -->
-          <div style="background: rgba(0,0,0,0.75); padding: 8px 10px; border-radius: 6px; border: 2px solid #666; min-height: 150px; width: 180px; box-sizing: border-box;">
-            <div style="color: #d4af37; font-size: 11px; text-align: center; margin-bottom: 6px; font-weight: bold;">最近结果</div>
-            <div id="gambler-history" style="min-height: 50px;"></div>
           </div>
         </div>
         
@@ -1408,12 +1411,6 @@ export class GamblerUI {
     }
     
     // 4. 添加实际获得的物品到历史记录
-    console.log('GamblerUI: 添加到历史记录的物品:', actualReward);
-    console.log('  - name:', actualReward.name);
-    console.log('  - type:', actualReward.type);
-    console.log('  - quality:', actualReward.quality);
-    console.log('  - data:', actualReward.data);
-    
     this.historyTracker.addResult(
       actualReward,
       nearMissResult.isNearMiss,
@@ -1439,11 +1436,6 @@ export class GamblerUI {
    * 显示结果并发放奖励
    */
   async showResult(reward) {
-    console.log('GamblerUI: showResult 接收到的物品:', reward);
-    console.log('  - name:', reward.name);
-    console.log('  - type:', reward.type);
-    console.log('  - quality:', reward.quality);
-    
     const game = window.game;
 
     // 1. 播放音效（带错误处理）

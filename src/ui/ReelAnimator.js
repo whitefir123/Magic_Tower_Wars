@@ -177,12 +177,6 @@ export class ReelAnimator {
     const winnerPosition = Math.floor(displayItems.length * 0.65);
     const actualWinner = items[winnerIndex];
     
-    console.log('=== animate 方法 ===');
-    console.log('items.length:', items.length);
-    console.log('displayItems.length:', displayItems.length);
-    console.log('winnerPosition:', winnerPosition);
-    console.log('winnerPosition / displayItems.length:', winnerPosition / displayItems.length);
-    
     // 将真实的获胜物品放在winnerPosition位置
     displayItems[winnerPosition] = actualWinner;
     
@@ -305,24 +299,12 @@ export class ReelAnimator {
     const containerWidth = this.reelStrip.parentElement.offsetWidth;
     const centerOffset = containerWidth / 2; // 容器中心位置（指针位置）
     
-    console.log('=== scrollToWinner 计算 ===');
-    console.log('containerWidth:', containerWidth);
-    console.log('centerOffset:', centerOffset);
-    console.log('winnerPosition:', winnerPosition);
-    console.log('winnerCard.offsetLeft:', winnerCard.offsetLeft);
-    console.log('winnerCard.offsetWidth:', winnerCard.offsetWidth);
-    
     // 使用实际的 offsetLeft 而不是理论计算
     // 目标：让卡片中心对准容器中心（指针位置）
     const cardCenterPosition = winnerCard.offsetLeft + winnerCard.offsetWidth / 2;
     let baseOffset = -(cardCenterPosition - centerOffset);
     const randomOffset = (Math.random() - 0.5) * 40; // -20 到 +20 像素
     let targetOffset = baseOffset + randomOffset;
-    
-    console.log('cardCenterPosition:', cardCenterPosition);
-    console.log('baseOffset:', baseOffset);
-    console.log('randomOffset:', randomOffset);
-    console.log('targetOffset:', targetOffset);
     
     // 如果触发"差一点"效果，先停在前一个物品
     const cardWidth = winnerCard.offsetWidth + 15; // 实际卡片宽度 + gap
@@ -358,12 +340,9 @@ export class ReelAnimator {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
       
-      // 使用自定义的平滑曲线：前半段接近线性，后半段明显减速
-      // 使用指数衰减的反函数来实现
-      // f(t) = 1 - e^(-kt) / (1 - e^(-k))
-      // 当k较小时，前半段接近线性，后半段减速明显
-      const k = 3.5; // 控制减速程度，值越大减速越明显
-      const eased = (1 - Math.exp(-k * progress)) / (1 - Math.exp(-k));
+      // 全程减速：使用 ease-out-cubic
+      // 开始快，逐渐变慢，最后非常慢
+      const eased = 1 - Math.pow(1 - progress, 3);
       
       const currentOffset = startOffset + (nearMissOffset - startOffset) * eased;
       
@@ -434,15 +413,8 @@ export class ReelAnimator {
     
     const { targetOffset, centerOffset, displayItems, cards } = this.finalStopInfo;
     
-    console.log('=== getActualWinnerByPointer 计算 ===');
-    console.log('targetOffset:', targetOffset);
-    console.log('centerOffset:', centerOffset);
-    console.log('displayItems.length:', displayItems.length);
-    console.log('cards.length:', cards.length);
-    
     // 计算指针在滚轮条中的绝对位置
     const pointerPositionInStrip = centerOffset - targetOffset;
-    console.log('指针在滚轮条中的位置:', pointerPositionInStrip);
     
     // 遍历所有卡片，找到最接近指针的那个
     let closestCard = null;
@@ -464,12 +436,8 @@ export class ReelAnimator {
       }
     });
     
-    console.log('最接近的卡片索引:', closestIndex);
-    console.log('距离:', closestDistance, 'px');
-    
     if (closestIndex >= 0 && closestIndex < displayItems.length) {
       const actualWinner = displayItems[closestIndex];
-      console.log('实际获胜物品:', actualWinner.name);
       return actualWinner;
     }
     
@@ -481,32 +449,6 @@ export class ReelAnimator {
    * 高亮获胜物品
    */
   highlightWinner(winnerCard) {
-    console.log('=== highlightWinner ===');
-    console.log('winnerCard dataset.index:', winnerCard.dataset.index);
-    console.log('winnerCard offsetLeft:', winnerCard.offsetLeft);
-    console.log('winnerCard offsetWidth:', winnerCard.offsetWidth);
-    console.log('winnerCard 中心位置:', winnerCard.offsetLeft + winnerCard.offsetWidth / 2);
-    console.log('reelStrip transform:', this.reelStrip.style.transform);
-    console.log('reelStrip offsetLeft:', this.reelStrip.offsetLeft);
-    
-    // 计算卡片在容器中的实际位置
-    const stripTransform = this.reelStrip.style.transform;
-    const translateMatch = stripTransform.match(/translateX\(([^)]+)px\)/);
-    const translateX = translateMatch ? parseFloat(translateMatch[1]) : 0;
-    const cardLeftInContainer = winnerCard.offsetLeft + translateX;
-    const cardCenterInContainer = cardLeftInContainer + winnerCard.offsetWidth / 2;
-    console.log('卡片左边缘在容器中的位置:', cardLeftInContainer);
-    console.log('卡片中心在容器中的位置:', cardCenterInContainer);
-    console.log('容器中心（指针位置）:', this.reelStrip.parentElement.offsetWidth / 2);
-    console.log('偏差:', Math.abs(cardCenterInContainer - this.reelStrip.parentElement.offsetWidth / 2), 'px');
-    
-    // 理论计算
-    const index = parseInt(winnerCard.dataset.index);
-    const cardWidth = 90 + 15;
-    console.log('理论上第', index, '个卡片的左边缘应该在:', index * cardWidth);
-    console.log('实际 offsetLeft:', winnerCard.offsetLeft);
-    console.log('差异:', winnerCard.offsetLeft - index * cardWidth);
-    
     // 淡化其他卡片
     const cards = this.reelStrip.querySelectorAll('.gambler-item-card');
     cards.forEach(card => {
