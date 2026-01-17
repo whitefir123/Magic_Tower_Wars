@@ -10,6 +10,8 @@ import {
   getEquipmentDropForFloor, 
   getRandomConsumable 
 } from '../constants.js';
+import { ParticleSystem } from './ParticleSystem.js';
+import { AnimationController } from './AnimationController.js';
 
 /**
  * GamblerUI - 赌博界面管理器
@@ -57,6 +59,10 @@ export class GamblerUI {
       leaveBtn: null
     };
 
+    // 新系统
+    this.particleSystem = null;
+    this.animationController = null;
+
     // 初始化
     this.init();
   }
@@ -68,7 +74,27 @@ export class GamblerUI {
     this.initDOMElements();
     this.setupEventListeners();
     this.injectStyles(); // 注入 CSS 样式
-    console.log('✓ GamblerUI 已初始化 (v2.0 Visual Upgrade)', this.style);
+    this.initSystems(); // 初始化新系统
+    console.log('✓ GamblerUI 已初始化 (v3.0 Enhanced Animation)', this.style);
+  }
+
+  /**
+   * 初始化新系统（粒子系统和动画控制器）
+   */
+  initSystems() {
+    // 初始化粒子系统
+    if (!this.particleSystem && this.elements.overlay) {
+      this.particleSystem = new ParticleSystem(this.elements.overlay);
+    }
+
+    // 初始化动画控制器
+    if (!this.animationController) {
+      this.animationController = new AnimationController(this);
+      // 设置粒子系统引用
+      if (this.animationController.resultEffects) {
+        this.animationController.resultEffects.particleSystem = this.particleSystem;
+      }
+    }
   }
 
   /**
@@ -80,6 +106,12 @@ export class GamblerUI {
     const style = document.createElement('style');
     style.id = 'gambler-ui-styles';
     style.textContent = `
+      .slot-machine-container {
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        border-radius: 15px;
+        backdrop-filter: blur(5px);
+      }
+      
       .gambler-reel-container {
         width: 100%;
         height: 100px;
@@ -89,14 +121,14 @@ export class GamblerUI {
         overflow: hidden;
         position: relative;
         margin: 20px 0;
-        box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 4px 15px rgba(212, 175, 55, 0.3);
+        cursor: pointer;
       }
       
       .gambler-reel-strip {
         display: flex;
         height: 100%;
         align-items: center;
-        /* 初始位置 */
         transform: translateX(0);
         will-change: transform;
       }
@@ -138,6 +170,7 @@ export class GamblerUI {
         transform: translateX(-50%);
         color: #ffd700;
         font-size: 20px;
+        filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.8));
       }
 
       /* 品质颜色边框 */
@@ -165,6 +198,21 @@ export class GamblerUI {
         font-size: 24px;
         margin-top: 5px;
       }
+      
+      .skip-hint {
+        animation: pulse-hint 1.5s infinite;
+      }
+      
+      @keyframes pulse-hint {
+        0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+        50% { opacity: 1; transform: translateX(-50%) scale(1.1); }
+      }
+      
+      /* 粒子样式 */
+      .particle {
+        position: absolute;
+        pointer-events: none;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -175,53 +223,61 @@ export class GamblerUI {
    */
   getHTML() {
     return `
-    <div class="gambler-panel" style="width: 500px; max-width: 95%;">
-      <h2 class="modal-title-shop" style="margin-bottom: 10px;">🎰 命运的老虎机 🎰</h2>
-      
-      <!-- Jackpot 显示 -->
-      <div style="text-align: center; margin-bottom: 15px; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px;">
-        <div style="color: #aaa; font-size: 14px;">当前累积奖池 (JACKPOT)</div>
-        <div id="gambler-jackpot" class="jackpot-counter">0 G</div>
-      </div>
-      
-      <!-- 赌徒消息 -->
-      <p id="gambler-message" style="font-size: 16px; color: #ffcc00; text-align: center; margin-bottom: 15px; font-style: italic; min-height: 24px;">
-        试试手气吧...
-      </p>
-      
-      <!-- 滚动动画区域 (CS:GO Style) -->
-      <div id="gambler-reel-container" class="gambler-reel-container">
-        <div class="gambler-pointer"></div>
-        <div id="gambler-reel-strip" class="gambler-reel-strip">
-          <!-- JS 动态填充图标 -->
-          <div class="gambler-item-card quality-COMMON">?</div>
-          <div class="gambler-item-card quality-COMMON">?</div>
-          <div class="gambler-item-card quality-COMMON">?</div>
-          <div class="gambler-item-card quality-COMMON">?</div>
-          <div class="gambler-item-card quality-COMMON">?</div>
+    <div class="gambler-panel" style="width: 600px; max-width: 95%;">
+      <!-- 老虎机背景容器 -->
+      <div class="slot-machine-container" style="position: relative; background-image: url('https://i.postimg.cc/XYVXxV9N/dutuji.png'); background-size: contain; background-repeat: no-repeat; background-position: center; padding: 40px 20px; min-height: 400px;">
+        
+        <h2 class="modal-title-shop" style="margin-bottom: 10px; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">🎰 命运的老虎机 🎰</h2>
+        
+        <!-- Jackpot 显示 -->
+        <div style="text-align: center; margin-bottom: 15px; background: rgba(0,0,0,0.7); padding: 8px; border-radius: 5px; border: 2px solid #d4af37;">
+          <div style="color: #aaa; font-size: 14px;">当前累积奖池 (JACKPOT)</div>
+          <div id="gambler-jackpot" class="jackpot-counter">0 G</div>
         </div>
-      </div>
-      
-      <!-- 结果显示区域 -->
-      <div id="gambler-result" class="hidden" style="font-size: 22px; text-align: center; margin: 15px 0; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); min-height: 30px;">
-        获得：[物品名称]
-      </div>
-      
-      <!-- 按钮组 -->
-      <div class="flex-center" style="flex-direction: row; gap: 15px; justify-content: space-around;">
-        <button id="gambler-btn-standard" class="btn-core btn-transaction" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); width: 45%;">
-          <div>标准旋转</div>
-          <div style="font-size: 12px; opacity: 0.8;">50 G</div>
+        
+        <!-- 赌徒消息 -->
+        <p id="gambler-message" style="font-size: 16px; color: #ffcc00; text-align: center; margin-bottom: 15px; font-style: italic; min-height: 24px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+          试试手气吧...
+        </p>
+        
+        <!-- 滚动动画区域 (CS:GO Style) -->
+        <div id="gambler-reel-container" class="gambler-reel-container">
+          <div class="gambler-pointer"></div>
+          <div id="gambler-reel-strip" class="gambler-reel-strip">
+            <!-- JS 动态填充图标 -->
+            <div class="gambler-item-card quality-COMMON">?</div>
+            <div class="gambler-item-card quality-COMMON">?</div>
+            <div class="gambler-item-card quality-COMMON">?</div>
+            <div class="gambler-item-card quality-COMMON">?</div>
+            <div class="gambler-item-card quality-COMMON">?</div>
+          </div>
+          <!-- 快速跳过提示 -->
+          <div id="gambler-skip-hint" class="skip-hint hidden" style="position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-size: 12px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); animation: pulse-hint 1.5s infinite;">
+            点击跳过
+          </div>
+        </div>
+        
+        <!-- 结果显示区域 -->
+        <div id="gambler-result" class="hidden" style="font-size: 22px; text-align: center; margin: 15px 0; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); min-height: 30px;">
+          获得：[物品名称]
+        </div>
+        
+        <!-- 按钮组 -->
+        <div class="flex-center" style="flex-direction: row; gap: 15px; justify-content: space-around; margin-top: 20px;">
+          <button id="gambler-btn-standard" class="btn-core btn-transaction" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); width: 45%;">
+            <div>标准旋转</div>
+            <div style="font-size: 12px; opacity: 0.8;">50 G</div>
+          </button>
+          <button id="gambler-btn-high-roller" class="btn-core btn-transaction" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); width: 45%;">
+            <div>豪赌旋转</div>
+            <div style="font-size: 12px; opacity: 0.8;">200 G</div>
+          </button>
+        </div>
+        
+        <button id="gambler-btn-leave" class="btn-core btn-modal-close" style="margin-top: 15px; width: 100%;">
+          离开
         </button>
-        <button id="gambler-btn-high-roller" class="btn-core btn-transaction" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); width: 45%;">
-          <div>豪赌旋转</div>
-          <div style="font-size: 12px; opacity: 0.8;">200 G</div>
-        </button>
       </div>
-      
-      <button id="gambler-btn-leave" class="btn-core btn-modal-close" style="margin-top: 15px; width: 100%;">
-        离开
-      </button>
     </div>
     `;
   }
@@ -249,6 +305,7 @@ export class GamblerUI {
     this.elements.standardBtn = document.getElementById('gambler-btn-standard');
     this.elements.highRollerBtn = document.getElementById('gambler-btn-high-roller');
     this.elements.leaveBtn = document.getElementById('gambler-btn-leave');
+    this.elements.skipHint = document.getElementById('gambler-skip-hint');
   }
 
   /**
@@ -279,6 +336,18 @@ export class GamblerUI {
     }
     if (this.elements.highRollerBtn) {
       this.elements.highRollerBtn.addEventListener('click', () => this.spin('HIGH_ROLLER'));
+    }
+
+    // 快速跳过逻辑
+    if (this.elements.reelContainer) {
+      this.elements.reelContainer.addEventListener('click', () => {
+        if (this.isSpinning && this.animationController) {
+          this.animationController.requestSkip();
+          if (this.elements.skipHint) {
+            this.elements.skipHint.classList.add('hidden');
+          }
+        }
+      });
     }
   }
 
@@ -332,6 +401,11 @@ export class GamblerUI {
       this.elements.overlay.classList.remove('overlay-fade-in');
       this.elements.overlay.style.setProperty('display', 'none', 'important');
       this.isOpen = false;
+
+      // 清理粒子系统
+      if (this.particleSystem) {
+        this.particleSystem.clear();
+      }
 
       const game = window.game;
       if (game) game.isPaused = false;
@@ -444,6 +518,11 @@ export class GamblerUI {
     this.spinStage = 1;
     this.updateMessage();
     if (this.elements.resultDisplay) this.elements.resultDisplay.classList.add('hidden');
+    
+    // 显示跳过提示
+    if (this.elements.skipHint) {
+      this.elements.skipHint.classList.remove('hidden');
+    }
 
     // 3. 播放音效
     if (game.audio) game.audio.playBookFlip(); // 暂用翻书声模拟启动
@@ -453,6 +532,11 @@ export class GamblerUI {
 
     // 5. 执行视觉动画 (前端展示)
     await this.performReelAnimation(reward);
+
+    // 隐藏跳过提示
+    if (this.elements.skipHint) {
+      this.elements.skipHint.classList.add('hidden');
+    }
 
     // 6. 显示结果 & 发放奖励
     await this.showResult(reward);
@@ -616,12 +700,13 @@ export class GamblerUI {
   }
 
   /**
-   * 执行横向滚动动画 (CS:GO Style)
+   * 执行横向滚动动画 (CS:GO Style) - 使用新动画系统
    */
   async performReelAnimation(finalReward) {
-    const strip = this.elements.reelStrip;
-    const container = this.elements.reelContainer;
-    if (!strip || !container) return;
+    // 确保系统已初始化
+    if (!this.animationController) {
+      this.initSystems();
+    }
 
     // 1. 生成滚动序列 (例如 50 个物品，第 45 个是结果)
     const totalItems = 50;
@@ -642,50 +727,12 @@ export class GamblerUI {
       }
     }
 
-    // 2. 渲染 DOM
-    strip.innerHTML = '';
-    items.forEach(item => {
-      const el = document.createElement('div');
-      el.className = `gambler-item-card quality-${item.quality}`;
-      el.textContent = item.icon;
-      strip.appendChild(el);
-    });
-
-    // 3. 计算位移
-    // 每个卡片宽 90px + 10px margin = 100px
-    // 容器宽 ~490px，中心在 245px
-    // 目标卡片中心应在 245px
-    // 目标卡片左边缘 = winnerIndex * 100 + 5
-    // 目标卡片中心 = winnerIndex * 100 + 50
-    // 需要移动距离 = 目标中心 - 容器中心
-    const cardWidth = 100; // 90 + 10
-    const containerWidth = container.offsetWidth;
-    const targetOffset = (winnerIndex * cardWidth) + (cardWidth / 2) - (containerWidth / 2);
-    
-    // 增加一点随机偏移，模拟指针停在卡片的不同位置
-    const randomOffset = (Math.random() - 0.5) * 40; // ±20px
-    const finalTransform = -(targetOffset + randomOffset);
-
-    // 4. 执行动画
-    // 先重置位置
-    strip.style.transition = 'none';
-    strip.style.transform = 'translateX(0)';
-    
-    // 强制重排
-    void strip.offsetWidth;
-
-    // 开始滚动
-    // 使用 cubic-bezier 模拟物理减速
-    const duration = 4000; // 4秒
-    strip.style.transition = `transform ${duration}ms cubic-bezier(0.1, 0.9, 0.3, 1)`;
-    strip.style.transform = `translateX(${finalTransform}px)`;
-
-    // 5. 等待动画结束
-    await this.sleep(duration);
+    // 2. 使用新动画控制器执行动画
+    await this.animationController.playSpinAnimation(finalReward, items, winnerIndex);
     
     // 播放"叮"的一声
     const game = window.game;
-    if (game && game.audio) game.audio.playCoinDrop(); // 或其他提示音
+    if (game && game.audio) game.audio.playCoinDrop();
   }
 
   /**
@@ -819,6 +866,19 @@ export class GamblerUI {
 
   destroy() {
     this.close();
+    
+    // 销毁粒子系统
+    if (this.particleSystem) {
+      this.particleSystem.destroy();
+      this.particleSystem = null;
+    }
+
+    // 清理动画控制器
+    if (this.animationController) {
+      this.animationController.cleanup();
+      this.animationController = null;
+    }
+
     this.player = null;
   }
 }
