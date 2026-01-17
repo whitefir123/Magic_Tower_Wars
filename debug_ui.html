@@ -153,8 +153,47 @@
     import { BlacksmithSystem } from './src/systems/BlacksmithSystem.js';
     import { OBJ_SHRINE_HEAL, OBJ_SHRINE_POWER } from './src/data/system.js';
     import AudioManager from './src/audio/AudioManager.js';
+    import { GAMEPLAY_ASSETS } from './src/data/assets.js';
     // Import loot generator to ensure window.__lootGenerator is set
     import './src/systems/LootGenerationSystem.js';
+
+    // Load real images for shop icons
+    const imageCache = new Map();
+    
+    async function loadImage(url) {
+      if (imageCache.has(url)) {
+        return imageCache.get(url);
+      }
+      
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+          imageCache.set(url, img);
+          console.log('✓ Loaded image:', url);
+          resolve(img);
+        };
+        img.onerror = () => {
+          console.error('✗ Failed to load image:', url);
+          reject(new Error('Failed to load image'));
+        };
+        img.src = url;
+      });
+    }
+
+    // Preload shop icon images
+    console.log('Loading shop icon images...');
+    const iconPromises = [
+      loadImage(GAMEPLAY_ASSETS.ICONS_EQUIP.url),
+      loadImage(GAMEPLAY_ASSETS.ICONS_CONSUMABLES.url),
+      loadImage(GAMEPLAY_ASSETS.ICONS_GEMS.url)
+    ];
+
+    Promise.all(iconPromises).then(() => {
+      console.log('✓ All shop icons loaded successfully');
+    }).catch(err => {
+      console.error('✗ Failed to load some shop icons:', err);
+    });
 
     // Mock Game Object
     window.game = {
@@ -241,18 +280,15 @@
       audio: AudioManager,
       loader: {
         getImage: function(key) {
-          // Return a placeholder canvas if image not found
-          // This prevents errors when rendering icons
-          const canvas = document.createElement('canvas');
-          canvas.width = 64;
-          canvas.height = 64;
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#333';
-          ctx.fillRect(0,0,64,64);
-          ctx.fillStyle = '#666';
-          ctx.font = '10px Arial';
-          ctx.fillText(key, 5, 35);
-          return canvas; 
+          // Return real loaded image if available
+          const assetUrl = GAMEPLAY_ASSETS[key]?.url;
+          if (assetUrl && imageCache.has(assetUrl)) {
+            return imageCache.get(assetUrl);
+          }
+          
+          console.warn('Image not loaded yet for key:', key);
+          // Return null to trigger retry logic in ShopUI
+          return null;
         }
       },
       // Mock Map for Shrine

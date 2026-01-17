@@ -427,19 +427,26 @@ export class ShopUI {
    * @returns {HTMLCanvasElement}
    */
   createItemIcon(img, item, size = 64) {
-    if (!img) return null;
+    if (!img) {
+      console.warn('ShopUI: createItemIcon called with null image for item:', item);
+      return null;
+    }
     
     // 检查图片是否加载完成
     if (img.complete === false || img.naturalWidth === 0) {
+      console.warn('ShopUI: Image not loaded yet for item:', item, 'img.complete:', img.complete, 'naturalWidth:', img.naturalWidth);
       // 尝试添加加载监听器，以便加载完成后刷新
       if (!img.hasLoadListener) {
           img.hasLoadListener = true;
           const originalOnLoad = img.onload;
           img.onload = () => {
               if (originalOnLoad) originalOnLoad();
+              console.log('ShopUI: Image loaded, re-rendering shop');
               // 图片加载完成后，尝试重新渲染商店
               if (window.game && window.game.shopUI && window.game.shopUI.isOpen) {
                   window.game.shopUI.render();
+              } else if (this.isOpen) {
+                  this.render();
               }
           };
       }
@@ -505,8 +512,9 @@ export class ShopUI {
 
     try {
         ctx.drawImage(img, sx, sy, sw, sh, offsetX, offsetY, destW, destH);
+        console.log('ShopUI: Successfully drew icon for item:', item.nameZh || item.name, 'from sprite at', col, row);
     } catch (e) {
-        console.error('ShopUI: Failed to draw image', e);
+        console.error('ShopUI: Failed to draw image for item:', item, 'error:', e);
         return null;
     }
 
@@ -556,19 +564,35 @@ export class ShopUI {
       const imgCons = loader?.getImage('ICONS_CONSUMABLES');
       const imgGems = loader?.getImage('ICONS_GEMS'); // 新增引用
       
-      // 如果图片尚未加载，尝试稍后重绘
-      if ((!imgEquip || !imgCons || !imgGems) && (!this._retryCount || this._retryCount < 20)) {
-          console.warn(`ShopUI: Icons not loaded yet, retrying... (${this._retryCount || 0})`);
+      // 检查图片是否真正加载完成（不仅存在，而且complete且有尺寸）
+      const isImageReady = (img) => {
+        return img && img.complete && (img.naturalWidth > 0 || img.width > 0);
+      };
+      
+      const equipReady = isImageReady(imgEquip);
+      const consReady = isImageReady(imgCons);
+      const gemsReady = isImageReady(imgGems);
+      
+      // 如果图片尚未加载完成，尝试稍后重绘
+      if ((!equipReady || !consReady || !gemsReady) && (!this._retryCount || this._retryCount < 20)) {
+          console.warn(`ShopUI: Icons not fully loaded yet, retrying... (${this._retryCount || 0})`, {
+            equipReady, consReady, gemsReady,
+            imgEquip: imgEquip ? `${imgEquip.width}x${imgEquip.height}` : 'null',
+            imgCons: imgCons ? `${imgCons.width}x${imgCons.height}` : 'null',
+            imgGems: imgGems ? `${imgGems.width}x${imgGems.height}` : 'null'
+          });
           this._retryCount = (this._retryCount || 0) + 1;
           setTimeout(() => {
               if (this.isOpen) this.render();
           }, 200);
-      } else if (imgEquip && imgCons && imgGems) {
+          // 继续渲染，但会显示占位符
+      } else if (equipReady && consReady && gemsReady) {
           this._retryCount = 0;
+          console.log('ShopUI: All icons loaded successfully');
       }
 
-      if (!imgEquip || !imgCons) {
-          console.warn('ShopUI: Icons not loaded yet');
+      if (!equipReady || !consReady) {
+          console.warn('ShopUI: Some icons not ready, will show placeholders');
       }
 
       // 动态生成标准钻头对象 (Common品质) - 安全检查

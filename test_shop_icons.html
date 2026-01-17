@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>商店图标测试</title>
+  <style>
+    body {
+      background: #1a1a1a;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 20px;
+      background: #2a2a2a;
+      border-radius: 8px;
+    }
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .icon-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      background: #333;
+      border-radius: 4px;
+    }
+    .icon-item canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .icon-label {
+      margin-top: 5px;
+      font-size: 12px;
+      text-align: center;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    .status.success { background: #2d5016; }
+    .status.error { background: #5d1616; }
+    .status.warning { background: #5d4516; }
+  </style>
+</head>
+<body>
+  <h1>商店图标加载测试</h1>
+  
+  <div class="test-section">
+    <h2>图片资源加载状态</h2>
+    <div id="loading-status"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>装备图标 (ICONS_EQUIP)</h2>
+    <div id="equip-icons" class="icon-grid"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>消耗品图标 (ICONS_CONSUMABLES)</h2>
+    <div id="consumable-icons" class="icon-grid"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>宝石图标 (ICONS_GEMS)</h2>
+    <div id="gem-icons" class="icon-grid"></div>
+  </div>
+
+  <script type="module">
+    // 图片资源URL
+    const ICONS = {
+      EQUIP: 'https://i.postimg.cc/9M03yy1Z/zhuangbei1.png',
+      CONSUMABLES: 'https://i.postimg.cc/x8bCRDXW/wupin1.png',
+      GEMS: 'https://i.postimg.cc/B6V9Cf24/baoshi1.png'
+    };
+
+    const statusDiv = document.getElementById('loading-status');
+    
+    function addStatus(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = `status ${type}`;
+      div.textContent = message;
+      statusDiv.appendChild(div);
+    }
+
+    async function loadImage(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+          addStatus(`✓ 成功加载: ${url}`, 'success');
+          resolve(img);
+        };
+        img.onerror = () => {
+          addStatus(`✗ 加载失败: ${url}`, 'error');
+          reject(new Error('Failed to load'));
+        };
+        img.src = url;
+      });
+    }
+
+    function drawIcon(img, iconIndex, cols, rows, size = 64) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      const col = iconIndex % cols;
+      const row = Math.floor(iconIndex / cols);
+      
+      const natW = img.naturalWidth || img.width;
+      const natH = img.naturalHeight || img.height;
+      const cellW = natW / cols;
+      const cellH = natH / rows;
+
+      const sx = Math.round(col * cellW);
+      const sy = Math.round(row * cellH);
+      const sw = Math.round(cellW);
+      const sh = Math.round(cellH);
+
+      ctx.imageSmoothingEnabled = false;
+
+      try {
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
+      } catch (e) {
+        console.error('Failed to draw icon:', e);
+        ctx.fillStyle = '#f00';
+        ctx.fillRect(0, 0, size, size);
+      }
+
+      return canvas;
+    }
+
+    async function testIcons() {
+      try {
+        // 加载装备图标
+        addStatus('开始加载装备图标...', 'info');
+        const equipImg = await loadImage(ICONS.EQUIP);
+        const equipContainer = document.getElementById('equip-icons');
+        
+        // 绘制前16个装备图标 (4x4网格)
+        for (let i = 0; i < 16; i++) {
+          const canvas = drawIcon(equipImg, i, 4, 4);
+          const item = document.createElement('div');
+          item.className = 'icon-item';
+          item.appendChild(canvas);
+          const label = document.createElement('div');
+          label.className = 'icon-label';
+          label.textContent = `索引 ${i}`;
+          item.appendChild(label);
+          equipContainer.appendChild(item);
+        }
+
+        // 加载消耗品图标
+        addStatus('开始加载消耗品图标...', 'info');
+        const consImg = await loadImage(ICONS.CONSUMABLES);
+        const consContainer = document.getElementById('consumable-icons');
+        
+        // 绘制前16个消耗品图标
+        for (let i = 0; i < 16; i++) {
+          const canvas = drawIcon(consImg, i, 4, 4);
+          const item = document.createElement('div');
+          item.className = 'icon-item';
+          item.appendChild(canvas);
+          const label = document.createElement('div');
+          label.className = 'icon-label';
+          label.textContent = `索引 ${i}`;
+          item.appendChild(label);
+          consContainer.appendChild(item);
+        }
+
+        // 加载宝石图标
+        addStatus('开始加载宝石图标...', 'info');
+        const gemImg = await loadImage(ICONS.GEMS);
+        const gemContainer = document.getElementById('gem-icons');
+        
+        // 绘制所有宝石图标 (5x4网格 = 20个)
+        for (let i = 0; i < 20; i++) {
+          const canvas = drawIcon(gemImg, i, 5, 4);
+          const item = document.createElement('div');
+          item.className = 'icon-item';
+          item.appendChild(canvas);
+          const label = document.createElement('div');
+          label.className = 'icon-label';
+          label.textContent = `索引 ${i}`;
+          item.appendChild(label);
+          gemContainer.appendChild(item);
+        }
+
+        addStatus('✓ 所有图标加载完成！', 'success');
+        
+      } catch (error) {
+        addStatus(`✗ 测试失败: ${error.message}`, 'error');
+      }
+    }
+
+    // 开始测试
+    testIcons();
+  </script>
+</body>
+</html>
