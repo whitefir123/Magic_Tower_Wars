@@ -12,6 +12,8 @@ import {
 } from '../constants.js';
 import { ParticleSystem } from './ParticleSystem.js';
 import { AnimationController } from './AnimationController.js';
+import { HistoryTracker } from './HistoryTracker.js';
+import { GamblerNPC } from './GamblerNPC.js';
 
 /**
  * GamblerUI - 赌博界面管理器
@@ -62,6 +64,8 @@ export class GamblerUI {
     // 新系统
     this.particleSystem = null;
     this.animationController = null;
+    this.historyTracker = new HistoryTracker(5);
+    this.gamblerNPC = new GamblerNPC();
 
     // 初始化
     this.init();
@@ -262,6 +266,12 @@ export class GamblerUI {
           获得：[物品名称]
         </div>
         
+        <!-- 历史记录显示 -->
+        <div style="margin: 15px 0;">
+          <div style="color: #aaa; font-size: 12px; text-align: center; margin-bottom: 5px;">最近结果</div>
+          <div id="gambler-history" style="min-height: 60px;"></div>
+        </div>
+        
         <!-- 按钮组 -->
         <div class="flex-center" style="flex-direction: row; gap: 15px; justify-content: space-around; margin-top: 20px;">
           <button id="gambler-btn-standard" class="btn-core btn-transaction" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); width: 45%;">
@@ -306,6 +316,7 @@ export class GamblerUI {
     this.elements.highRollerBtn = document.getElementById('gambler-btn-high-roller');
     this.elements.leaveBtn = document.getElementById('gambler-btn-leave');
     this.elements.skipHint = document.getElementById('gambler-skip-hint');
+    this.elements.historyContainer = document.getElementById('gambler-history');
   }
 
   /**
@@ -390,8 +401,24 @@ export class GamblerUI {
         this.elements.resultDisplay.classList.add('hidden');
       }
 
+      // NPC 欢迎语
+      if (this.gamblerNPC) {
+        const welcomeMsg = this.gamblerNPC.getRandomDialogue('welcome');
+        this.gamblerNPC.say(welcomeMsg, 3000);
+      }
+
       this.render();
+      this.renderHistory();
       console.log('✓ GamblerUI 已打开');
+    }
+  }
+
+  /**
+   * 渲染历史记录
+   */
+  renderHistory() {
+    if (this.elements.historyContainer && this.historyTracker) {
+      this.historyTracker.renderHistory(this.elements.historyContainer);
     }
   }
 
@@ -727,8 +754,21 @@ export class GamblerUI {
       }
     }
 
-    // 2. 使用新动画控制器执行动画
+    // 2. 检测差一点情况
+    const nearMissResult = this.historyTracker.detectNearMiss(winnerIndex, items);
+
+    // 3. 添加到历史
+    this.historyTracker.addResult(
+      finalReward,
+      nearMissResult.isNearMiss,
+      nearMissResult.missedItem?.quality
+    );
+
+    // 4. 使用新动画控制器执行动画
     await this.animationController.playSpinAnimation(finalReward, items, winnerIndex);
+    
+    // 5. 更新历史显示
+    this.renderHistory();
     
     // 播放"叮"的一声
     const game = window.game;
@@ -771,10 +811,22 @@ export class GamblerUI {
       }
     }
 
-    // 3. 应用奖励
+    // 3. NPC 对话
+    const lastHistory = this.historyTracker.getHistory()[0];
+    const npcContext = {
+      result: reward,
+      pityCount: this.player?.stats?.gamblerPityCount || 0,
+      isNearMiss: lastHistory?.wasNearMiss || false,
+      consecutiveRare: 0, // TODO: 实现连续稀有追踪
+      playerGold: this.player?.stats?.gold || 0
+    };
+    const dialogue = this.gamblerNPC.getContextualDialogue(npcContext);
+    this.gamblerNPC.say(dialogue, 3000);
+
+    // 4. 应用奖励
     this.applyReward(reward);
 
-    // 4. 成就检测
+    // 5. 成就检测
     if (game.achievementSystem) {
       if (reward.type === 'trash') {
         game.achievementSystem.check('onGamble', reward);
@@ -783,7 +835,7 @@ export class GamblerUI {
       }
     }
     
-    // 5. 记录日志
+    // 6. 记录日志
     if (game.ui && game.ui.logMessage) {
       game.ui.logMessage(`获得 [${reward.quality}] ${reward.name}！`, 'gain');
     }
@@ -877,6 +929,12 @@ export class GamblerUI {
     if (this.animationController) {
       this.animationController.cleanup();
       this.animationController = null;
+    }
+
+    // 销毁 NPC
+    if (this.gamblerNPC) {
+      this.gamblerNPC.destroy();
+      this.gamblerNPC = null;
     }
 
     this.player = null;
