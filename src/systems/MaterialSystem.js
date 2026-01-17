@@ -86,14 +86,36 @@ export class MaterialSystem {
    * @private
    */
   _initializeMaterialInventory() {
-    if (!this.game.materials) {
-      this.game.materials = {
+    // 确保game对象存在
+    if (!this.game) {
+      console.warn('[MaterialSystem] Game object not found, skipping initialization');
+      return;
+    }
+    
+    // 确保player对象存在
+    if (!this.game.player) {
+      this.game.player = {};
+    }
+    
+    // 确保forge对象存在
+    if (!this.game.player.forge) {
+      this.game.player.forge = {};
+    }
+    
+    // 初始化materials
+    if (!this.game.player.forge.materials) {
+      this.game.player.forge.materials = {
         enhancement_stone: 0,
         reforge_crystal: 0,
         enchantment_dust: 0,
         set_essence: 0,
         awakening_stone: 0
       };
+    }
+    
+    // 为了向后兼容，也在game根级别创建materials引用
+    if (!this.game.materials) {
+      this.game.materials = this.game.player.forge.materials;
     }
   }
   

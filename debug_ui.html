@@ -308,8 +308,8 @@
     // Fill inventory with empty slots
     for(let i=0; i<20; i++) window.game.player.inventory.push(null);
 
-    // Initialize Systems
-    const blacksmithSystem = new BlacksmithSystem();
+    // Initialize Systems (pass game object)
+    const blacksmithSystem = new BlacksmithSystem(window.game);
     
     // Initialize UIs
     const shopUI = new ShopUI();
