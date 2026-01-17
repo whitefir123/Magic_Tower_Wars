@@ -3,13 +3,55 @@
 
 import { ITEM_QUALITY, FORGE_CONFIG, EQUIPMENT_DB } from '../constants.js';
 import { createStandardizedItem } from '../data/items.js';
+import { EnhancementEngine } from './EnhancementEngine.js';
+import { MaterialSystem } from './MaterialSystem.js';
+import { SpecializationManager } from './SpecializationManager.js';
+import { EnchantmentSystem } from './EnchantmentSystem.js';
+import { AwakeningSystem } from './AwakeningSystem.js';
+import { SetEnhancementManager } from './SetEnhancementManager.js';
+import { BatchOperationProcessor } from './BatchOperationProcessor.js';
+import { GemSystemEnhanced } from './GemSystemEnhanced.js';
+import { HistoryTracker } from './HistoryTracker.js';
+import { BlacksmithNPC } from './BlacksmithNPC.js';
 
 /**
  * BlacksmithSystem - 铁匠系统
  * 提供装备强化和品质重铸功能
  */
 export class BlacksmithSystem {
-  constructor() {
+  constructor(game) {
+    this.game = game;
+    
+    // 初始化强化引擎
+    this.enhancementEngine = new EnhancementEngine();
+    
+    // 初始化材料系统
+    this.materialSystem = new MaterialSystem(game);
+    
+    // 初始化专精管理器
+    this.specializationManager = new SpecializationManager();
+    
+    // 初始化附魔系统
+    this.enchantmentSystem = new EnchantmentSystem();
+    
+    // 初始化觉醒系统
+    this.awakeningSystem = new AwakeningSystem();
+    
+    // 初始化套装强化管理器
+    this.setEnhancementManager = new SetEnhancementManager();
+    
+    // 初始化批量操作处理器
+    this.batchProcessor = new BatchOperationProcessor(this);
+    
+    // 初始化增强宝石系统
+    this.gemSystem = new GemSystemEnhanced();
+    
+    // 初始化历史追踪器
+    this.historyTracker = new HistoryTracker(game);
+    
+    // 初始化铁匠NPC
+    this.blacksmithNPC = new BlacksmithNPC(game);
+    
     console.log('✓ BlacksmithSystem 已初始化');
   }
 
@@ -30,12 +72,15 @@ export class BlacksmithSystem {
   }
 
   /**
-   * 强化装备
+   * 强化装备（增强版 - 支持失败机制和保护道具）
    * @param {Object} item - 装备对象
    * @param {Object} player - 玩家对象
+   * @param {Object} options - 强化选项
+   * @param {boolean} options.useProtectionScroll - 是否使用保护卷轴
+   * @param {number} options.blessingStoneCount - 使用的祝福石数量
    * @returns {Object} 结果对象 { success: boolean, message: string, item: Object }
    */
-  enhanceItem(item, player) {
+  enhanceItem(item, player, options = {}) {
     if (!item || !player) {
       return { success: false, message: '无效的装备或玩家', item: null };
     }
@@ -51,34 +96,119 @@ export class BlacksmithSystem {
     }
 
     // 检查是否达到最大等级
-    if (item.enhanceLevel >= FORGE_CONFIG.ENHANCE.MAX_LEVEL) {
-      return { success: false, message: `已达到最大强化等级 +${FORGE_CONFIG.ENHANCE.MAX_LEVEL}`, item: null };
+    const maxLevel = FORGE_CONFIG.ENHANCE.MAX_LEVEL;
+    if (item.enhanceLevel >= maxLevel) {
+      return { success: false, message: `已达到最大强化等级 +${maxLevel}`, item: null };
+    }
+
+    // 验证强化选项
+    const validation = this.enhancementEngine.validateEnhanceOptions(item, options, player);
+    if (!validation.valid) {
+      return { 
+        success: false, 
+        message: validation.errors.join(', '), 
+        item: null 
+      };
     }
 
     // 计算费用
     const cost = this.calculateEnhanceCost(item);
+    
+    // 应用铁匠折扣
+    const discount = this.blacksmithNPC.getDiscountRate();
+    const finalCost = Math.floor(cost * (1 - discount));
 
     // 检查金币是否足够
-    if (player.stats.gold < cost) {
-      return { success: false, message: `金币不足！需要 ${cost} 金币`, item: null };
+    if (player.stats.gold < finalCost) {
+      return { success: false, message: `金币不足！需要 ${finalCost} 金币`, item: null };
     }
 
     // 扣除金币
-    player.stats.gold -= cost;
+    player.stats.gold -= finalCost;
 
-    // 强化成功（暂时100%成功率）
-    item.enhanceLevel += 1;
+    // 消耗保护道具
+    const itemsConsumed = this.enhancementEngine.consumeProtectionItems(player, options);
+    if (!itemsConsumed) {
+      // 理论上不应该到这里，因为已经验证过了
+      player.stats.gold += cost; // 退还金币
+      return { success: false, message: '保护道具不足', item: null };
+    }
 
-    // 更新装备名称（添加 +X）
+    // 执行强化
+    const enhanceResult = this.enhancementEngine.enhance(item, options);
+
+    // 更新装备名称
     this.updateItemName(item);
 
     // 重新计算属性
     this.recalculateStats(item);
 
+    // 记录历史
+    this.historyTracker.logEnhancement({
+      equipment: item,
+      operation: 'enhance',
+      previousLevel: item.enhanceLevel - (enhanceResult.success ? 1 : (enhanceResult.protectionUsed ? 0 : -1)),
+      newLevel: item.enhanceLevel,
+      success: enhanceResult.success,
+      goldSpent: finalCost,
+      materialsUsed: {},
+      protectionUsed: enhanceResult.protectionUsed,
+      blessingStonesUsed: options.blessingStoneCount || 0
+    });
+    
+    // 铁匠NPC获得经验和亲密度
+    const npcResult = this.blacksmithNPC.onOperationComplete('enhance', enhanceResult.success);
+
+    // 检查是否达到专精里程碑
+    const specializationCheck = this.specializationManager.canChooseSpecialization(item);
+    const needsSpecialization = specializationCheck.canChoose;
+
+    // 构建返回消息
+    let message = '';
+    if (enhanceResult.success) {
+      message = `强化成功！${this.getItemDisplayName(item)} 现在是 +${item.enhanceLevel}`;
+      if (options.blessingStoneCount > 0) {
+        message += ` (使用了 ${options.blessingStoneCount} 个祝福石)`;
+      }
+      if (discount > 0) {
+        message += `\n💰 铁匠折扣：-${(discount * 100).toFixed(0)}%`;
+      }
+      
+      // 如果达到专精里程碑，添加提示
+      if (needsSpecialization) {
+        message += `\n\n🌟 恭喜！装备已达到 +${item.enhanceLevel}，可以选择专精方向！`;
+      }
+    } else {
+      if (enhanceResult.protectionUsed) {
+        message = `强化失败，但保护卷轴保护了装备等级 (${this.getItemDisplayName(item)} 保持 +${item.enhanceLevel})`;
+      } else {
+        message = `强化失败！${this.getItemDisplayName(item)} 降低到 +${item.enhanceLevel}`;
+      }
+    }
+    
+    // 添加铁匠对话
+    if (npcResult.dialogue) {
+      message += `\n\n💬 ${npcResult.dialogue}`;
+    }
+    
+    // 添加铁匠升级通知
+    if (npcResult.notifications && npcResult.notifications.length > 0) {
+      for (const notification of npcResult.notifications) {
+        message += `\n\n✨ ${notification.message}`;
+        if (notification.features && notification.features.length > 0) {
+          message += `\n解锁功能：${notification.features.join('、')}`;
+        }
+      }
+    }
+
     return {
-      success: true,
-      message: `强化成功！${this.getItemDisplayName(item)} 现在是 +${item.enhanceLevel}`,
-      item: item
+      success: enhanceResult.success,
+      message: message,
+      item: item,
+      enhanceResult: enhanceResult,
+      needsSpecialization: needsSpecialization,
+      specializationMilestone: specializationCheck.milestone,
+      npcResult: npcResult
     };
   }
 
@@ -116,14 +246,18 @@ export class BlacksmithSystem {
 
     // 计算费用
     const cost = this.calculateReforgeCost(item);
+    
+    // 应用铁匠折扣
+    const discount = this.blacksmithNPC.getDiscountRate();
+    const finalCost = Math.floor(cost * (1 - discount));
 
     // 检查金币是否足够
-    if (player.stats.gold < cost) {
-      return { success: false, message: `金币不足！需要 ${cost} 金币`, item: null };
+    if (player.stats.gold < finalCost) {
+      return { success: false, message: `金币不足！需要 ${finalCost} 金币`, item: null };
     }
 
     // 扣除金币
-    player.stats.gold -= cost;
+    player.stats.gold -= finalCost;
 
     // 保存旧品质
     const oldQuality = item.quality || 'COMMON';
@@ -154,6 +288,17 @@ export class BlacksmithSystem {
     // 更新装备名称
     this.updateItemName(item);
 
+    // 记录历史
+    this.historyTracker.logReforge({
+      equipment: item,
+      oldQuality: oldQuality,
+      newQuality: newQuality,
+      goldSpent: finalCost
+    });
+    
+    // 铁匠NPC获得经验和亲密度
+    const npcResult = this.blacksmithNPC.onOperationComplete('reforge', true);
+
     const qualityUpgrade = this.compareQuality(oldQuality, newQuality);
     let message = '';
     
@@ -164,13 +309,33 @@ export class BlacksmithSystem {
     } else {
       message = `重铸完成，品质保持 ${ITEM_QUALITY[newQuality].name}`;
     }
+    
+    if (discount > 0) {
+      message += `\n💰 铁匠折扣：-${(discount * 100).toFixed(0)}%`;
+    }
+    
+    // 添加铁匠对话
+    if (npcResult.dialogue) {
+      message += `\n\n💬 ${npcResult.dialogue}`;
+    }
+    
+    // 添加铁匠升级通知
+    if (npcResult.notifications && npcResult.notifications.length > 0) {
+      for (const notification of npcResult.notifications) {
+        message += `\n\n✨ ${notification.message}`;
+        if (notification.features && notification.features.length > 0) {
+          message += `\n解锁功能：${notification.features.join('、')}`;
+        }
+      }
+    }
 
     return {
       success: true,
       message: message,
       item: item,
       oldQuality: oldQuality,
-      newQuality: newQuality
+      newQuality: newQuality,
+      npcResult: npcResult
     };
   }
 
@@ -358,8 +523,41 @@ export class BlacksmithSystem {
       });
     }
     
-    // 第七步：更新最终属性（不修改 baseStats）
-    item.stats = enhancedBase;
+    // ✅ NEW: 第七步：应用附魔效果
+    // 附魔效果在宝石之后、专精之前应用，提供固定数值或百分比加成
+    const enchantmentEffects = this.enchantmentSystem.calculateEnchantmentEffects(item);
+    if (enchantmentEffects && Object.keys(enchantmentEffects).length > 0) {
+      for (const [key, value] of Object.entries(enchantmentEffects)) {
+        if (enhancedBase[key] !== undefined) {
+          // 累加附魔效果
+          if (key.includes('rate') || key.includes('dodge') || key.includes('pen') || key.includes('gold') || key.includes('lifesteal')) {
+            enhancedBase[key] = Math.round((enhancedBase[key] + value) * 100) / 100;
+          } else {
+            enhancedBase[key] = Math.floor(enhancedBase[key] + value);
+          }
+        } else {
+          // 初始化新属性
+          enhancedBase[key] = value;
+        }
+      }
+    }
+    
+    // ✅ NEW: 第八步：应用专精加成
+    // 专精加成在所有其他加成之后应用，作为最终的倍率调整
+    let finalStats = this.specializationManager.applySpecializationToStats(item, enhancedBase);
+    
+    // ✅ NEW: 第九步：应用套装强化加成
+    // 套装强化加成在专精之后应用，进一步提升套装装备的属性
+    if (item.setId && this.game && this.game.player) {
+      const completion = this.setEnhancementManager.checkSetCompletion(item.setId, this.game.player);
+      if (completion.isComplete) {
+        const setPieces = completion.pieces.map(p => p.item);
+        finalStats = this.setEnhancementManager.applySetEnhancementToStats(item, finalStats, setPieces);
+      }
+    }
+    
+    // 第十步：更新最终属性（不修改 baseStats）
+    item.stats = finalStats;
   }
   
   /**
@@ -436,6 +634,39 @@ export class BlacksmithSystem {
           }
         }
       });
+    }
+    
+    // ✅ NEW: 应用附魔效果
+    // 附魔效果在宝石之后、专精之前应用
+    const enchantmentEffects = this.enchantmentSystem.calculateEnchantmentEffects(item);
+    if (enchantmentEffects && Object.keys(enchantmentEffects).length > 0) {
+      for (const [key, value] of Object.entries(enchantmentEffects)) {
+        if (item.stats[key] !== undefined) {
+          // 累加附魔效果
+          if (key.includes('rate') || key.includes('dodge') || key.includes('pen') || key.includes('gold') || key.includes('lifesteal')) {
+            item.stats[key] = Math.round((item.stats[key] + value) * 100) / 100;
+          } else {
+            item.stats[key] = Math.floor(item.stats[key] + value);
+          }
+        } else {
+          // 初始化新属性
+          item.stats[key] = value;
+        }
+      }
+    }
+    
+    // ✅ NEW: 应用专精加成
+    // 专精加成在所有其他加成之后应用，作为最终的倍率调整
+    item.stats = this.specializationManager.applySpecializationToStats(item, item.stats);
+    
+    // ✅ NEW: 应用套装强化加成
+    // 套装强化加成在专精之后应用，进一步提升套装装备的属性
+    if (item.setId && this.game && this.game.player) {
+      const completion = this.setEnhancementManager.checkSetCompletion(item.setId, this.game.player);
+      if (completion.isComplete) {
+        const setPieces = completion.pieces.map(p => p.item);
+        item.stats = this.setEnhancementManager.applySetEnhancementToStats(item, item.stats, setPieces);
+      }
     }
   }
 
@@ -583,6 +814,534 @@ export class BlacksmithSystem {
       canEnhance: enhanceLevel < FORGE_CONFIG.ENHANCE.MAX_LEVEL,
       maxLevel: FORGE_CONFIG.ENHANCE.MAX_LEVEL
     };
+  }
+
+  /**
+   * 获取强化预览信息（包括成功率和下一级属性）
+   * @param {Object} item - 装备对象
+   * @param {number} blessingStoneCount - 祝福石数量
+   * @returns {Object} 预览信息对象
+   */
+  getEnhancePreview(item, blessingStoneCount = 0) {
+    if (!item) return null;
+
+    const preview = this.enhancementEngine.getEnhancePreview(item, blessingStoneCount);
+    
+    if (!preview) return null;
+
+    // 计算下一级的属性（模拟）
+    const currentStats = item.stats || {};
+    const nextLevelStats = {};
+    
+    // 计算下一级属性（+10%）
+    for (const [stat, value] of Object.entries(currentStats)) {
+      if (stat.includes('rate') || stat.includes('dodge') || stat.includes('pen') || stat.includes('gold') || stat.includes('lifesteal')) {
+        // 百分比属性保留2位小数
+        nextLevelStats[stat] = Math.round(value * 1.1 * 100) / 100;
+      } else {
+        // 整数属性向下取整
+        nextLevelStats[stat] = Math.floor(value * 1.1);
+      }
+    }
+
+    return {
+      ...preview,
+      currentStats: currentStats,
+      nextLevelStats: nextLevelStats,
+      statDifferences: this.calculateStatDifferences(currentStats, nextLevelStats)
+    };
+  }
+
+  /**
+   * 计算属性差异
+   * @param {Object} currentStats - 当前属性
+   * @param {Object} nextStats - 下一级属性
+   * @returns {Object} 属性差异
+   */
+  calculateStatDifferences(currentStats, nextStats) {
+    const differences = {};
+    
+    for (const [stat, nextValue] of Object.entries(nextStats)) {
+      const currentValue = currentStats[stat] || 0;
+      differences[stat] = nextValue - currentValue;
+    }
+    
+    return differences;
+  }
+
+  /**
+   * 选择装备专精方向
+   * @param {Object} item - 装备对象
+   * @param {string} direction - 专精方向 ('attack'|'defense'|'speed'|'balanced')
+   * @returns {Object} 结果对象 { success: boolean, message: string }
+   */
+  chooseSpecialization(item, direction) {
+    if (!item) {
+      return { success: false, message: '无效的装备' };
+    }
+
+    // 应用专精
+    const result = this.specializationManager.applySpecialization(item, direction);
+    
+    if (result.success) {
+      // 重新计算属性以应用专精加成
+      this.recalculateStats(item);
+      
+      // 更新装备名称
+      this.updateItemName(item);
+    }
+    
+    return result;
+  }
+
+  /**
+   * 获取装备的专精信息
+   * @param {Object} item - 装备对象
+   * @returns {Object} 专精信息
+   */
+  getSpecializationInfo(item) {
+    if (!item) return null;
+
+    const canChoose = this.specializationManager.canChooseSpecialization(item);
+    const summary = this.specializationManager.getSpecializationSummary(item);
+    const available = this.specializationManager.getAvailableSpecializations();
+
+    return {
+      canChoose: canChoose.canChoose,
+      milestone: canChoose.milestone,
+      reason: canChoose.reason,
+      currentSpecializations: summary,
+      availableDirections: available
+    };
+  }
+
+  /**
+   * 为装备附魔
+   * @param {Object} item - 装备对象
+   * @param {number} slotIndex - 附魔槽位索引
+   * @param {string} enchantmentId - 附魔ID
+   * @param {string} tier - 附魔等级 ('basic'|'advanced'|'master')
+   * @param {Object} player - 玩家对象
+   * @returns {Object} 结果对象 { success: boolean, message: string }
+   */
+  enchantItem(item, slotIndex, enchantmentId, tier, player) {
+    if (!item || !player) {
+      return { success: false, message: '无效的装备或玩家' };
+    }
+
+    // 初始化附魔槽位
+    this.enchantmentSystem.initializeEnchantmentSlots(item);
+
+    // 获取附魔定义
+    const enchantmentDef = this.enchantmentSystem.ENCHANTMENT_LIBRARY[enchantmentId];
+    if (!enchantmentDef || !enchantmentDef.tiers[tier]) {
+      return { success: false, message: '无效的附魔或等级' };
+    }
+
+    // 计算材料消耗
+    const scrollCost = enchantmentDef.tiers[tier].scrollCost;
+    const materialsRequired = {
+      enchantment_dust: scrollCost
+    };
+
+    // 检查材料是否足够
+    if (!this.materialSystem.hasMaterials(materialsRequired)) {
+      return { 
+        success: false, 
+        message: `附魔尘不足！需要 ${scrollCost} 个附魔尘` 
+      };
+    }
+
+    // 应用附魔
+    const result = this.enchantmentSystem.applyEnchantment(item, slotIndex, enchantmentId, tier);
+    
+    if (result.success) {
+      // 消耗材料
+      this.materialSystem.consumeMaterials(materialsRequired);
+      
+      // 重新计算属性
+      this.recalculateStats(item);
+      
+      // 更新装备名称
+      this.updateItemName(item);
+      
+      // 记录历史
+      this.historyTracker.logEnchantment({
+        equipment: item,
+        enchantmentId: enchantmentId,
+        enchantmentName: enchantmentDef.name,
+        tier: tier,
+        success: true,
+        materialsUsed: materialsRequired
+      });
+      
+      // 铁匠NPC获得经验和亲密度
+      this.blacksmithNPC.onOperationComplete('enchant', true);
+    }
+
+    return result;
+  }
+
+  /**
+   * 移除装备的附魔
+   * @param {Object} item - 装备对象
+   * @param {number} slotIndex - 附魔槽位索引
+   * @returns {Object} 结果对象 { success: boolean, message: string }
+   */
+  removeEnchantment(item, slotIndex) {
+    if (!item) {
+      return { success: false, message: '无效的装备' };
+    }
+
+    // 移除附魔
+    const result = this.enchantmentSystem.removeEnchantment(item, slotIndex);
+    
+    if (result.success) {
+      // 重新计算属性
+      this.recalculateStats(item);
+      
+      // 更新装备名称
+      this.updateItemName(item);
+    }
+
+    return result;
+  }
+
+  /**
+   * 获取装备的附魔信息
+   * @param {Object} item - 装备对象
+   * @returns {Object} 附魔信息
+   */
+  getEnchantmentInfo(item) {
+    if (!item) return null;
+
+    this.enchantmentSystem.initializeEnchantmentSlots(item);
+
+    const slotCount = this.enchantmentSystem.getEnchantmentSlotCount(item);
+    const summary = this.enchantmentSystem.getEnchantmentSummary(item);
+    const available = this.enchantmentSystem.getAvailableEnchantments(item.type);
+    const power = this.enchantmentSystem.calculateEnchantmentPower(item);
+
+    return {
+      slotCount: slotCount,
+      enchantments: summary,
+      availableEnchantments: available,
+      totalPower: power
+    };
+  }
+
+  /**
+   * 觉醒装备
+   * @param {Object} item - 装备对象
+   * @param {Object} player - 玩家对象
+   * @returns {Object} 结果对象 { success: boolean, message: string, skill: Object }
+   */
+  awakenItem(item, player) {
+    if (!item || !player) {
+      return { success: false, message: '无效的装备或玩家', skill: null };
+    }
+
+    // 执行觉醒
+    const result = this.awakeningSystem.awaken(item, player);
+    
+    if (result.success) {
+      // 重新计算属性（觉醒可能影响属性）
+      this.recalculateStats(item);
+      
+      // 更新装备名称
+      this.updateItemName(item);
+      
+      // 记录历史
+      this.historyTracker.logAwakening({
+        equipment: item,
+        skillId: result.skill?.id,
+        skillName: result.skill?.name,
+        success: true,
+        materialsUsed: { awakening_stone: 1 }
+      });
+      
+      // 铁匠NPC获得经验和亲密度
+      this.blacksmithNPC.onOperationComplete('awaken', true);
+    }
+
+    return result;
+  }
+
+  /**
+   * 获取装备的觉醒信息
+   * @param {Object} item - 装备对象
+   * @returns {Object} 觉醒信息
+   */
+  getAwakeningInfo(item) {
+    if (!item) return null;
+
+    return this.awakeningSystem.getAwakeningInfo(item);
+  }
+
+  /**
+   * 强化套装
+   * @param {string} setId - 套装ID
+   * @param {Object} player - 玩家对象
+   * @returns {Object} 结果对象 { success: boolean, message: string, previousLevel: number, newLevel: number }
+   */
+  enhanceSet(setId, player) {
+    if (!setId || !player) {
+      return { 
+        success: false, 
+        message: '无效的套装或玩家', 
+        previousLevel: 0, 
+        newLevel: 0 
+      };
+    }
+
+    // 执行套装强化
+    const result = this.setEnhancementManager.enhanceSet(setId, player, this.materialSystem);
+    
+    if (result.success && result.affectedPieces) {
+      // 重新计算所有受影响装备的属性
+      for (const item of result.affectedPieces) {
+        this.recalculateStats(item);
+        this.updateItemName(item);
+      }
+      
+      // 记录历史
+      this.historyTracker.logSetEnhancement({
+        setId: setId,
+        previousLevel: result.previousSetLevel,
+        newLevel: result.newSetLevel,
+        success: true,
+        materialsUsed: { set_essence: result.essenceUsed || 0 }
+      });
+      
+      // 铁匠NPC获得经验和亲密度
+      this.blacksmithNPC.onOperationComplete('set_enhance', true);
+    }
+
+    return result;
+  }
+
+  /**
+   * 获取套装强化信息
+   * @param {string} setId - 套装ID
+   * @param {Object} player - 玩家对象
+   * @returns {Object} 套装强化信息
+   */
+  getSetEnhancementInfo(setId, player) {
+    if (!setId || !player) return null;
+
+    return this.setEnhancementManager.getSetEnhancementInfo(setId, player);
+  }
+
+  /**
+   * 获取玩家所有套装的强化信息
+   * @param {Object} player - 玩家对象
+   * @returns {Array} 套装强化信息数组
+   */
+  getAllSetEnhancementInfo(player) {
+    if (!player) return [];
+
+    return this.setEnhancementManager.getAllSetEnhancementInfo(player);
+  }
+
+  /**
+   * 比较两件装备
+   * @param {Object} item1 - 装备1
+   * @param {Object} item2 - 装备2
+   * @returns {Object} 比较结果对象
+   */
+  compareEquipment(item1, item2) {
+    if (!item1 || !item2) {
+      return { 
+        success: false, 
+        message: '无效的装备', 
+        comparison: null 
+      };
+    }
+
+    // 基本信息比较
+    const comparison = {
+      item1: {
+        name: this.getItemDisplayName(item1),
+        type: item1.type,
+        quality: item1.quality || 'COMMON',
+        enhanceLevel: item1.enhanceLevel || 0,
+        setId: item1.setId || null,
+        setEnhancementLevel: item1.setEnhancementLevel || 0,
+        awakened: item1.awakened || false,
+        stats: item1.stats || {}
+      },
+      item2: {
+        name: this.getItemDisplayName(item2),
+        type: item2.type,
+        quality: item2.quality || 'COMMON',
+        enhanceLevel: item2.enhanceLevel || 0,
+        setId: item2.setId || null,
+        setEnhancementLevel: item2.setEnhancementLevel || 0,
+        awakened: item2.awakened || false,
+        stats: item2.stats || {}
+      },
+      statDifferences: {},
+      summary: {
+        betterStats: 0,
+        worseStats: 0,
+        equalStats: 0
+      }
+    };
+
+    // 计算属性差异
+    const allStats = new Set([
+      ...Object.keys(comparison.item1.stats),
+      ...Object.keys(comparison.item2.stats)
+    ]);
+
+    for (const stat of allStats) {
+      const value1 = comparison.item1.stats[stat] || 0;
+      const value2 = comparison.item2.stats[stat] || 0;
+      const difference = value2 - value1;
+
+      comparison.statDifferences[stat] = {
+        item1: value1,
+        item2: value2,
+        difference: difference,
+        percentChange: value1 !== 0 ? ((difference / value1) * 100).toFixed(2) : 0
+      };
+
+      // 统计更好/更差/相同的属性数量
+      if (difference > 0) {
+        comparison.summary.betterStats++;
+      } else if (difference < 0) {
+        comparison.summary.worseStats++;
+      } else {
+        comparison.summary.equalStats++;
+      }
+    }
+
+    // 附魔比较
+    comparison.item1.enchantments = this.enchantmentSystem.getEnchantmentSummary(item1);
+    comparison.item2.enchantments = this.enchantmentSystem.getEnchantmentSummary(item2);
+
+    // 专精比较
+    comparison.item1.specializations = this.specializationManager.getSpecializationSummary(item1);
+    comparison.item2.specializations = this.specializationManager.getSpecializationSummary(item2);
+
+    // 觉醒技能比较
+    if (item1.awakened && item1.awakeningSkill) {
+      comparison.item1.awakeningSkill = item1.awakeningSkill;
+    }
+    if (item2.awakened && item2.awakeningSkill) {
+      comparison.item2.awakeningSkill = item2.awakeningSkill;
+    }
+
+    return {
+      success: true,
+      message: '比较完成',
+      comparison: comparison
+    };
+  }
+
+  /**
+   * 获取装备的完整详细信息（用于比较和展示）
+   * @param {Object} item - 装备对象
+   * @returns {Object} 完整详细信息
+   */
+  getCompleteItemInfo(item) {
+    if (!item) return null;
+
+    const info = {
+      // 基本信息
+      name: this.getItemDisplayName(item),
+      baseName: item.nameZh || item.name,
+      type: item.type,
+      tier: item.tier || 1,
+      
+      // 品质和强化
+      quality: item.quality || 'COMMON',
+      qualityColor: this.getItemQualityColor(item),
+      enhanceLevel: item.enhanceLevel || 0,
+      
+      // 属性
+      stats: item.stats || {},
+      baseStats: item.baseStats || {},
+      
+      // 套装
+      setId: item.setId || null,
+      setEnhancementLevel: item.setEnhancementLevel || 0,
+      
+      // 附魔
+      enchantments: this.enchantmentSystem.getEnchantmentSummary(item),
+      enchantmentSlots: this.enchantmentSystem.getEnchantmentSlotCount(item),
+      
+      // 专精
+      specializations: this.specializationManager.getSpecializationSummary(item),
+      
+      // 觉醒
+      awakened: item.awakened || false,
+      awakeningSkill: item.awakeningSkill || null,
+      
+      // 宝石
+      sockets: item.meta?.sockets || [],
+      
+      // 费用
+      enhanceCost: this.calculateEnhanceCost(item),
+      reforgeCost: this.calculateReforgeCost(item),
+      dismantleValue: this.calculateDismantleValue(item),
+      
+      // 能力
+      canEnhance: (item.enhanceLevel || 0) < FORGE_CONFIG.ENHANCE.MAX_LEVEL,
+      canAwaken: this.awakeningSystem.canAwaken(item).canAwaken
+    };
+
+    return info;
+  }
+
+  /**
+   * 批量强化装备到目标等级
+   * @param {Object} equipment - 装备对象
+   * @param {number} targetLevel - 目标强化等级
+   * @param {Object} player - 玩家对象
+   * @param {Object} options - 强化选项
+   * @param {Function} progressCallback - 进度回调函数
+   * @returns {Promise<Object>} 批量强化结果
+   */
+  async batchEnhanceItem(equipment, targetLevel, player, options = {}, progressCallback = null) {
+    return await this.batchProcessor.batchEnhance(equipment, targetLevel, player, options, progressCallback);
+  }
+
+  /**
+   * 批量分解装备
+   * @param {Array} equipmentList - 装备列表
+   * @param {Object} player - 玩家对象
+   * @param {Function} progressCallback - 进度回调函数
+   * @returns {Promise<Object>} 批量分解结果
+   */
+  async batchDismantleItems(equipmentList, player, progressCallback = null) {
+    return await this.batchProcessor.batchDismantle(equipmentList, player, progressCallback);
+  }
+
+  /**
+   * 取消当前批量操作
+   */
+  cancelBatchOperation() {
+    this.batchProcessor.cancelBatch();
+  }
+
+  /**
+   * 检查是否正在进行批量操作
+   * @returns {boolean}
+   */
+  isBatchProcessing() {
+    return this.batchProcessor.isProcessingBatch();
+  }
+
+  calculateStatDifferences(currentStats, nextStats) {
+    const differences = {};
+    
+    for (const [stat, nextValue] of Object.entries(nextStats)) {
+      const currentValue = currentStats[stat] || 0;
+      differences[stat] = nextValue - currentValue;
+    }
+    
+    return differences;
   }
 
   /**
@@ -849,23 +1608,39 @@ export class BlacksmithSystem {
    * 分解装备
    * @param {Object} item - 装备对象
    * @param {Object} player - 玩家对象
-   * @returns {Object} 结果对象 { success: boolean, message: string, value: number }
+   * @returns {Object} 结果对象 { success: boolean, message: string, value: number, materials: Object }
    */
   dismantleItem(item, player) {
     if (!item || !player) {
-      return { success: false, message: '无效的装备或玩家', value: 0 };
+      return { success: false, message: '无效的装备或玩家', value: 0, materials: {} };
     }
 
     // 检查是否是可分解的装备
     if (item.type === 'CONSUMABLE') {
-      return { success: false, message: '消耗品无法分解', value: 0 };
+      return { success: false, message: '消耗品无法分解', value: 0, materials: {} };
     }
 
-    // 计算分解价值
+    // 计算分解价值（金币）
     const value = this.calculateDismantleValue(item);
+    
+    // 计算材料产出
+    const materials = this.materialSystem.calculateDismantleYield(item);
     
     // 增加玩家金币
     player.stats.gold = (player.stats.gold || 0) + value;
+    
+    // 增加材料到玩家库存
+    this.materialSystem.addMaterials(materials);
+    
+    // 记录历史
+    this.historyTracker.logDismantle({
+      equipment: item,
+      goldGained: value,
+      materialsGained: materials
+    });
+    
+    // 铁匠NPC获得经验和亲密度
+    this.blacksmithNPC.onOperationComplete('dismantle', true);
     
     // 移除物品
     // 检查是否在装备槽中
@@ -898,11 +1673,22 @@ export class BlacksmithSystem {
       }
     }
     
+    // 构建材料描述
+    const materialDesc = Object.entries(materials)
+      .map(([type, amount]) => `${this.materialSystem.getMaterialName(type)} x${amount}`)
+      .join(', ');
+    
     const itemName = this.getItemDisplayName(item);
+    let message = `成功分解 ${itemName}，获得 ${value} 金币`;
+    if (materialDesc) {
+      message += ` 和 ${materialDesc}`;
+    }
+    
     return {
       success: true,
-      message: `成功分解 ${itemName}，获得 ${value} 金币`,
-      value: value
+      message: message,
+      value: value,
+      materials: materials
     };
   }
 
@@ -1117,6 +1903,197 @@ export class BlacksmithSystem {
       message: `合成成功！获得了 ${newGem.nameZh || newGem.name}`,
       newGem: newGem
     };
+  }
+
+  /**
+   * 融合两个宝石以提升品质
+   * @param {Object} gem1 - 宝石1
+   * @param {Object} gem2 - 宝石2
+   * @param {Object} player - 玩家对象
+   * @returns {Object} 融合结果
+   */
+  fuseGems(gem1, gem2, player) {
+    const result = this.gemSystem.fuseGems(gem1, gem2, player);
+    
+    // 记录历史
+    if (result.success) {
+      this.historyTracker.logGemFusion({
+        gemType: gem1.itemId || gem1.id,
+        previousQuality: result.previousQuality,
+        newQuality: result.newQuality,
+        success: true
+      });
+      
+      // 铁匠NPC获得经验和亲密度
+      this.blacksmithNPC.onOperationComplete('gem_fusion', true);
+    }
+    
+    return result;
+  }
+
+  /**
+   * 从装备中提取宝石（付费，不破坏）
+   * @param {Object} equipment - 装备对象
+   * @param {number} socketIndex - 孔位索引
+   * @param {Object} player - 玩家对象
+   * @returns {Object} 提取结果
+   */
+  extractGem(equipment, socketIndex, player) {
+    const result = this.gemSystem.extractGem(equipment, socketIndex, player);
+    
+    if (result.success) {
+      // 重新计算装备属性（移除宝石加成）
+      this.recalculateStats(equipment);
+      this.updateItemName(equipment);
+      
+      // 记录历史
+      this.historyTracker.logGemExtraction({
+        equipment: equipment,
+        gemType: result.gem?.itemId || result.gem?.id,
+        gemQuality: result.gem?.gemQuality || 'normal',
+        goldSpent: result.cost,
+        success: true
+      });
+      
+      // 铁匠NPC获得经验和亲密度
+      this.blacksmithNPC.onOperationComplete('gem_extraction', true);
+    }
+    
+    return result;
+  }
+
+  /**
+   * 获取装备的宝石套装效果
+   * @param {Object} equipment - 装备对象
+   * @returns {Object} 套装效果对象
+   */
+  getGemSetEffects(equipment) {
+    return this.gemSystem.calculateGemSetEffects(equipment);
+  }
+
+  /**
+   * 获取宝石品质信息
+   * @param {Object} gem - 宝石对象
+   * @returns {Object} 品质信息
+   */
+  getGemQualityInfo(gem) {
+    return this.gemSystem.getGemQualityInfo(gem);
+  }
+
+  /**
+   * 获取强化历史记录
+   * @param {Object} filters - 过滤条件
+   * @returns {Array} 历史记录数组
+   */
+  getHistory(filters = {}) {
+    return this.historyTracker.getHistory(filters);
+  }
+
+  /**
+   * 获取统计数据
+   * @returns {Object} 统计数据对象
+   */
+  getStatistics() {
+    return this.historyTracker.getStatistics();
+  }
+
+  /**
+   * 获取所有成就
+   * @returns {Array} 成就数组
+   */
+  getAchievements() {
+    return this.historyTracker.getAchievements();
+  }
+
+  /**
+   * 获取成就进度
+   * @param {string} achievementId - 成就ID
+   * @returns {Object} 成就进度对象
+   */
+  getAchievementProgress(achievementId) {
+    return this.historyTracker.getAchievementProgress(achievementId);
+  }
+
+  /**
+   * 获取个人记录
+   * @returns {Object} 个人记录对象
+   */
+  getPersonalRecords() {
+    return this.historyTracker.getPersonalRecords();
+  }
+
+  /**
+   * 获取里程碑进度
+   * @returns {Array} 里程碑数组
+   */
+  getMilestoneProgress() {
+    return this.historyTracker.getMilestoneProgress();
+  }
+
+  /**
+   * 导出历史追踪数据（用于保存）
+   * @returns {Object} 导出的数据对象
+   */
+  exportHistoryData() {
+    return this.historyTracker.exportData();
+  }
+
+  /**
+   * 导入历史追踪数据（用于加载）
+   * @param {Object} data - 导入的数据对象
+   */
+  importHistoryData(data) {
+    this.historyTracker.importData(data);
+  }
+
+  /**
+   * 获取铁匠NPC信息
+   * @returns {Object} 铁匠信息对象
+   */
+  getBlacksmithInfo() {
+    return this.blacksmithNPC.getInfo();
+  }
+
+  /**
+   * 获取铁匠对话
+   * @param {string} context - 对话上下文
+   * @returns {string} 对话文本
+   */
+  getBlacksmithDialogue(context) {
+    return this.blacksmithNPC.getDialogue(context);
+  }
+
+  /**
+   * 检查功能是否已解锁
+   * @param {string} featureName - 功能名称
+   * @returns {boolean} 是否已解锁
+   */
+  isFeatureUnlocked(featureName) {
+    return this.blacksmithNPC.isFeatureUnlocked(featureName);
+  }
+
+  /**
+   * 获取铁匠下一个解锁
+   * @returns {Object|null} 下一个功能信息
+   */
+  getBlacksmithNextUnlock() {
+    return this.blacksmithNPC.getNextUnlock();
+  }
+
+  /**
+   * 导出铁匠NPC数据（用于保存）
+   * @returns {Object} 导出的数据对象
+   */
+  exportBlacksmithData() {
+    return this.blacksmithNPC.exportData();
+  }
+
+  /**
+   * 导入铁匠NPC数据（用于加载）
+   * @param {Object} data - 导入的数据对象
+   */
+  importBlacksmithData(data) {
+    this.blacksmithNPC.importData(data);
   }
 }
 

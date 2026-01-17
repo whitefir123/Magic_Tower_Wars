@@ -14,29 +14,29 @@ This implementation plan breaks down the blacksmith system enhancement into incr
 
 ## Tasks
 
-- [ ] 1. Set up foundation and data structures
+- [x] 1. Set up foundation and data structures
   - Create extended data models for equipment, save data, and materials
   - Implement save data migration for backward compatibility
   - Add configuration constants for all new systems
   - Set up test infrastructure with fast-check for property-based testing
   - _Requirements: 26.1, 26.2, 26.3, 26.4, 26.5, 27.1, 27.2, 27.3, 27.4_
 
-- [ ] 1.1 Write property tests for save migration
+- [x] 1.1 Write property tests for save migration
   - **Property 63: Save migration initialization**
   - **Property 64: Save migration preservation**
   - **Property 65: Save completeness**
   - **Property 66: Save integrity validation**
   - **Validates: Requirements 26.1, 26.2, 26.3, 26.4, 26.5**
 
-- [ ] 1.2 Write property tests for configuration system
+- [x] 1.2 Write property tests for configuration system
   - **Property 67: Configuration loading**
   - **Property 68: Runtime configuration updates**
   - **Property 69: Configuration validation**
   - **Property 70: Configuration fallback**
   - **Validates: Requirements 27.1, 27.2, 27.3, 27.4**
 
-- [ ] 2. Implement enhancement failure mechanism
-  - [ ] 2.1 Create EnhancementEngine class with failure probability calculation
+- [-] 2. Implement enhancement failure mechanism
+  - [x] 2.1 Create EnhancementEngine class with failure probability calculation
     - Implement calculateSuccessProbability() method
     - Add success/failure logic with level adjustment
     - Integrate with existing enhancement system in BlacksmithSystem.js
@@ -49,7 +49,7 @@ This implementation plan breaks down the blacksmith system enhancement into incr
     - **Property 6: Enhancement persistence**
     - **Validates: Requirements 1.1, 1.2, 1.3, 1.4, 1.5**
 
-  - [ ] 2.3 Add protection item system (Protection Scroll, Blessing Stone)
+  - [x] 2.3 Add protection item system (Protection Scroll, Blessing Stone)
     - Implement ProtectionItemHandler for scroll and stone mechanics
     - Add inventory management for protection items
     - Integrate protection logic into enhancement flow
@@ -74,8 +74,8 @@ This implementation plan breaks down the blacksmith system enhancement into incr
   - Test UI displays success/failure correctly
   - Ask the user if questions arise
 
-- [ ] 4. Implement material system
-  - [ ] 4.1 Create MaterialSystem class
+- [-] 4. Implement material system
+  - [x] 4.1 Create MaterialSystem class
     - Implement material inventory storage
     - Add calculateDismantleYield() for material generation
     - Implement material consumption for operations
@@ -91,7 +91,7 @@ This implementation plan breaks down the blacksmith system enhancement into incr
     - **Property 52: Material validation**
     - **Validates: Requirements 19.1, 19.2, 19.3, 19.4, 19.5, 20.2, 20.3, 20.5**
 
-  - [ ] 4.3 Integrate materials with existing dismantle system
+  - [x] 4.3 Integrate materials with existing dismantle system
     - Modify dismantle operation to yield materials
     - Update enhancement/reforge/enchant to consume materials
     - Add material requirements to operation validation
@@ -103,8 +103,8 @@ This implementation plan breaks down the blacksmith system enhancement into incr
     - Test operations with insufficient materials
     - _Requirements: 19.1, 19.2, 20.2, 20.3, 20.5_
 
-- [ ] 5. Implement specialization system
-  - [ ] 5.1 Create SpecializationManager class
+- [-] 5. Implement specialization system
+  - [x] 5.1 Create SpecializationManager class
     - Implement canChooseSpecialization() for milestone detection
     - Add applySpecialization() for direction selection
     - Implement getSpecializationBonuses() for stat calculation
@@ -116,7 +116,7 @@ This implementation plan breaks down the blacksmith system enhancement into incr
     - **Property 13: Specialization persistence**
     - **Validates: Requirements 5.3, 5.4, 5.5**
 
-  - [ ] 5.3 Integrate specialization with enhancement flow
+  - [x] 5.3 Integrate specialization with enhancement flow
     - Add specialization prompt at +5, +10, +15
     - Apply specialization bonuses to stat calculations
     - Persist specialization choices in equipment data
@@ -129,7 +129,7 @@ This implementation plan breaks down the blacksmith system enhancement into incr
     - _Requirements: 5.1, 5.2, 5.4, 5.5_
 
 - [ ] 6. Implement set enhancement system
-  - [ ] 6.1 Create SetEnhancementManager class
+  - [x] 6.1 Create SetEnhancementManager class
     - Implement checkSetCompletion() for set detection
     - Add enhanceSet() for set-wide enhancement
     - Implement calculateSetBonuses() for bonus calculation
@@ -155,8 +155,8 @@ This implementation plan breaks down the blacksmith system enhancement into incr
   - Test save/load with all new data
   - Ask the user if questions arise
 
-- [ ] 8. Implement enchantment system
-  - [ ] 8.1 Create EnchantmentSystem class
+- [-] 8. Implement enchantment system
+  - [x] 8.1 Create EnchantmentSystem class
     - Implement applyEnchantment() for slot management
     - Add getAvailableEnchantments() for enchantment library
     - Implement calculateEnchantmentEffects() for stat application
@@ -179,7 +179,7 @@ This implementation plan breaks down the blacksmith system enhancement into incr
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 9.2, 9.3_
 
 - [ ] 9. Implement awakening system
-  - [ ] 9.1 Create AwakeningSystem class
+  - [x] 9.1 Create AwakeningSystem class
     - Implement canAwaken() for eligibility check
     - Add awaken() for awakening operation
     - Implement rollAwakeningSkill() for skill selection
@@ -201,7 +201,7 @@ This implementation plan breaks down the blacksmith system enhancement into incr
     - _Requirements: 10.1, 10.2, 10.3, 11.2_
 
 - [ ] 10. Implement enhanced gem system
-  - [ ] 10.1 Create GemSystemEnhanced class
+  - [x] 10.1 Create GemSystemEnhanced class
     - Implement gem quality system (Normal, Fine, Perfect)
     - Add fuseGems() for gem fusion
     - Implement extractGem() for paid extraction
@@ -236,7 +236,7 @@ This implementation plan breaks down the blacksmith system enhancement into incr
   - Ask the user if questions arise
 
 - [ ] 12. Implement batch operations
-  - [ ] 12.1 Create BatchOperationProcessor class
+  - [x] 12.1 Create BatchOperationProcessor class
     - Implement batchEnhance() with progress tracking
     - Add batchDismantle() for multi-item dismantling
     - Implement cancelBatch() for user cancellation
@@ -260,13 +260,13 @@ This implementation plan breaks down the blacksmith system enhancement into incr
     - _Requirements: 12.2, 12.3, 12.5, 13.2, 13.3_
 
 - [ ] 13. Implement comparison and preview systems
-  - [ ] 13.1 Add equipment comparison functionality
+  - [x] 13.1 Add equipment comparison functionality
     - Implement comparison data generation
     - Include all attributes (enhancement, quality, enchantments, awakening)
     - Calculate stat differences
     - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
 
-  - [ ] 13.2 Add enhancement preview functionality
+  - [x] 13.2 Add enhancement preview functionality
     - Implement next level stat calculation
     - Include specialization bonuses in preview
     - Display success probability
@@ -287,7 +287,7 @@ This implementation plan breaks down the blacksmith system enhancement into incr
     - _Requirements: 14.3, 15.3, 15.4, 15.5_
 
 - [ ] 14. Implement history tracking and achievements
-  - [ ] 14.1 Create HistoryTracker class
+  - [x] 14.1 Create HistoryTracker class
     - Implement logEnhancement() for operation logging
     - Add getHistory() with filtering
     - Implement getStatistics() for summary data
@@ -315,7 +315,7 @@ This implementation plan breaks down the blacksmith system enhancement into incr
     - _Requirements: 16.1, 16.2, 16.3, 17.1, 17.2, 18.2, 18.3_
 
 - [ ] 15. Implement Blacksmith NPC system
-  - [ ] 15.1 Create BlacksmithNPC class
+  - [x] 15.1 Create BlacksmithNPC class
     - Implement level and experience system
     - Add affinity tracking
     - Implement getDiscountRate() based on affinity

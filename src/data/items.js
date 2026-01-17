@@ -962,6 +962,33 @@ export const EQUIPMENT_DB = {
     effect: { kind: 'special' }
   },
 
+  // ========== FORGE PROTECTION ITEMS (铁匠铺保护道具) ==========
+  ITEM_PROTECTION_SCROLL: {
+    id: 'ITEM_PROTECTION_SCROLL',
+    name: 'Protection Scroll',
+    nameZh: '保护卷轴',
+    type: 'CONSUMABLE',
+    rarity: 'RARE',
+    iconIndex: 21, // 假设使用索引21
+    maxStack: 99,
+    desc: 'A magical scroll that prevents equipment enhancement level from decreasing on failure.',
+    descZh: '神秘的魔法卷轴，能够在强化失败时保护装备，防止强化等级下降。',
+    effect: { kind: 'forge_protection' }
+  },
+
+  ITEM_BLESSING_STONE: {
+    id: 'ITEM_BLESSING_STONE',
+    name: 'Blessing Stone',
+    nameZh: '祝福石',
+    type: 'CONSUMABLE',
+    rarity: 'EPIC',
+    iconIndex: 22, // 假设使用索引22
+    maxStack: 99,
+    desc: 'A blessed stone that increases enhancement success rate by 5%. Multiple stones can be used together.',
+    descZh: '蕴含祝福之力的宝石，能够提升5%的强化成功率。可以同时使用多个祝福石叠加效果。',
+    effect: { kind: 'forge_blessing', successRateBonus: 0.05 }
+  },
+
   // ========== GEMS (宝石系统) ==========
   // 宝石图集布局：5列 (红/蓝/黄/绿/白) x 4行 (碎裂/完整/无瑕/完美)
   // 列索引：0=Ruby(红), 1=Sapphire(蓝), 2=Topaz(黄), 3=Emerald(绿), 4=Diamond(白)
@@ -1391,7 +1418,7 @@ export function getEquipmentDropForFloor_Legacy(floor) {
 }
 
 // Consumable item IDs
-export const CONSUMABLE_IDS = ['POTION_HP_S', 'POTION_RAGE', 'SCROLL_XP', 'SCROLL_FIRE', 'ITEM_STARDUST_DRILL'];
+export const CONSUMABLE_IDS = ['POTION_HP_S', 'POTION_RAGE', 'SCROLL_XP', 'SCROLL_FIRE', 'ITEM_STARDUST_DRILL', 'ITEM_PROTECTION_SCROLL', 'ITEM_BLESSING_STONE'];
 
 // Get random consumable item
 /**

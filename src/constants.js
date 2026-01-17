@@ -53,3 +53,6 @@ export * from './data/system.js';
 
 // 符文系统数据
 export * from './data/Runes.js';
+
+// 铁匠系统增强数据模型
+export * from './data/forgeModels.js';

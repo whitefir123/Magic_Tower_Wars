@@ -7,8 +7,14 @@
     "dev": "node server.js",
     "start": "node server.js"
   },
-  "keywords": ["rpg", "game", "tower"],
+  "keywords": [
+    "rpg",
+    "game",
+    "tower"
+  ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "fast-check": "^4.5.3"
+  }
 }
-

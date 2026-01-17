@@ -55,7 +55,7 @@ class Game {
     this.metaSaveSystem = new MetaSaveSystem();
     
     // 初始化铁匠系统和UI
-    this.blacksmithSystem = new BlacksmithSystem();
+    this.blacksmithSystem = new BlacksmithSystem(this);
     this.forgeUI = null; // 延迟初始化
     
     // FIX: 挂载CombatSystem到game实例，供Monster类使用
