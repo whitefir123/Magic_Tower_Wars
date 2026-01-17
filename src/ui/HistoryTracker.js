@@ -126,8 +126,13 @@ export class HistoryTracker {
       cursor: pointer;
     `;
 
-    // 图标
-    card.textContent = entry.reward.icon || '?';
+    // 尝试渲染真实图标
+    const iconRendered = this.renderItemIcon(card, entry.reward);
+    
+    // 如果无法渲染真实图标，使用emoji
+    if (!iconRendered) {
+      card.textContent = entry.reward.icon || '?';
+    }
 
     // 差一点标记
     if (entry.wasNearMiss) {
@@ -168,6 +173,128 @@ export class HistoryTracker {
     });
 
     return card;
+  }
+
+  /**
+   * 渲染物品图标（使用sprite sheet）
+   * @param {HTMLElement} container - 容器元素
+   * @param {Object} item - 物品对象
+   * @returns {boolean} 是否成功渲染
+   */
+  renderItemIcon(container, item) {
+    console.log('HistoryTracker: 尝试渲染图标', item);
+    console.log('  - type:', item.type);
+    console.log('  - data:', item.data);
+    
+    const game = window.game;
+    if (!game || !game.loader) {
+      console.log('HistoryTracker: game或loader不存在');
+      return false;
+    }
+
+    // 获取对应的sprite sheet
+    let img = null;
+
+    if (item.type === 'equipment') {
+      img = game.loader.getImage('ICONS_EQUIP');
+      console.log('HistoryTracker: 获取装备图标', img ? '成功' : '失败');
+    } else if (item.type === 'consumable') {
+      img = game.loader.getImage('ICONS_CONSUMABLES');
+      console.log('HistoryTracker: 获取消耗品图标', img ? '成功' : '失败');
+    } else if (item.type === 'gem') {
+      img = game.loader.getImage('ICONS_GEMS');
+      console.log('HistoryTracker: 获取宝石图标', img ? '成功' : '失败');
+    } else {
+      console.log('HistoryTracker: 物品类型不支持图标渲染:', item.type);
+      return false;
+    }
+
+    if (!img) {
+      console.log('HistoryTracker: 未找到sprite sheet');
+      return false;
+    }
+
+    // 创建canvas
+    const canvas = this.createItemIcon(img, item, 40); // 历史卡片较小，使用40px
+    
+    if (canvas) {
+      container.appendChild(canvas);
+      console.log('HistoryTracker: 图标渲染成功');
+      return true;
+    }
+
+    console.log('HistoryTracker: canvas创建失败');
+    return false;
+  }
+
+  /**
+   * 创建物品图标canvas
+   * @param {Image} img - sprite sheet图片
+   * @param {Object} item - 物品对象
+   * @param {number} size - 图标大小
+   * @returns {HTMLCanvasElement|null}
+   */
+  createItemIcon(img, item, size = 40) {
+    if (!img || img.complete === false || img.naturalWidth === 0) {
+      return null;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    let currentCols = 4;
+    let currentRows = 4;
+
+    if (item.type === 'gem') {
+      currentCols = 5;
+      currentRows = 4;
+    } else if (item.type === 'consumable') {
+      const iconIndex = item.data?.iconIndex || 0;
+      if (iconIndex >= 16) {
+        currentCols = 5;
+        currentRows = 5;
+      }
+    }
+
+    const idxIcon = item.data?.iconIndex || 0;
+    const col = idxIcon % currentCols;
+    const row = Math.floor(idxIcon / currentCols);
+    
+    const natW = img.naturalWidth || img.width;
+    const natH = img.naturalHeight || img.height;
+    const cellW = natW / currentCols;
+    const cellH = natH / currentRows;
+
+    const sx = Math.round(col * cellW);
+    const sy = Math.round(row * cellH);
+    const sw = Math.round(cellW);
+    const sh = Math.round(cellH);
+
+    ctx.imageSmoothingEnabled = false;
+
+    const cellAspect = sw / sh;
+    let destW = size;
+    let destH = size;
+
+    if (cellAspect > 1) {
+      destH = size;
+      destW = size * cellAspect;
+    } else if (cellAspect < 1) {
+      destW = size;
+      destH = size / cellAspect;
+    }
+
+    const offsetX = Math.round((size - destW) / 2);
+    const offsetY = Math.round((size - destH) / 2);
+
+    try {
+      ctx.drawImage(img, sx, sy, sw, sh, offsetX, offsetY, destW, destH);
+      return canvas;
+    } catch (e) {
+      return null;
+    }
   }
 
   /**

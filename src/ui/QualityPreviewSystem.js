@@ -19,78 +19,9 @@ export class QualityPreviewSystem {
    * @returns {Promise} 预告完成时解析
    */
   async showPreview(quality, duration = 2000) {
-    if (quality === 'COMMON' || quality === 'UNCOMMON') {
-      return; // 普通和优秀不显示预告
-    }
-
-    const gamblerUI = this.controller.gamblerUI;
-    const container = gamblerUI.elements.reelContainer;
-    
-    if (!container) return;
-
-    this.previewActive = true;
-
-    // 根据品质设置效果
-    const effects = {
-      RARE: {
-        background: 'linear-gradient(135deg, rgba(0, 112, 221, 0.3), rgba(0, 112, 221, 0.1))',
-        boxShadow: '0 0 20px rgba(0, 112, 221, 0.5)',
-        sound: 'tension_low'
-      },
-      EPIC: {
-        background: 'linear-gradient(135deg, rgba(163, 53, 238, 0.4), rgba(163, 53, 238, 0.1))',
-        boxShadow: '0 0 30px rgba(163, 53, 238, 0.7), inset 0 0 20px rgba(163, 53, 238, 0.3)',
-        sound: 'tension_medium'
-      },
-      LEGENDARY: {
-        background: 'linear-gradient(135deg, rgba(255, 128, 0, 0.5), rgba(255, 128, 0, 0.1))',
-        boxShadow: '0 0 40px rgba(255, 128, 0, 0.9), inset 0 0 30px rgba(255, 128, 0, 0.4)',
-        sound: 'tension_high',
-        pulse: true
-      },
-      JACKPOT: {
-        background: 'linear-gradient(135deg, rgba(255, 0, 0, 0.6), rgba(255, 215, 0, 0.3))',
-        boxShadow: '0 0 50px rgba(255, 0, 0, 1), inset 0 0 40px rgba(255, 215, 0, 0.5)',
-        sound: 'tension_extreme',
-        pulse: true,
-        shake: true
-      }
-    };
-
-    const effect = effects[quality];
-    if (!effect) return;
-
-    // 应用视觉效果
-    container.style.transition = 'all 500ms ease-out';
-    container.style.background = effect.background;
-    container.style.boxShadow = effect.boxShadow;
-
-    // 脉冲效果
-    if (effect.pulse) {
-      container.style.animation = 'quality-pulse 1s infinite';
-    }
-
-    // 震动效果（仅 JACKPOT）
-    if (effect.shake) {
-      container.style.animation = 'quality-pulse 1s infinite, quality-shake 0.5s infinite';
-    }
-
-    // 播放音效
-    const game = window.game;
-    if (game && game.audio) {
-      // 使用现有音效模拟紧张感
-      if (quality === 'LEGENDARY' || quality === 'JACKPOT') {
-        game.audio.playBookFlip(); // 暂用，之后可以添加专门的紧张音效
-      }
-    }
-
-    // 等待持续时间
-    return new Promise((resolve) => {
-      this.previewTimeout = setTimeout(() => {
-        this.clearPreview();
-        resolve();
-      }, duration);
-    });
+    // 品质预告已禁用 - 用户只想要物品边框，不要容器背景效果
+    // 直接返回，不应用任何视觉效果
+    return Promise.resolve();
   }
 
   /**

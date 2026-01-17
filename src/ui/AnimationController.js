@@ -26,7 +26,7 @@ export class AnimationController {
    * @param {Object} finalReward - 最终奖励对象
    * @param {Array} items - 滚轮上的所有物品
    * @param {number} winnerIndex - 获胜物品的索引
-   * @returns {Promise} 动画完成时解析
+   * @returns {Promise<Object>} 动画完成时解析，返回实际获得的物品
    */
   async playSpinAnimation(finalReward, items, winnerIndex) {
     this.skipRequested = false;
@@ -40,19 +40,23 @@ export class AnimationController {
     try {
       // 阶段 1：滚轮动画
       this.animationPhase = 'spinning';
-      await this.reelAnimator.animate(items, winnerIndex, this.skipRequested ? 500 : 4000);
+      await this.reelAnimator.animate(items, winnerIndex, this.skipRequested ? 500 : 5500);
 
-      // 如果跳过，直接进入结果
+      // 如果跳过，直接返回预设的finalReward
       if (this.skipRequested) {
         this.animationPhase = 'revealing';
-        await this.resultEffects.playResultEffect(finalReward.quality, true); // 缩略版
-        return;
+        await this.resultEffects.playResultEffect(finalReward.quality, true);
+        return finalReward;
       }
 
+      // 动画结束后，获取指针实际停在的物品
+      const actualWinner = this.reelAnimator.getActualWinnerByPointer();
+      const resultReward = actualWinner || finalReward; // 如果获取失败，使用预设的finalReward
+      
       // 阶段 2：品质预告（仅稀有以上）
-      if (['RARE', 'EPIC', 'LEGENDARY', 'JACKPOT'].includes(finalReward.quality)) {
+      if (['RARE', 'EPIC', 'LEGENDARY', 'JACKPOT'].includes(resultReward.quality)) {
         this.animationPhase = 'previewing';
-        await this.qualityPreview.showPreview(finalReward.quality, 2000);
+        await this.qualityPreview.showPreview(resultReward.quality, 2000);
       }
 
       // 阶段 3：显示结果
@@ -60,13 +64,16 @@ export class AnimationController {
       
       // 阶段 4：庆祝效果
       this.animationPhase = 'celebrating';
-      await this.resultEffects.playResultEffect(finalReward.quality, false);
+      await this.resultEffects.playResultEffect(resultReward.quality, false);
+      
+      return resultReward; // 返回实际获得的物品
 
     } catch (error) {
       console.error('Animation error:', error);
       // 错误回退：立即显示结果
       this.animationPhase = 'revealing';
       await this.resultEffects.playResultEffect(finalReward.quality, true);
+      return finalReward;
     } finally {
       this.animationPhase = 'idle';
       this.currentAnimation = null;

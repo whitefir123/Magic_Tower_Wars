@@ -158,7 +158,7 @@ export class GamblerUI {
         background-position: center center;
       }
       
-      /* 奖品卡片样式（无框） */
+      /* 奖品卡片样式（带品质边框） */
       .gambler-item-card {
         min-width: 90px;
         height: 90px;
@@ -168,7 +168,6 @@ export class GamblerUI {
         justify-content: center;
         align-items: center;
         background: transparent !important;
-        border: none !important;
         border-radius: 6px;
         font-size: 32px;
         color: #fff;
@@ -340,7 +339,7 @@ export class GamblerUI {
         </p>
     
         <!-- 奖品显示区域（无框） -->
-        <div id="gambler-reel-container" style="position: absolute; left: 297px; top: 234px; width: 350px; height: 150px; display: flex; align-items: center; justify-content: center; overflow: visible;">
+        <div id="gambler-reel-container" style="position: absolute; left: 297px; top: 234px; width: 350px; height: 150px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
           <div id="gambler-reel-strip" style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: nowrap; max-width: 100%;">
             <!-- JS 动态填充奖品图标 - 初始显示提示 -->
             <div style="width: 100%; text-align: center; color: #888; font-size: 14px; padding: 20px;">
@@ -354,7 +353,7 @@ export class GamblerUI {
         </div>
         
         <!-- 结果显示区域（与"点击跳过"位置一致） -->
-        <div id="gambler-result" class="hidden" style="position: absolute; left: 163px; top: 409px; width: 620px; font-size: 14px; text-align: center; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
+        <div id="gambler-result" class="hidden" style="position: absolute; left: 297px; top: 409px; width: 350px; font-size: 14px; text-align: center; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
           获得：[物品名称]
         </div>
         
@@ -962,11 +961,16 @@ export class GamblerUI {
     const reward = this.determineReward(tier);
 
     // 5. 执行视觉动画 (前端展示) - 带错误处理
+    let actualReward = reward; // 默认使用预设奖励
     try {
-      await this.performReelAnimation(reward);
+      const animationResult = await this.performReelAnimation(reward);
+      // 如果动画返回了实际奖励，使用它；否则使用预设奖励
+      if (animationResult) {
+        actualReward = animationResult;
+      }
     } catch (error) {
       console.error('Animation failed, showing result immediately:', error);
-      // 回退：立即显示结果
+      // 回退：立即显示结果，使用预设奖励
     }
 
     // 隐藏跳过提示
@@ -974,11 +978,11 @@ export class GamblerUI {
       this.elements.skipHint.classList.add('hidden');
     }
 
-    // 6. 显示结果 & 发放奖励
-    await this.showResult(reward);
+    // 6. 显示结果 & 发放奖励（使用实际获得的物品）
+    await this.showResult(actualReward);
 
-    // 7. 成就检测
-    this.checkAchievements(reward);
+    // 7. 成就检测（使用实际获得的物品）
+    this.checkAchievements(actualReward);
 
     // 8. 解锁
     this.isSpinning = false;
@@ -1024,9 +1028,14 @@ export class GamblerUI {
 
       // 如果是稀有以上，暂停展示
       if (['EPIC', 'LEGENDARY', 'JACKPOT'].includes(reward.quality)) {
-        // 快速动画
-        await this.performReelAnimation(reward);
-        await this.showResult(reward);
+        // 快速动画，获取实际奖励
+        const actualReward = await this.performReelAnimation(reward);
+        const finalReward = actualReward || reward;
+        
+        // 更新results数组中的奖励
+        results[i] = finalReward;
+        
+        await this.showResult(finalReward);
         await this.sleep(800); // 短暂暂停
       } else {
         // 直接应用奖励，不显示动画
@@ -1322,31 +1331,38 @@ export class GamblerUI {
     const winnerIndex = 45;
     const items = [];
 
-    // 生成随机填充项
+    // 生成真实物品填充项
     for (let i = 0; i < totalItems; i++) {
       if (i === winnerIndex) {
         items.push(finalReward);
       } else {
-        // 随机生成一些假数据用于展示
+        // 生成真实的随机物品用于展示
         const randomQ = Math.random() < 0.8 ? 'COMMON' : (Math.random() < 0.9 ? 'UNCOMMON' : 'RARE');
-        items.push({
-          icon: ['⚔️', '🛡️', '💍', '💊', '💰', '🪨'][Math.floor(Math.random() * 6)],
-          quality: randomQ
-        });
+        const randomTier = Math.random() < 0.5 ? 'STANDARD' : 'HIGH_ROLLER';
+        const fakeReward = this.generateItemByQuality(randomQ, randomTier);
+        
+        // 确保生成的物品有效
+        if (fakeReward && fakeReward.icon) {
+          items.push(fakeReward);
+        } else {
+          // 如果生成失败，使用简单的金币作为后备
+          items.push({
+            type: 'gold',
+            name: '10 金币',
+            quality: randomQ,
+            value: 10,
+            icon: '💰'
+          });
+        }
       }
     }
 
-    // 2. 检测差一点情况
+    // 2. 检测差一点情况（先不添加到历史，等获得实际奖励后再添加）
     const nearMissResult = this.historyTracker.detectNearMiss(winnerIndex, items);
 
-    // 3. 添加到历史
-    this.historyTracker.addResult(
-      finalReward,
-      nearMissResult.isNearMiss,
-      nearMissResult.missedItem?.quality
-    );
-
-    // 4. 使用新动画控制器执行动画（带错误处理和减少动画支持）
+    // 3. 使用新动画控制器执行动画（带错误处理和减少动画支持）
+    let actualReward = finalReward; // 默认使用预设奖励
+    
     try {
       if (skipAnimation) {
         // 减少动画模式：立即显示结果
@@ -1368,9 +1384,17 @@ export class GamblerUI {
         }
         // 短暂延迟以显示结果
         await this.sleep(500);
+        
+        // 跳过动画模式下，使用预设奖励
+        actualReward = finalReward;
       } else {
-        // 正常动画
-        await this.animationController.playSpinAnimation(finalReward, items, winnerIndex);
+        // 正常动画，获取实际获得的物品
+        const animationResult = await this.animationController.playSpinAnimation(finalReward, items, winnerIndex);
+        
+        // 使用动画返回的实际奖励
+        if (animationResult) {
+          actualReward = animationResult;
+        }
       }
     } catch (error) {
       console.error('Animation controller error:', error);
@@ -1379,7 +1403,22 @@ export class GamblerUI {
         this.elements.reelStrip.style.transition = 'none';
         this.elements.reelStrip.style.transform = 'translateX(0)';
       }
+      // 错误情况下使用预设奖励
+      actualReward = finalReward;
     }
+    
+    // 4. 添加实际获得的物品到历史记录
+    console.log('GamblerUI: 添加到历史记录的物品:', actualReward);
+    console.log('  - name:', actualReward.name);
+    console.log('  - type:', actualReward.type);
+    console.log('  - quality:', actualReward.quality);
+    console.log('  - data:', actualReward.data);
+    
+    this.historyTracker.addResult(
+      actualReward,
+      nearMissResult.isNearMiss,
+      nearMissResult.missedItem?.quality
+    );
     
     // 5. 更新历史显示
     this.renderHistory();
@@ -1391,12 +1430,20 @@ export class GamblerUI {
     } catch (error) {
       console.warn('Coin drop sound failed:', error);
     }
+    
+    // 返回实际获得的物品
+    return actualReward;
   }
 
   /**
    * 显示结果并发放奖励
    */
   async showResult(reward) {
+    console.log('GamblerUI: showResult 接收到的物品:', reward);
+    console.log('  - name:', reward.name);
+    console.log('  - type:', reward.type);
+    console.log('  - quality:', reward.quality);
+    
     const game = window.game;
 
     // 1. 播放音效（带错误处理）
