@@ -104,8 +104,8 @@ export class QualityPreviewSystem {
     
     if (container) {
       container.style.transition = 'all 300ms ease-out';
-      container.style.background = '#000';
-      container.style.boxShadow = 'inset 0 0 20px rgba(0,0,0,0.8)';
+      container.style.background = 'transparent';
+      container.style.boxShadow = 'none';
       container.style.animation = 'none';
     }
 

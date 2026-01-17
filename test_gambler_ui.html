@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>赌徒界面测试</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #1a1a1a;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    }
+
+    .gambler-panel {
+      background: transparent;
+      border: none;
+      padding: 0;
+      max-width: 95%;
+      z-index: 10001;
+    }
+
+    .slot-machine-container {
+      position: relative;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      padding: 60px 40px 40px 40px;
+      min-height: 500px;
+      aspect-ratio: 1.2;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    .slot-machine-container.image-loaded {
+      background-image: var(--slot-bg-image);
+    }
+
+    .modal-title-shop {
+      margin-bottom: 15px;
+      text-align: center;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      font-size: 22px;
+      color: #ffd700;
+    }
+
+    .gambler-reel-container {
+      width: 100%;
+      height: 100px;
+      background: linear-gradient(180deg, #000 0%, #1a1a1a 100%);
+      border: 3px solid #d4af37;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.9), 0 4px 12px rgba(212, 175, 55, 0.4);
+      margin: 15px 0;
+    }
+
+    .gambler-reel-strip {
+      display: flex;
+      height: 100%;
+      align-items: center;
+    }
+
+    .gambler-item-card {
+      min-width: 90px;
+      height: 90px;
+      margin: 0 5px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+      border: 2px solid #444;
+      border-radius: 6px;
+      font-size: 32px;
+      color: #fff;
+    }
+
+    .btn-core {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      color: white;
+      transition: all 0.3s ease;
+    }
+
+    .btn-core:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+    }
+
+    .flex-center {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .jackpot-counter {
+      font-family: 'Courier New', monospace;
+      color: #ff4444;
+      font-weight: bold;
+      text-shadow: 0 0 5px #ff0000;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="modal-overlay">
+    <div class="gambler-panel" style="width: 700px; max-width: 95%;">
+      <div class="slot-machine-container" id="slot-machine-bg" style="background-position: center top; padding: 40px 40px 30px 40px;">
+        <h2 class="modal-title-shop">命运的老虎机</h2>
+        
+        <!-- 主内容区域 -->
+        <div style="display: flex; gap: 15px; flex: 1;">
+          <!-- 左侧主区域 -->
+          <div style="flex: 1; display: flex; flex-direction: column;">
+            <!-- Jackpot 显示 -->
+            <div style="text-align: center; margin-bottom: 10px;">
+              <div style="color: #d4af37; font-size: 11px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">累积奖池 JACKPOT</div>
+              <div class="jackpot-counter" style="font-size: 20px;">1,234 G</div>
+            </div>
+            
+            <!-- 赌徒消息 -->
+            <p style="font-size: 14px; color: #ffcc00; text-align: center; margin-bottom: 10px; font-style: italic; min-height: 20px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+              试试手气吧...
+            </p>
+            
+            <!-- 滚动动画区域 -->
+            <div class="gambler-reel-container" style="margin: 10px 0; flex: 1;">
+              <div class="gambler-reel-strip">
+                <div class="gambler-item-card">?</div>
+                <div class="gambler-item-card">?</div>
+                <div class="gambler-item-card">?</div>
+                <div class="gambler-item-card">?</div>
+                <div class="gambler-item-card">?</div>
+              </div>
+            </div>
+            
+            <!-- 结果显示区域 -->
+            <div class="hidden" style="font-size: 16px; text-align: center; margin: 10px 0; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); min-height: 24px;">
+              获得：传说装备
+            </div>
+          </div>
+          
+          <!-- 右侧信息区域 -->
+          <div style="width: 180px; display: flex; flex-direction: column; gap: 10px;">
+            <!-- 保底进度条 -->
+            <div style="background: rgba(0,0,0,0.75); padding: 8px 10px; border-radius: 6px; border: 2px solid #666;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div style="color: #aaa; font-size: 11px;">保底进度</div>
+                <div style="color: #ff6600; font-size: 11px; font-weight: bold;">5/8</div>
+              </div>
+              <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; background: linear-gradient(90deg, #ff6600, #ffaa00); width: 62.5%; transition: width 0.3s ease-out;"></div>
+              </div>
+              <div style="color: #888; font-size: 9px; margin-top: 2px; text-align: center;">运气正在积累...</div>
+            </div>
+            
+            <!-- 历史记录显示 -->
+            <div style="background: rgba(0,0,0,0.75); padding: 8px 10px; border-radius: 6px; border: 2px solid #666; flex: 1;">
+              <div style="color: #d4af37; font-size: 11px; text-align: center; margin-bottom: 6px; font-weight: bold;">最近结果</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;">
+                <div style="width: 35px; height: 35px; background: #2a2a2a; border: 2px solid #a335ee; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px;">?</div>
+                <div style="width: 35px; height: 35px; background: #2a2a2a; border: 2px solid #0070dd; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px;">?</div>
+                <div style="width: 35px; height: 35px; background: #2a2a2a; border: 2px solid #5eff00; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px;">?</div>
+                <div style="width: 35px; height: 35px; background: #2a2a2a; border: 2px solid #a0a0a0; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px;">?</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 底部按钮组 -->
+        <div class="flex-center" style="flex-direction: row; gap: 8px; justify-content: space-between; margin-top: 10px;">
+          <button class="btn-core" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); flex: 1; height: 38px; padding: 6px 8px; font-size: 12px; border: 2px solid rgba(52, 152, 219, 0.5);">
+            标准 (50G)
+          </button>
+          <button class="btn-core" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); flex: 1; height: 38px; padding: 6px 8px; font-size: 12px; border: 2px solid rgba(231, 76, 60, 0.5);">
+            豪赌 (200G)
+          </button>
+          <button class="btn-core" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); flex: 1; height: 38px; padding: 6px 8px; font-size: 12px; border: 2px solid rgba(155, 89, 182, 0.5);">
+            10连 (450G)
+          </button>
+          <button class="btn-core" style="flex: 0.8; height: 38px; padding: 6px 8px; font-size: 12px; background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%); border: 2px solid rgba(127, 140, 141, 0.5);">
+            离开
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 加载背景图片
+    const bgUrl = 'https://i.postimg.cc/XYVXxV9N/dutuji.png';
+    const container = document.getElementById('slot-machine-bg');
+    
+    const img = new Image();
+    img.onload = () => {
+      container.style.setProperty('--slot-bg-image', `url('${bgUrl}')`);
+      container.classList.add('image-loaded');
+      console.log('✓ 背景图片加载成功');
+    };
+    img.onerror = () => {
+      console.warn('背景图片加载失败，使用回退渐变');
+    };
+    img.src = bgUrl;
+  </script>
+</body>
+</html>

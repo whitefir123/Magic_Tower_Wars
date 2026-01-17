@@ -3,7 +3,7 @@
    ======================================== */
 #shop-overlay {
   /* Styles inherited from modal-overlay */
-  /* 确保覆盖层居中 */
+  /* 确保覆盖层居�?*/
   display: flex;
   justify-content: center;
   align-items: center;
@@ -12,7 +12,7 @@
 
 .shop-panel {
   position: relative;
-  /* 背景图设置 */
+  /* 背景图设�?*/
   background-image: url('https://i.postimg.cc/DzLSLrfr/dijingshangdian1.png');
   background-size: contain;
   background-repeat: no-repeat;
@@ -36,7 +36,7 @@
 /* 标题上移 */
 .modal-title-shop {
   position: absolute;
-  top: 2%; /* 原5% */
+  top: 2%; /* �?% */
   left: 0;
   width: 100%;
   text-align: center;
@@ -57,30 +57,30 @@
   padding: 0; /* Remove padding as we use absolute positioning */
   /* 调试背景色，调整好后去掉 */
   /* background: rgba(255, 0, 0, 0.1); */
-  overflow: visible !important; /* ✅ 确保货架也允许子元素溢出显示 */
+  overflow: visible !important; /* �?确保货架也允许子元素溢出显示 */
   z-index: 5;
 }
 
-/* 左货架 (基础服务) - 位置微调 */
+/* 左货�?(基础服务) - 位置微调 */
 #shop-left-shelf {
-  top: 25%;  /* 从23%改为25%，整体下移 */
+  top: 25%;  /* �?3%改为25%，整体下�?*/
   left: 11%;
   width: 27%;
   height: 38%;
 }
 
-/* 右货架 (随机商品) - 位置微调 */
+/* 右货�?(随机商品) - 位置微调 */
 #shop-right-shelf {
-  top: 25%;  /* 从23%改为25%，整体下移 */
+  top: 25%;  /* �?3%改为25%，整体下�?*/
   right: 11%;
   width: 27%;
   height: 38%;
 }
 
-/* 柜台操作区 (按钮) - 下移 */
+/* 柜台操作�?(按钮) - 下移 */
 #shop-counter-surface {
   position: absolute;
-  bottom: 12%; /* 再往下一点 (原15%) */
+  bottom: 12%; /* 再往下一�?(�?5%) */
   left: 35%;
   width: 30%;
   height: 10%;
@@ -91,7 +91,7 @@
   z-index: 20;
 }
 
-/* 商品项样式 */
+/* 商品项样�?*/
 .shop-good-item {
   position: absolute; /* Changed to absolute */
   display: flex;
@@ -111,7 +111,7 @@
   min-height: 0 !important; /* 覆盖原有 min-height */
   padding: 0 !important;
   
-  /* ✅ 关键修复：允许子元素溢出显示（价格标签可以显示在容器外） */
+  /* �?关键修复：允许子元素溢出显示（价格标签可以显示在容器外） */
   overflow: visible !important;
 }
 
@@ -139,7 +139,7 @@
 
 /* 商品价格 */
 .shop-good-price {
-  color: #C5A059; /* 暗金色 */
+  color: #C5A059; /* 暗金�?*/
   font-family: 'Times New Roman', serif;
   font-weight: bold;
   font-size: 14px;
@@ -151,8 +151,8 @@
   margin-top: 0px;
   position: relative;
   z-index: 10;
-  /* ✅ 使用transform来移动价格，不影响其他元素布局 */
-  transform: translateY(1px); /* 往下移动15像素 */
+  /* �?使用transform来移动价格，不影响其他元素布局 */
+  transform: translateY(1px); /* 往下移�?5像素 */
 }
 
 /* 按钮样式微调 */
@@ -162,18 +162,29 @@
   box-shadow: 0 4px 8px rgba(0,0,0,0.5);
 }
 
-/* 隐藏原有结构中不需要的部分（如果 JS 没有完全清理的话） */
+/* 隐藏原有结构中不需要的部分（如�?JS 没有完全清理的话�?*/
 .shop-panel > div:not(#shop-left-shelf):not(#shop-right-shelf):not(#shop-counter-surface):not(.modal-title-shop) {
   display: none !important;
 }
 
-.modal-title-small {
-  /* Variant for smaller shop title */
+/* 标准旋转按钮特效 */
+#gambler-btn-standard {
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
 }
 
-/* ========================================
-   Draft & Shrine Overlays (Roguelike Card Selection)
-   ======================================== */
+#gambler-btn-standard:hover:not(:disabled) {
+  box-shadow: 0 6px 25px rgba(52, 152, 219, 0.6);
+}
+
+/* 豪赌旋转按钮特效 */
+#gambler-btn-high-roller {
+  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+}
+
+#gambler-btn-high-roller:hover:not(:disabled) {
+  box-shadow: 0 6px 25px rgba(231, 76, 60, 0.6);
+}
+
 
 #draft-overlay,
 #shrine-overlay {
@@ -332,7 +343,7 @@
   font-weight: bold;
 }
 
-/* 强化符文界面的中文字体 */
+/* 强化符文界面的中文字�?*/
 #draft-overlay .card h3,
 #shrine-overlay .card h3 {
   font-size: 1.6rem;
@@ -358,10 +369,10 @@
 }
 
 /* ========================================
-   符文稀有度样式类 (Rune Rarity Styles)
+   符文稀有度样式�?(Rune Rarity Styles)
    ======================================== */
 
-/* 普通品质 - 白色边框 */
+/* 普通品�?- 白色边框 */
 .card.rarity-common {
   border: 2px solid rgba(255, 255, 255, 0.6);
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3),
@@ -376,7 +387,7 @@
               inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* 稀有品质 - 蓝色边框 */
+/* 稀有品�?- 蓝色边框 */
 .card.rarity-rare {
   border: 2px solid rgba(52, 152, 219, 0.8);
   box-shadow: 0 0 20px rgba(52, 152, 219, 0.4),
@@ -424,7 +435,7 @@
   }
 }
 
-/* 诅咒品质 - 红黑边框，暗黑氛围 */
+/* 诅咒品质 - 红黑边框，暗黑氛�?*/
 .card.rarity-cursed {
   border: 2px solid rgba(139, 0, 0, 0.9);
   box-shadow: 0 0 25px rgba(139, 0, 0, 0.6),
@@ -463,7 +474,7 @@
   }
 }
 
-/* 诅咒符文的特殊暗黑效果 */
+/* 诅咒符文的特殊暗黑效�?*/
 .card.rarity-cursed::before {
   background: radial-gradient(circle at center, 
     rgba(139, 0, 0, 0.1) 0%, 
@@ -497,30 +508,21 @@
    ======================================== */
 
 .gambler-panel {
-  background: linear-gradient(135deg, #1a0f0f 0%, #2d1a1a 50%, #1a0f0f 100%);
-  border: 3px solid #ffd700;
-  border-radius: 15px;
-  padding: 30px;
-  max-width: 500px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  max-width: 95%;
   margin: auto;
-  box-shadow: 0 10px 40px rgba(255, 215, 0, 0.3),
-              inset 0 2px 10px rgba(255, 215, 0, 0.1);
+  box-shadow: none;
   position: relative;
-  overflow: hidden;
-  /* ✅ FIX: 确保z-index足够高，避免被main-ui遮挡（Overlay应>10000） */
+  overflow: visible;
+  /* �?FIX: 确保z-index足够高，避免被main-ui遮挡（Overlay�?10000�?*/
   z-index: 10001;
 }
 
 .gambler-panel::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255, 215, 0, 0.05) 0%, transparent 70%);
-  animation: rotate-glow 10s linear infinite;
-  pointer-events: none;
+  display: none;
 }
 
 @keyframes rotate-glow {
@@ -569,29 +571,35 @@
 }
 
 /* 赌徒按钮样式 */
-.gambler-panel .btn-rpg {
+.gambler-panel .btn-rpg,
+.gambler-panel .btn-core {
   position: relative;
   z-index: 1;
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
-.gambler-panel .btn-rpg:hover:not(:disabled) {
+.gambler-panel .btn-rpg:hover:not(:disabled),
+.gambler-panel .btn-core:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+  filter: brightness(1.1);
 }
 
-.gambler-panel .btn-rpg:active:not(:disabled) {
+.gambler-panel .btn-rpg:active:not(:disabled),
+.gambler-panel .btn-core:active:not(:disabled) {
   transform: translateY(0);
 }
 
-.gambler-panel .btn-rpg:disabled {
+.gambler-panel .btn-rpg:disabled,
+.gambler-panel .btn-core:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   filter: grayscale(0.5);
 }
 
 /* ========================================
-   符文状态面板 (Rune Stats Panel)
+   符文状态面�?(Rune Stats Panel)
    ======================================== */
 
 .rune-stats-panel {
@@ -673,22 +681,3 @@
   cursor: not-allowed;
   filter: grayscale(0.5);
 }
-
-/* 标准旋转按钮特效 */
-#gambler-btn-standard {
-  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
-}
-
-#gambler-btn-standard:hover:not(:disabled) {
-  box-shadow: 0 6px 25px rgba(52, 152, 219, 0.6);
-}
-
-/* 豪赌旋转按钮特效 */
-#gambler-btn-high-roller {
-  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
-}
-
-#gambler-btn-high-roller:hover:not(:disabled) {
-  box-shadow: 0 6px 25px rgba(231, 76, 60, 0.6);
-}
-

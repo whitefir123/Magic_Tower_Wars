@@ -101,9 +101,17 @@ export class GamblerUI {
    * 初始化新系统（粒子系统和动画控制器）
    */
   initSystems() {
-    // 初始化粒子系统
-    if (!this.particleSystem && this.elements.overlay) {
-      this.particleSystem = new ParticleSystem(this.elements.overlay);
+    // 初始化粒子系统 - 使用slot-machine-container作为容器
+    if (!this.particleSystem) {
+      const container = document.getElementById('slot-machine-bg');
+      if (container) {
+        // 确保容器有正确的定位
+        container.style.position = 'relative';
+        this.particleSystem = new ParticleSystem(container);
+      } else if (this.elements.overlay) {
+        // 回退到overlay
+        this.particleSystem = new ParticleSystem(this.elements.overlay);
+      }
     }
 
     // 初始化动画控制器
@@ -131,99 +139,66 @@ export class GamblerUI {
     style.id = 'gambler-ui-styles';
     style.textContent = `
       .slot-machine-container {
+        position: relative;
         box-shadow: 0 8px 32px rgba(0,0,0,0.6);
         border-radius: 12px;
         backdrop-filter: blur(5px);
         /* 回退渐变背景（如果图片加载失败） */
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        display: flex;
+        flex-direction: column;
+        overflow: visible;
+        min-height: 700px;
       }
       
       .slot-machine-container.image-loaded {
         background-image: var(--slot-bg-image);
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center center;
       }
       
-      .gambler-reel-container {
-        width: 100%;
-        height: 90px;
-        background: linear-gradient(180deg, #000 0%, #1a1a1a 100%);
-        border: 3px solid #d4af37;
-        border-radius: 8px;
-        overflow: hidden;
-        position: relative;
-        margin: 12px 0;
-        box-shadow: inset 0 0 15px rgba(0,0,0,0.9), 0 4px 12px rgba(212, 175, 55, 0.4);
-        cursor: pointer;
-      }
-      
-      .gambler-reel-strip {
-        display: flex;
-        height: 100%;
-        align-items: center;
-        transform: translateX(0);
-        will-change: transform;
-      }
-      
+      /* 奖品卡片样式（无框） */
       .gambler-item-card {
-        min-width: 80px;
-        height: 80px;
-        margin: 0 4px;
+        min-width: 90px;
+        height: 90px;
+        margin: 0 5px;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-        border: 2px solid #444;
+        background: transparent !important;
+        border: none !important;
         border-radius: 6px;
-        font-size: 28px;
+        font-size: 32px;
         color: #fff;
         position: relative;
         box-sizing: border-box;
-        transition: transform 0.2s ease;
+        transition: transform 0.2s ease, opacity 0.3s ease;
       }
       
       .gambler-item-card:hover {
         transform: scale(1.05);
       }
       
-      /* 中心指针 */
-      .gambler-pointer {
-        position: absolute;
-        top: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 4px;
-        height: 100%;
-        background: rgba(255, 215, 0, 0.5);
-        z-index: 10;
-        pointer-events: none;
-      }
-      .gambler-pointer::before {
-        content: '▼';
-        position: absolute;
-        top: -15px;
-        left: 50%;
-        transform: translateX(-50%);
-        color: #ffd700;
-        font-size: 20px;
-        filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.8));
+      @keyframes pulse {
+        0%, 100% { 
+          transform: scale(1.2); 
+          filter: drop-shadow(0 0 10px currentColor);
+        }
+        50% { 
+          transform: scale(1.4); 
+          filter: drop-shadow(0 0 20px currentColor);
+        }
       }
 
-      /* 品质颜色边框 */
-      .quality-COMMON { border-color: #a0a0a0; box-shadow: 0 0 5px #a0a0a0; }
-      .quality-UNCOMMON { border-color: #5eff00; box-shadow: 0 0 8px #5eff00; }
-      .quality-RARE { border-color: #0070dd; box-shadow: 0 0 10px #0070dd; }
-      .quality-EPIC { border-color: #a335ee; box-shadow: 0 0 15px #a335ee; }
-      .quality-LEGENDARY { border-color: #ff8000; box-shadow: 0 0 20px #ff8000; }
-      .quality-JACKPOT { border-color: #ff0000; box-shadow: 0 0 30px #ff0000; animation: rainbow-border 1s infinite; }
-      
-      @keyframes rainbow-border {
-        0% { border-color: #ff0000; }
-        20% { border-color: #ffff00; }
-        40% { border-color: #00ff00; }
-        60% { border-color: #00ffff; }
-        80% { border-color: #0000ff; }
-        100% { border-color: #ff00ff; }
-      }
+      /* 品质颜色 - 仅文字颜色，无边框 */
+      .quality-COMMON { color: #a0a0a0; }
+      .quality-UNCOMMON { color: #5eff00; }
+      .quality-RARE { color: #0070dd; }
+      .quality-EPIC { color: #a335ee; }
+      .quality-LEGENDARY { color: #ff8000; }
+      .quality-JACKPOT { color: #ff0000; }
 
       .jackpot-counter {
         font-family: 'Courier New', monospace;
@@ -252,21 +227,52 @@ export class GamblerUI {
       /* 响应式布局 */
       @media (max-width: 768px) {
         .gambler-panel {
-          width: 90% !important;
-          max-width: 90% !important;
+          width: 95% !important;
+          max-width: 95% !important;
         }
         
         .slot-machine-container {
-          padding: 20px 12px 15px 12px !important;
-          min-height: 340px !important;
+          padding: 30px 20px 20px 20px !important;
+          min-height: 500px !important;
         }
         
         .modal-title-shop {
-          font-size: 17px !important;
+          font-size: 18px !important;
         }
         
-        .gambler-reel-container {
+        .gambler-item-card {
+          min-width: 75px !important;
           height: 75px !important;
+          font-size: 26px !important;
+        }
+        
+        #gambler-result {
+          font-size: 14px !important;
+        }
+        
+        .jackpot-counter {
+          font-size: 18px !important;
+        }
+        
+        .btn-core {
+          height: 36px !important;
+          font-size: 11px !important;
+        }
+      }
+      
+      @media (max-width: 480px) {
+        .gambler-panel {
+          width: 98% !important;
+        }
+        
+        .slot-machine-container {
+          padding: 25px 15px 15px 15px !important;
+          min-height: 470px !important;
+          flex-direction: column !important;
+        }
+        
+        .modal-title-shop {
+          font-size: 16px !important;
         }
         
         .gambler-item-card {
@@ -276,40 +282,7 @@ export class GamblerUI {
         }
         
         #gambler-result {
-          font-size: 16px !important;
-        }
-        
-        .jackpot-counter {
-          font-size: 18px !important;
-        }
-      }
-      
-      @media (max-width: 480px) {
-        .gambler-panel {
-          width: 95% !important;
-        }
-        
-        .slot-machine-container {
-          padding: 15px 10px 12px 10px !important;
-          min-height: 320px !important;
-        }
-        
-        .modal-title-shop {
-          font-size: 15px !important;
-        }
-        
-        .gambler-reel-container {
-          height: 65px !important;
-        }
-        
-        .gambler-item-card {
-          min-width: 55px !important;
-          height: 55px !important;
-          font-size: 18px !important;
-        }
-        
-        #gambler-result {
-          font-size: 14px !important;
+          font-size: 13px !important;
         }
         
         .jackpot-counter {
@@ -317,29 +290,25 @@ export class GamblerUI {
         }
         
         .btn-core {
-          font-size: 12px !important;
-          min-height: 40px !important;
+          font-size: 10px !important;
+          height: 34px !important;
         }
       }
       
       @media (min-width: 1920px) {
         .gambler-panel {
-          width: 650px !important;
+          width: 900px !important;
         }
         
         .slot-machine-container {
-          padding: 40px 25px 25px 25px !important;
-          min-height: 450px !important;
-        }
-        
-        .gambler-reel-container {
-          height: 110px !important;
+          padding: 50px 50px 40px 50px !important;
+          min-height: 650px !important;
         }
         
         .gambler-item-card {
-          min-width: 95px !important;
-          height: 95px !important;
-          font-size: 34px !important;
+          min-width: 110px !important;
+          height: 110px !important;
+          font-size: 38px !important;
         }
       }
     `;
@@ -352,45 +321,31 @@ export class GamblerUI {
    */
   getHTML() {
     return `
-    <div class="gambler-panel" style="width: 550px; max-width: 90%;">
+    <div class="gambler-panel" style="width: 900px; max-width: 95%; background: transparent; border: none; padding: 0;">
       <!-- 老虎机背景容器 -->
-      <div class="slot-machine-container" id="slot-machine-bg" style="position: relative; background-size: cover; background-repeat: no-repeat; background-position: center; padding: 30px 15px 20px 15px; min-height: 380px;">
+      <div class="slot-machine-container" id="slot-machine-bg" style="position: relative; background-size: contain; background-repeat: no-repeat; background-position: center center; padding: 0; min-height: 700px; display: block; overflow: visible;">
         
-        <h2 class="modal-title-shop" style="margin-bottom: 8px; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); font-size: 20px;">🎰 命运的老虎机 🎰</h2>
+        <!-- 标题 -->
+        <h2 class="modal-title-shop" style="position: absolute; left: 8px; top: 14px; width: 900px; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); font-size: 22px; color: #ffd700; margin: 0;">命运的老虎机</h2>
         
         <!-- Jackpot 显示 -->
-        <div style="text-align: center; margin-bottom: 10px; background: rgba(0,0,0,0.75); padding: 6px 10px; border-radius: 8px; border: 2px solid #d4af37;">
-          <div style="color: #aaa; font-size: 11px;">累积奖池 JACKPOT</div>
+        <div style="position: absolute; left: 155px; top: 140px; width: 620px; text-align: center;">
+          <div style="color: #d4af37; font-size: 11px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">累积奖池 JACKPOT</div>
           <div id="gambler-jackpot" class="jackpot-counter" style="font-size: 20px;">0 G</div>
         </div>
         
-        <!-- 保底进度条 -->
-        <div style="margin-bottom: 10px; background: rgba(0,0,0,0.75); padding: 6px 10px; border-radius: 8px; border: 2px solid #666;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <div style="color: #aaa; font-size: 11px;">保底进度</div>
-            <div id="gambler-pity-count" style="color: #ff6600; font-size: 11px; font-weight: bold;">0/8</div>
-          </div>
-          <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px; overflow: hidden;">
-            <div id="gambler-pity-bar" style="height: 100%; background: linear-gradient(90deg, #ff6600, #ffaa00); width: 0%; transition: width 0.3s ease-out;"></div>
-          </div>
-          <div id="gambler-pity-hint" style="color: #888; font-size: 9px; margin-top: 2px; text-align: center; min-height: 10px;"></div>
-        </div>
-        
         <!-- 赌徒消息 -->
-        <p id="gambler-message" style="font-size: 14px; color: #ffcc00; text-align: center; margin-bottom: 10px; font-style: italic; min-height: 20px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+        <p id="gambler-message" style="position: absolute; left: -470px; top: 157px; width: 820px; font-size: 14px; color: #ffcc00; text-align: center; font-style: italic; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); margin: 0;">
           试试手气吧...
         </p>
-        
-        <!-- 滚动动画区域 (CS:GO Style) -->
-        <div id="gambler-reel-container" class="gambler-reel-container">
-          <div class="gambler-pointer"></div>
-          <div id="gambler-reel-strip" class="gambler-reel-strip">
-            <!-- JS 动态填充图标 -->
-            <div class="gambler-item-card quality-COMMON">?</div>
-            <div class="gambler-item-card quality-COMMON">?</div>
-            <div class="gambler-item-card quality-COMMON">?</div>
-            <div class="gambler-item-card quality-COMMON">?</div>
-            <div class="gambler-item-card quality-COMMON">?</div>
+    
+        <!-- 奖品显示区域（无框） -->
+        <div id="gambler-reel-container" style="position: absolute; left: 297px; top: 234px; width: 350px; height: 150px; display: flex; align-items: center; justify-content: center; overflow: visible;">
+          <div id="gambler-reel-strip" style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: nowrap; max-width: 100%;">
+            <!-- JS 动态填充奖品图标 - 初始显示提示 -->
+            <div style="width: 100%; text-align: center; color: #888; font-size: 14px; padding: 20px;">
+              点击按钮开始旋转...
+            </div>
           </div>
           <!-- 快速跳过提示 -->
           <div id="gambler-skip-hint" class="skip-hint hidden" style="position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-size: 11px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
@@ -398,40 +353,57 @@ export class GamblerUI {
           </div>
         </div>
         
-        <!-- 结果显示区域 -->
-        <div id="gambler-result" class="hidden" style="font-size: 18px; text-align: center; margin: 10px 0; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); min-height: 25px;">
+        <!-- 结果显示区域（与"点击跳过"位置一致） -->
+        <div id="gambler-result" class="hidden" style="position: absolute; left: 163px; top: 409px; width: 620px; font-size: 14px; text-align: center; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
           获得：[物品名称]
         </div>
         
-        <!-- 历史记录显示 -->
-        <div style="margin: 10px 0;">
-          <div style="color: #aaa; font-size: 11px; text-align: center; margin-bottom: 4px;">最近结果</div>
-          <div id="gambler-history" style="min-height: 50px;"></div>
-        </div>
-        
-        <!-- 按钮组 -->
-        <div class="flex-center" style="flex-direction: row; gap: 8px; justify-content: space-between; margin-top: 12px;">
-          <button id="gambler-btn-standard" class="btn-core btn-transaction" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); flex: 1; min-height: 44px; padding: 8px 10px; font-size: 13px; border-radius: 6px;">
-            <div style="font-weight: bold;">标准旋转</div>
-            <div style="font-size: 11px; opacity: 0.9; margin-top: 2px;">50 G</div>
-          </button>
-          <button id="gambler-btn-high-roller" class="btn-core btn-transaction" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); flex: 1; min-height: 44px; padding: 8px 10px; font-size: 13px; border-radius: 6px;">
-            <div style="font-weight: bold;">豪赌旋转</div>
-            <div style="font-size: 11px; opacity: 0.9; margin-top: 2px;">200 G</div>
-          </button>
-        </div>
-        
-        <!-- 10连抽按钮 -->
-        <div class="flex-center" style="margin-top: 8px;">
-          <button id="gambler-btn-batch" class="btn-core btn-transaction" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); width: 100%; min-height: 44px; padding: 8px 12px; font-size: 13px; border-radius: 6px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-              <span style="font-weight: bold;">🎰 10连抽</span>
-              <span style="font-size: 11px; opacity: 0.9;">450 G <span style="text-decoration: line-through; opacity: 0.7; font-size: 10px;">500 G</span></span>
+        <!-- 右侧信息区域 -->
+        <div style="position: absolute; left: 933px; top: 77px; width: 180px; display: flex; flex-direction: column; gap: 10px;">
+          <!-- 保底进度条 -->
+          <div style="background: rgba(0,0,0,0.75); padding: 8px 10px; border-radius: 6px; border: 2px solid #666; width: 180px; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <div style="color: #aaa; font-size: 11px;">保底进度</div>
+              <div id="gambler-pity-count" style="color: #ff6600; font-size: 11px; font-weight: bold;">0/8</div>
             </div>
+            <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px; overflow: hidden;">
+              <div id="gambler-pity-bar" style="height: 100%; background: linear-gradient(90deg, #ff6600, #ffaa00); width: 0%; transition: width 0.3s ease-out;"></div>
+            </div>
+            <div id="gambler-pity-hint" style="color: #888; font-size: 9px; margin-top: 2px; text-align: center; min-height: 10px;"></div>
+          </div>
+          
+          <!-- 历史记录显示 -->
+          <div style="background: rgba(0,0,0,0.75); padding: 8px 10px; border-radius: 6px; border: 2px solid #666; min-height: 150px; width: 180px; box-sizing: border-box;">
+            <div style="color: #d4af37; font-size: 11px; text-align: center; margin-bottom: 6px; font-weight: bold;">最近结果</div>
+            <div id="gambler-history" style="min-height: 50px;"></div>
+          </div>
+        </div>
+        
+        <!-- 抽奖模式选择器（往右移动并缩小） -->
+        <div style="position: absolute; left: 540px; top: 433px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <!-- 左箭头 -->
+          <button id="gambler-mode-prev" style="background: transparent; border: none; color: #ffd700; font-size: 18px; cursor: pointer; padding: 0; line-height: 1; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center;">
+            ◀
+          </button>
+          
+          <!-- 中间文本区域（可点击） -->
+          <div id="gambler-mode-display" style="text-align: center; cursor: pointer; padding: 4px 8px;">
+            <div id="gambler-mode-name" style="color: #ffd700; font-size: 16px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); margin-bottom: 4px; white-space: nowrap;">
+              标准
+            </div>
+            <div id="gambler-mode-price" style="color: #ffcc00; font-size: 13px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); white-space: nowrap;">
+              50G
+            </div>
+          </div>
+          
+          <!-- 右箭头 -->
+          <button id="gambler-mode-next" style="background: transparent; border: none; color: #ffd700; font-size: 18px; cursor: pointer; padding: 0; line-height: 1; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center;">
+            ▶
           </button>
         </div>
         
-        <button id="gambler-btn-leave" class="btn-core btn-modal-close" style="margin-top: 8px; width: 100%; min-height: 40px; padding: 8px; font-size: 13px; border-radius: 6px;">
+        <!-- 离开按钮（仅文本） -->
+        <button id="gambler-btn-leave" style="position: absolute; left: 225px; top: 570px; width: 499px; height: 38px; padding: 0; font-size: 14px; background: transparent; border: none; color: #95a5a6; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); cursor: pointer;">
           离开
         </button>
       </div>
@@ -459,15 +431,27 @@ export class GamblerUI {
     this.elements.reelStrip = document.getElementById('gambler-reel-strip');
     this.elements.jackpotDisplay = document.getElementById('gambler-jackpot');
     this.elements.resultDisplay = document.getElementById('gambler-result');
-    this.elements.standardBtn = document.getElementById('gambler-btn-standard');
-    this.elements.highRollerBtn = document.getElementById('gambler-btn-high-roller');
     this.elements.leaveBtn = document.getElementById('gambler-btn-leave');
     this.elements.skipHint = document.getElementById('gambler-skip-hint');
     this.elements.historyContainer = document.getElementById('gambler-history');
     this.elements.pityCount = document.getElementById('gambler-pity-count');
     this.elements.pityBar = document.getElementById('gambler-pity-bar');
     this.elements.pityHint = document.getElementById('gambler-pity-hint');
-    this.elements.batchBtn = document.getElementById('gambler-btn-batch');
+    
+    // 新的模式选择器元素
+    this.elements.modePrevBtn = document.getElementById('gambler-mode-prev');
+    this.elements.modeNextBtn = document.getElementById('gambler-mode-next');
+    this.elements.modeDisplay = document.getElementById('gambler-mode-display');
+    this.elements.modeName = document.getElementById('gambler-mode-name');
+    this.elements.modePrice = document.getElementById('gambler-mode-price');
+    
+    // 当前选择的模式
+    this.currentMode = 0; // 0: 标准, 1: 10连, 2: 豪赌
+    this.modes = [
+      { name: '标准', tier: 'STANDARD', price: 50 },
+      { name: '10连', tier: 'BATCH', price: 450 },
+      { name: '豪赌', tier: 'HIGH_ROLLER', price: 200 }
+    ];
   }
 
   /**
@@ -492,17 +476,17 @@ export class GamblerUI {
       this.elements.leaveBtn.addEventListener('click', closeAction);
     }
 
-    // 旋转逻辑
-    if (this.elements.standardBtn) {
-      this.elements.standardBtn.addEventListener('click', () => this.spin('STANDARD'));
+    // 模式切换逻辑
+    if (this.elements.modePrevBtn) {
+      this.elements.modePrevBtn.addEventListener('click', () => this.switchMode(-1));
     }
-    if (this.elements.highRollerBtn) {
-      this.elements.highRollerBtn.addEventListener('click', () => this.spin('HIGH_ROLLER'));
+    if (this.elements.modeNextBtn) {
+      this.elements.modeNextBtn.addEventListener('click', () => this.switchMode(1));
     }
     
-    // 10连抽逻辑
-    if (this.elements.batchBtn) {
-      this.elements.batchBtn.addEventListener('click', () => this.batchSpin());
+    // 点击中间文本区域进行抽奖
+    if (this.elements.modeDisplay) {
+      this.elements.modeDisplay.addEventListener('click', () => this.confirmSpin());
     }
 
     // 快速跳过逻辑（点击和滑动）
@@ -741,10 +725,55 @@ export class GamblerUI {
     }
   }
 
+  /**
+   * 切换抽奖模式
+   */
+  switchMode(direction) {
+    this.currentMode = (this.currentMode + direction + this.modes.length) % this.modes.length;
+    this.updateModeDisplay();
+    this.updateButtonStates();
+  }
+
+  /**
+   * 更新模式显示
+   */
+  updateModeDisplay() {
+    const mode = this.modes[this.currentMode];
+    if (this.elements.modeName) {
+      this.elements.modeName.textContent = mode.name;
+    }
+    if (this.elements.modePrice) {
+      this.elements.modePrice.textContent = `${mode.price}G`;
+    }
+  }
+
+  /**
+   * 确认抽奖
+   */
+  confirmSpin() {
+    if (this.isSpinning) return;
+    if (!this.player) return;
+    
+    const mode = this.modes[this.currentMode];
+    const playerGold = this.player.stats.gold ?? 0;
+    
+    // 检查是否有足够金币
+    if (playerGold < mode.price) {
+      console.log('金币不足');
+      return;
+    }
+    
+    if (mode.tier === 'BATCH') {
+      this.batchSpin();
+    } else {
+      this.spin(mode.tier);
+    }
+  }
+
   render() {
     this.updateButtonStates();
     this.updateMessage();
-    this.updatePriceDisplay();
+    this.updateModeDisplay();
     this.updateJackpotDisplay();
     this.updatePityDisplay();
   }
@@ -829,48 +858,36 @@ export class GamblerUI {
     }
   }
 
-  updatePriceDisplay() {
-    if (this.elements.standardBtn) {
-      const btn = this.elements.standardBtn;
-      // 保持按钮内部 HTML 结构
-      const costDiv = btn.querySelector('div:last-child');
-      if (costDiv) costDiv.textContent = `${GAMBLE_TIERS.STANDARD.cost} G`;
-    }
-    if (this.elements.highRollerBtn) {
-      const btn = this.elements.highRollerBtn;
-      const costDiv = btn.querySelector('div:last-child');
-      if (costDiv) costDiv.textContent = `${GAMBLE_TIERS.HIGH_ROLLER.cost} G`;
-    }
-  }
-
   updateButtonStates() {
     if (!this.player) return;
     const playerGold = this.player.stats.gold ?? 0;
 
-    const updateBtn = (btn, cost) => {
-      if (btn) {
-        const canAfford = playerGold >= cost;
-        btn.disabled = !canAfford || this.isSpinning;
-        btn.style.opacity = (canAfford && !this.isSpinning) ? '1' : '0.5';
-        btn.style.cursor = (canAfford && !this.isSpinning) ? 'pointer' : 'not-allowed';
-      }
-    };
-
-    updateBtn(this.elements.standardBtn, GAMBLE_TIERS.STANDARD.cost);
-    updateBtn(this.elements.highRollerBtn, GAMBLE_TIERS.HIGH_ROLLER.cost);
+    // 更新模式显示区域状态
+    const mode = this.modes[this.currentMode];
+    const canAfford = playerGold >= mode.price;
     
-    // 10连抽按钮
-    if (this.elements.batchBtn) {
-      const batchCost = 450;
-      const canAfford = playerGold >= batchCost;
-      this.elements.batchBtn.disabled = !canAfford || this.isSpinning;
-      this.elements.batchBtn.style.opacity = (canAfford && !this.isSpinning) ? '1' : '0.5';
-      this.elements.batchBtn.style.cursor = (canAfford && !this.isSpinning) ? 'pointer' : 'not-allowed';
+    if (this.elements.modeDisplay) {
+      this.elements.modeDisplay.style.opacity = (canAfford && !this.isSpinning) ? '1' : '0.5';
+      this.elements.modeDisplay.style.cursor = (canAfford && !this.isSpinning) ? 'pointer' : 'not-allowed';
     }
     
+    // 更新箭头按钮状态
+    if (this.elements.modePrevBtn) {
+      this.elements.modePrevBtn.disabled = this.isSpinning;
+      this.elements.modePrevBtn.style.opacity = this.isSpinning ? '0.5' : '1';
+      this.elements.modePrevBtn.style.cursor = this.isSpinning ? 'not-allowed' : 'pointer';
+    }
+    if (this.elements.modeNextBtn) {
+      this.elements.modeNextBtn.disabled = this.isSpinning;
+      this.elements.modeNextBtn.style.opacity = this.isSpinning ? '0.5' : '1';
+      this.elements.modeNextBtn.style.cursor = this.isSpinning ? 'not-allowed' : 'pointer';
+    }
+    
+    // 更新离开按钮
     if (this.elements.leaveBtn) {
       this.elements.leaveBtn.disabled = this.isSpinning;
       this.elements.leaveBtn.style.opacity = this.isSpinning ? '0.5' : '1';
+      this.elements.leaveBtn.style.cursor = this.isSpinning ? 'not-allowed' : 'pointer';
     }
   }
 
@@ -880,13 +897,11 @@ export class GamblerUI {
   renderPlaceholderReel() {
     if (!this.elements.reelStrip) return;
     this.elements.reelStrip.innerHTML = '';
-    // 填充一些随机初始图标
-    for (let i = 0; i < 5; i++) {
-      const el = document.createElement('div');
-      el.className = 'gambler-item-card quality-COMMON';
-      el.textContent = ['⚔️', '🛡️', '💍', '💊', '💰'][i % 5];
-      this.elements.reelStrip.appendChild(el);
-    }
+    // 显示提示文字
+    const placeholder = document.createElement('div');
+    placeholder.style.cssText = 'width: 100%; text-align: center; color: #888; font-size: 14px; padding: 20px;';
+    placeholder.textContent = '点击按钮开始旋转...';
+    this.elements.reelStrip.appendChild(placeholder);
   }
 
   /**
@@ -1338,9 +1353,17 @@ export class GamblerUI {
         if (this.elements.reelStrip) {
           // 渲染最终结果
           this.elements.reelStrip.innerHTML = '';
+          this.elements.reelStrip.style.display = 'flex';
+          this.elements.reelStrip.style.alignItems = 'center';
+          this.elements.reelStrip.style.justifyContent = 'center';
+          
           const el = document.createElement('div');
           el.className = `gambler-item-card quality-${finalReward.quality}`;
           el.textContent = finalReward.icon || '?';
+          el.style.background = 'transparent';
+          el.style.border = 'none';
+          el.style.opacity = '1';
+          el.style.transform = 'scale(1.3)';
           this.elements.reelStrip.appendChild(el);
         }
         // 短暂延迟以显示结果
