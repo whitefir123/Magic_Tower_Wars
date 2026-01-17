@@ -80,8 +80,21 @@ export class ParticleSystem {
     // 获取类型默认配置
     const typeConfig = this.particleConfig[type] || this.particleConfig.dust;
 
-    // 限制粒子数量
-    const actualCount = Math.min(count, this.maxParticles - this.particles.length);
+    // 限制粒子数量（内存压力处理）
+    let maxAllowed = this.maxParticles - this.particles.length;
+    
+    // 如果已经有很多粒子，进一步限制
+    if (this.particles.length > this.maxParticles * 0.8) {
+      maxAllowed = Math.floor(maxAllowed * 0.5);
+      console.warn('High particle count, reducing emission');
+    }
+    
+    const actualCount = Math.min(count, maxAllowed);
+    
+    if (actualCount <= 0) {
+      console.warn('Particle limit reached, skipping emission');
+      return;
+    }
 
     for (let i = 0; i < actualCount; i++) {
       // 从池中获取或创建新粒子

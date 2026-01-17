@@ -14,6 +14,12 @@ export const ACH_ONE_SHOT = 'ACH_ONE_SHOT';
 export const ACH_SPEED_RUN = 'ACH_SPEED_RUN';
 export const ACH_PACIFIST_FAIL = 'ACH_PACIFIST_FAIL';
 
+// 赌博相关成就
+export const ACH_LUCKY_EMPEROR = 'ACH_LUCKY_EMPEROR'; // 欧皇
+export const ACH_UNLUCKY_SOUL = 'ACH_UNLUCKY_SOUL'; // 非酋（保底）
+export const ACH_HIGH_ROLLER = 'ACH_HIGH_ROLLER'; // 梭哈王
+export const ACH_BROKE_GAMBLER = 'ACH_BROKE_GAMBLER'; // 破产边缘
+
 /**
  * 成就数据定义
  * 每个成就包含：
@@ -64,6 +70,30 @@ export const ACHIEVEMENTS = {
     title: '并不是和平主义',
     description: '累计击杀500个敌人',
     hint: '你的双手沾满了鲜血...'
+  },
+  [ACH_LUCKY_EMPEROR]: {
+    id: ACH_LUCKY_EMPEROR,
+    title: '欧皇',
+    description: '连续3次获得史诗或以上品质',
+    hint: '命运女神的宠儿，幸运之光永远照耀着你...'
+  },
+  [ACH_UNLUCKY_SOUL]: {
+    id: ACH_UNLUCKY_SOUL,
+    title: '非酋之王',
+    description: '累计触发保底10次',
+    hint: '运气不好？没关系，保底会保护你的...'
+  },
+  [ACH_HIGH_ROLLER]: {
+    id: ACH_HIGH_ROLLER,
+    title: '梭哈王',
+    description: '使用豪赌旋转获得传说品质',
+    hint: '敢于冒险的人，才能获得最大的回报...'
+  },
+  [ACH_BROKE_GAMBLER]: {
+    id: ACH_BROKE_GAMBLER,
+    title: '破产边缘',
+    description: '在金币少于100时进行赌博',
+    hint: '最后的赌注，孤注一掷...'
   }
 };
 

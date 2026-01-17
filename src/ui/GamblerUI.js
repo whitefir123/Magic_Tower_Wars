@@ -14,6 +14,7 @@ import { ParticleSystem } from './ParticleSystem.js';
 import { AnimationController } from './AnimationController.js';
 import { HistoryTracker } from './HistoryTracker.js';
 import { GamblerNPC } from './GamblerNPC.js';
+import { AccessibilityManager } from './AccessibilityManager.js';
 
 /**
  * GamblerUI - 赌博界面管理器
@@ -47,6 +48,12 @@ export class GamblerUI {
     this.player = null;
     this.isSpinning = false;
     this.spinStage = 0; // 0: idle, 1: spinning, 2: result
+    
+    // 防抖和错误处理
+    this.lastSpinTime = 0;
+    this.spinDebounceMs = 300; // 防止快速点击
+    this.backgroundImageLoaded = false;
+    this.backgroundImageError = false
 
     // DOM 元素引用
     this.elements = {
@@ -66,6 +73,14 @@ export class GamblerUI {
     this.animationController = null;
     this.historyTracker = new HistoryTracker(5);
     this.gamblerNPC = new GamblerNPC();
+    this.accessibilityManager = null;
+
+    // 成就追踪
+    this.achievementTracking = {
+      consecutiveRare: 0, // 连续史诗+次数
+      totalPityTriggers: 0, // 总保底触发次数（从元存档加载）
+      lastSpinWasHighRoller: false // 上次是否豪赌
+    };
 
     // 初始化
     this.init();
@@ -99,6 +114,11 @@ export class GamblerUI {
         this.animationController.resultEffects.particleSystem = this.particleSystem;
       }
     }
+
+    // 初始化无障碍管理器
+    if (!this.accessibilityManager) {
+      this.accessibilityManager = new AccessibilityManager(this);
+    }
   }
 
   /**
@@ -114,6 +134,12 @@ export class GamblerUI {
         box-shadow: 0 10px 40px rgba(0,0,0,0.5);
         border-radius: 15px;
         backdrop-filter: blur(5px);
+        /* 回退渐变背景（如果图片加载失败） */
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      }
+      
+      .slot-machine-container.image-loaded {
+        background-image: var(--slot-bg-image);
       }
       
       .gambler-reel-container {
@@ -217,6 +243,87 @@ export class GamblerUI {
         position: absolute;
         pointer-events: none;
       }
+      
+      /* 响应式布局 */
+      @media (max-width: 768px) {
+        .gambler-panel {
+          width: 95% !important;
+          max-width: 95% !important;
+        }
+        
+        .slot-machine-container {
+          padding: 20px 10px !important;
+          min-height: 350px !important;
+        }
+        
+        .modal-title-shop {
+          font-size: 18px !important;
+        }
+        
+        .gambler-reel-container {
+          height: 80px !important;
+        }
+        
+        .gambler-item-card {
+          min-width: 70px !important;
+          height: 70px !important;
+          font-size: 24px !important;
+        }
+        
+        #gambler-result {
+          font-size: 18px !important;
+        }
+      }
+      
+      @media (max-width: 480px) {
+        .slot-machine-container {
+          padding: 15px 8px !important;
+          min-height: 320px !important;
+        }
+        
+        .modal-title-shop {
+          font-size: 16px !important;
+        }
+        
+        .gambler-reel-container {
+          height: 70px !important;
+        }
+        
+        .gambler-item-card {
+          min-width: 60px !important;
+          height: 60px !important;
+          font-size: 20px !important;
+        }
+        
+        #gambler-result {
+          font-size: 16px !important;
+        }
+        
+        .jackpot-counter {
+          font-size: 20px !important;
+        }
+      }
+      
+      @media (min-width: 1920px) {
+        .gambler-panel {
+          width: 700px !important;
+        }
+        
+        .slot-machine-container {
+          padding: 50px 30px !important;
+          min-height: 500px !important;
+        }
+        
+        .gambler-reel-container {
+          height: 120px !important;
+        }
+        
+        .gambler-item-card {
+          min-width: 100px !important;
+          height: 100px !important;
+          font-size: 36px !important;
+        }
+      }
     `;
     document.head.appendChild(style);
   }
@@ -229,7 +336,7 @@ export class GamblerUI {
     return `
     <div class="gambler-panel" style="width: 600px; max-width: 95%;">
       <!-- 老虎机背景容器 -->
-      <div class="slot-machine-container" style="position: relative; background-image: url('https://i.postimg.cc/XYVXxV9N/dutuji.png'); background-size: contain; background-repeat: no-repeat; background-position: center; padding: 40px 20px; min-height: 400px;">
+      <div class="slot-machine-container" id="slot-machine-bg" style="position: relative; background-size: contain; background-repeat: no-repeat; background-position: center; padding: 40px 20px; min-height: 400px;">
         
         <h2 class="modal-title-shop" style="margin-bottom: 10px; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">🎰 命运的老虎机 🎰</h2>
         
@@ -237,6 +344,18 @@ export class GamblerUI {
         <div style="text-align: center; margin-bottom: 15px; background: rgba(0,0,0,0.7); padding: 8px; border-radius: 5px; border: 2px solid #d4af37;">
           <div style="color: #aaa; font-size: 14px;">当前累积奖池 (JACKPOT)</div>
           <div id="gambler-jackpot" class="jackpot-counter">0 G</div>
+        </div>
+        
+        <!-- 保底进度条 -->
+        <div style="margin-bottom: 15px; background: rgba(0,0,0,0.7); padding: 8px; border-radius: 5px; border: 2px solid #666;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <div style="color: #aaa; font-size: 12px;">保底进度</div>
+            <div id="gambler-pity-count" style="color: #ff6600; font-size: 12px; font-weight: bold;">0/8</div>
+          </div>
+          <div style="width: 100%; height: 8px; background: rgba(0,0,0,0.5); border-radius: 4px; overflow: hidden;">
+            <div id="gambler-pity-bar" style="height: 100%; background: linear-gradient(90deg, #ff6600, #ffaa00); width: 0%; transition: width 0.3s ease-out;"></div>
+          </div>
+          <div id="gambler-pity-hint" style="color: #888; font-size: 10px; margin-top: 3px; text-align: center; min-height: 12px;"></div>
         </div>
         
         <!-- 赌徒消息 -->
@@ -274,17 +393,27 @@ export class GamblerUI {
         
         <!-- 按钮组 -->
         <div class="flex-center" style="flex-direction: row; gap: 15px; justify-content: space-around; margin-top: 20px;">
-          <button id="gambler-btn-standard" class="btn-core btn-transaction" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); width: 45%;">
+          <button id="gambler-btn-standard" class="btn-core btn-transaction" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); width: 45%; min-height: 50px; padding: 12px;">
             <div>标准旋转</div>
             <div style="font-size: 12px; opacity: 0.8;">50 G</div>
           </button>
-          <button id="gambler-btn-high-roller" class="btn-core btn-transaction" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); width: 45%;">
+          <button id="gambler-btn-high-roller" class="btn-core btn-transaction" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); width: 45%; min-height: 50px; padding: 12px;">
             <div>豪赌旋转</div>
             <div style="font-size: 12px; opacity: 0.8;">200 G</div>
           </button>
         </div>
         
-        <button id="gambler-btn-leave" class="btn-core btn-modal-close" style="margin-top: 15px; width: 100%;">
+        <!-- 10连抽按钮 -->
+        <div class="flex-center" style="margin-top: 10px;">
+          <button id="gambler-btn-batch" class="btn-core btn-transaction" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); width: 95%; min-height: 50px; padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <span>🎰 10连抽</span>
+              <span style="font-size: 12px; opacity: 0.8;">450 G <span style="text-decoration: line-through; opacity: 0.6;">500 G</span></span>
+            </div>
+          </button>
+        </div>
+        
+        <button id="gambler-btn-leave" class="btn-core btn-modal-close" style="margin-top: 15px; width: 100%; min-height: 50px; padding: 12px;">
           离开
         </button>
       </div>
@@ -317,6 +446,10 @@ export class GamblerUI {
     this.elements.leaveBtn = document.getElementById('gambler-btn-leave');
     this.elements.skipHint = document.getElementById('gambler-skip-hint');
     this.elements.historyContainer = document.getElementById('gambler-history');
+    this.elements.pityCount = document.getElementById('gambler-pity-count');
+    this.elements.pityBar = document.getElementById('gambler-pity-bar');
+    this.elements.pityHint = document.getElementById('gambler-pity-hint');
+    this.elements.batchBtn = document.getElementById('gambler-btn-batch');
   }
 
   /**
@@ -348,9 +481,15 @@ export class GamblerUI {
     if (this.elements.highRollerBtn) {
       this.elements.highRollerBtn.addEventListener('click', () => this.spin('HIGH_ROLLER'));
     }
+    
+    // 10连抽逻辑
+    if (this.elements.batchBtn) {
+      this.elements.batchBtn.addEventListener('click', () => this.batchSpin());
+    }
 
-    // 快速跳过逻辑
+    // 快速跳过逻辑（点击和滑动）
     if (this.elements.reelContainer) {
+      // 点击跳过
       this.elements.reelContainer.addEventListener('click', () => {
         if (this.isSpinning && this.animationController) {
           this.animationController.requestSkip();
@@ -359,6 +498,39 @@ export class GamblerUI {
           }
         }
       });
+
+      // 触摸滑动跳过
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchStartTime = 0;
+
+      this.elements.reelContainer.addEventListener('touchstart', (e) => {
+        if (!this.isSpinning) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+      }, { passive: true });
+
+      this.elements.reelContainer.addEventListener('touchend', (e) => {
+        if (!this.isSpinning || !this.animationController) return;
+        
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+        const touchEndTime = Date.now();
+        
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        const deltaTime = touchEndTime - touchStartTime;
+        
+        // 检测快速滑动（任意方向，距离>50px，时间<300ms）
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        if (distance > 50 && deltaTime < 300) {
+          this.animationController.requestSkip();
+          if (this.elements.skipHint) {
+            this.elements.skipHint.classList.add('hidden');
+          }
+        }
+      }, { passive: true });
     }
   }
 
@@ -382,6 +554,12 @@ export class GamblerUI {
         if (typeof this.player.stats.gamblerPityCount === 'undefined') {
           this.player.stats.gamblerPityCount = 0;
         }
+        
+        // 验证和清理状态
+        this.validateAndCleanState();
+        
+        // 加载成就追踪数据
+        this.loadAchievementTracking();
       }
 
       this.elements.overlay.classList.remove('hidden');
@@ -390,6 +568,9 @@ export class GamblerUI {
       this.isOpen = true;
       this.isSpinning = false;
       this.spinStage = 0;
+
+      // 加载背景图片（带错误处理）
+      this.loadBackgroundImage();
 
       // 重置滚轮位置
       if (this.elements.reelStrip) {
@@ -414,6 +595,85 @@ export class GamblerUI {
   }
 
   /**
+   * 加载成就追踪数据
+   */
+  loadAchievementTracking() {
+    const game = window.game;
+    if (game && game.metaSaveSystem) {
+      // 从元存档加载总保底触发次数
+      const stats = game.metaSaveSystem.achievementStats || {};
+      this.achievementTracking.totalPityTriggers = stats.gamblerPityTriggers || 0;
+    }
+  }
+
+  /**
+   * 保存成就追踪数据
+   */
+  saveAchievementTracking() {
+    const game = window.game;
+    if (game && game.metaSaveSystem) {
+      if (!game.metaSaveSystem.achievementStats) {
+        game.metaSaveSystem.achievementStats = {};
+      }
+      game.metaSaveSystem.achievementStats.gamblerPityTriggers = this.achievementTracking.totalPityTriggers;
+      game.metaSaveSystem.save();
+    }
+  }
+
+  /**
+   * 验证和清理玩家状态
+   */
+  validateAndCleanState() {
+    if (!this.player || !this.player.stats) return;
+
+    // 验证 Jackpot 池
+    if (typeof this.player.stats.gamblerJackpotPool !== 'number' || 
+        isNaN(this.player.stats.gamblerJackpotPool) ||
+        this.player.stats.gamblerJackpotPool < 0) {
+      console.warn('Invalid jackpot pool, resetting to base');
+      this.player.stats.gamblerJackpotPool = GAMBLER_CONFIG.JACKPOT.BASE_POOL;
+    }
+
+    // 验证保底计数
+    if (typeof this.player.stats.gamblerPityCount !== 'number' ||
+        isNaN(this.player.stats.gamblerPityCount) ||
+        this.player.stats.gamblerPityCount < 0) {
+      console.warn('Invalid pity count, resetting to 0');
+      this.player.stats.gamblerPityCount = 0;
+    }
+
+    // 限制保底计数上限
+    if (this.player.stats.gamblerPityCount > 20) {
+      console.warn('Pity count too high, capping at 20');
+      this.player.stats.gamblerPityCount = 20;
+    }
+  }
+
+  /**
+   * 加载背景图片（带错误处理）
+   */
+  loadBackgroundImage() {
+    const bgUrl = 'https://i.postimg.cc/XYVXxV9N/dutuji.png';
+    const container = document.getElementById('slot-machine-bg');
+    
+    if (!container || this.backgroundImageLoaded) return;
+
+    const img = new Image();
+    img.onload = () => {
+      container.style.setProperty('--slot-bg-image', `url('${bgUrl}')`);
+      container.classList.add('image-loaded');
+      this.backgroundImageLoaded = true;
+      console.log('✓ 背景图片加载成功');
+    };
+    img.onerror = () => {
+      console.warn('背景图片加载失败，使用回退渐变');
+      this.backgroundImageError = true;
+      // 容器已经有回退渐变，无需额外操作
+    };
+    img.src = bgUrl;
+  }
+
+  /**
    * 渲染历史记录
    */
   renderHistory() {
@@ -434,8 +694,32 @@ export class GamblerUI {
         this.particleSystem.clear();
       }
 
+      // 清理动画控制器
+      if (this.animationController) {
+        this.animationController.cleanup();
+      }
+
+      // 清理 NPC
+      if (this.gamblerNPC) {
+        this.gamblerNPC.hide();
+      }
+
+      // 重置状态
+      this.isSpinning = false;
+      this.spinStage = 0;
+      this.lastSpinTime = 0;
+
+      // 清理滚轮
+      if (this.elements.reelStrip) {
+        this.elements.reelStrip.style.transition = 'none';
+        this.elements.reelStrip.style.transform = 'translateX(0)';
+        this.elements.reelStrip.style.filter = 'none';
+      }
+
       const game = window.game;
       if (game) game.isPaused = false;
+      
+      console.log('✓ GamblerUI 已关闭并清理资源');
     }
   }
 
@@ -444,6 +728,63 @@ export class GamblerUI {
     this.updateMessage();
     this.updatePriceDisplay();
     this.updateJackpotDisplay();
+    this.updatePityDisplay();
+  }
+
+  /**
+   * 更新保底显示
+   */
+  updatePityDisplay() {
+    if (!this.player) return;
+
+    const pityCount = this.player.stats.gamblerPityCount || 0;
+    const pityThreshold = 8; // 标准保底阈值
+    
+    // 更新计数
+    if (this.elements.pityCount) {
+      this.elements.pityCount.textContent = `${pityCount}/${pityThreshold}`;
+      
+      // 接近保底时变色
+      if (pityCount >= 6) {
+        this.elements.pityCount.style.color = '#ff3300';
+        this.elements.pityCount.style.animation = 'pulse-hint 1s infinite';
+      } else if (pityCount >= 4) {
+        this.elements.pityCount.style.color = '#ff6600';
+        this.elements.pityCount.style.animation = 'none';
+      } else {
+        this.elements.pityCount.style.color = '#ffaa00';
+        this.elements.pityCount.style.animation = 'none';
+      }
+    }
+
+    // 更新进度条
+    if (this.elements.pityBar) {
+      const progress = Math.min((pityCount / pityThreshold) * 100, 100);
+      this.elements.pityBar.style.width = `${progress}%`;
+      
+      // 接近保底时改变颜色
+      if (pityCount >= 6) {
+        this.elements.pityBar.style.background = 'linear-gradient(90deg, #ff0000, #ff6600)';
+      } else {
+        this.elements.pityBar.style.background = 'linear-gradient(90deg, #ff6600, #ffaa00)';
+      }
+    }
+
+    // 更新提示文本
+    if (this.elements.pityHint) {
+      if (pityCount >= pityThreshold) {
+        this.elements.pityHint.textContent = '保底已触发！下次必出好货！';
+        this.elements.pityHint.style.color = '#ff3300';
+      } else if (pityCount >= 6) {
+        this.elements.pityHint.textContent = `还差 ${pityThreshold - pityCount} 次触发保底`;
+        this.elements.pityHint.style.color = '#ff6600';
+      } else if (pityCount >= 3) {
+        this.elements.pityHint.textContent = '运气正在积累...';
+        this.elements.pityHint.style.color = '#888';
+      } else {
+        this.elements.pityHint.textContent = '';
+      }
+    }
   }
 
   updateJackpotDisplay() {
@@ -499,6 +840,16 @@ export class GamblerUI {
 
     updateBtn(this.elements.standardBtn, GAMBLE_TIERS.STANDARD.cost);
     updateBtn(this.elements.highRollerBtn, GAMBLE_TIERS.HIGH_ROLLER.cost);
+    
+    // 10连抽按钮
+    if (this.elements.batchBtn) {
+      const batchCost = 450;
+      const canAfford = playerGold >= batchCost;
+      this.elements.batchBtn.disabled = !canAfford || this.isSpinning;
+      this.elements.batchBtn.style.opacity = (canAfford && !this.isSpinning) ? '1' : '0.5';
+      this.elements.batchBtn.style.cursor = (canAfford && !this.isSpinning) ? 'pointer' : 'not-allowed';
+    }
+    
     if (this.elements.leaveBtn) {
       this.elements.leaveBtn.disabled = this.isSpinning;
       this.elements.leaveBtn.style.opacity = this.isSpinning ? '0.5' : '1';
@@ -527,8 +878,25 @@ export class GamblerUI {
     if (this.isSpinning) return;
     if (!this.player) return;
 
+    // 防抖检查
+    const now = Date.now();
+    if (now - this.lastSpinTime < this.spinDebounceMs) {
+      console.log('Spin debounced - too fast');
+      return;
+    }
+    this.lastSpinTime = now;
+
     const tier = GAMBLE_TIERS[tierKey];
     if (this.player.stats.gold < tier.cost) return;
+
+    // 成就检测：破产边缘（金币<100时赌博）
+    const game = window.game;
+    if (this.player.stats.gold < 100 && game.achievementSystem) {
+      game.achievementSystem.unlockAchievement('ACH_BROKE_GAMBLER');
+    }
+
+    // 记录是否豪赌
+    this.achievementTracking.lastSpinWasHighRoller = (tierKey === 'HIGH_ROLLER');
 
     // 1. 扣费 & Jackpot 贡献
     this.player.stats.gold -= tier.cost;
@@ -536,7 +904,6 @@ export class GamblerUI {
     this.player.stats.gamblerJackpotPool += contrib;
     
     // 更新 UI
-    const game = window.game;
     if (game.ui && game.ui.updateStats) game.ui.updateStats(this.player);
     this.render();
 
@@ -551,14 +918,23 @@ export class GamblerUI {
       this.elements.skipHint.classList.remove('hidden');
     }
 
-    // 3. 播放音效
-    if (game.audio) game.audio.playBookFlip(); // 暂用翻书声模拟启动
+    // 3. 播放音效（带错误处理）
+    try {
+      if (game.audio) game.audio.playBookFlip();
+    } catch (error) {
+      console.warn('Audio playback failed:', error);
+    }
 
     // 4. 决定结果 (后端逻辑)
     const reward = this.determineReward(tier);
 
-    // 5. 执行视觉动画 (前端展示)
-    await this.performReelAnimation(reward);
+    // 5. 执行视觉动画 (前端展示) - 带错误处理
+    try {
+      await this.performReelAnimation(reward);
+    } catch (error) {
+      console.error('Animation failed, showing result immediately:', error);
+      // 回退：立即显示结果
+    }
 
     // 隐藏跳过提示
     if (this.elements.skipHint) {
@@ -568,10 +944,139 @@ export class GamblerUI {
     // 6. 显示结果 & 发放奖励
     await this.showResult(reward);
 
-    // 7. 解锁
+    // 7. 成就检测
+    this.checkAchievements(reward);
+
+    // 8. 解锁
     this.isSpinning = false;
     this.spinStage = 0;
     this.render();
+  }
+
+  /**
+   * 批量抽取（10连抽）
+   */
+  async batchSpin() {
+    if (this.isSpinning) return;
+    if (!this.player) return;
+
+    const batchCost = 450;
+    const batchCount = 10;
+
+    if (this.player.stats.gold < batchCost) return;
+
+    // 扣费
+    this.player.stats.gold -= batchCost;
+    const game = window.game;
+    if (game.ui && game.ui.updateStats) game.ui.updateStats(this.player);
+
+    // 锁定状态
+    this.isSpinning = true;
+    this.spinStage = 1;
+
+    // 存储所有结果
+    const results = [];
+
+    // 执行 10 次抽取
+    for (let i = 0; i < batchCount; i++) {
+      const tier = GAMBLE_TIERS.STANDARD;
+      
+      // Jackpot 贡献
+      const contrib = Math.floor((batchCost / batchCount) * GAMBLER_CONFIG.JACKPOT.CONTRIBUTION_RATE);
+      this.player.stats.gamblerJackpotPool += contrib;
+
+      // 决定结果
+      const reward = this.determineReward(tier);
+      results.push(reward);
+
+      // 如果是稀有以上，暂停展示
+      if (['EPIC', 'LEGENDARY', 'JACKPOT'].includes(reward.quality)) {
+        // 快速动画
+        await this.performReelAnimation(reward);
+        await this.showResult(reward);
+        await this.sleep(800); // 短暂暂停
+      } else {
+        // 直接应用奖励，不显示动画
+        this.applyReward(reward);
+        
+        // 添加到历史
+        const totalItems = 50;
+        const winnerIndex = 45;
+        const items = [];
+        for (let j = 0; j < totalItems; j++) {
+          if (j === winnerIndex) {
+            items.push(reward);
+          } else {
+            const randomQ = Math.random() < 0.8 ? 'COMMON' : 'UNCOMMON';
+            items.push({ icon: '?', quality: randomQ });
+          }
+        }
+        const nearMissResult = this.historyTracker.detectNearMiss(winnerIndex, items);
+        this.historyTracker.addResult(reward, nearMissResult.isNearMiss, nearMissResult.missedItem?.quality);
+      }
+    }
+
+    // 显示汇总
+    this.showBatchSummary(results);
+
+    // 更新显示
+    this.render();
+    this.renderHistory();
+
+    // 解锁
+    this.isSpinning = false;
+    this.spinStage = 0;
+  }
+
+  /**
+   * 显示批量抽取汇总
+   * @param {Array} results - 结果数组
+   */
+  showBatchSummary(results) {
+    // 统计各品质数量
+    const stats = {};
+    results.forEach(r => {
+      stats[r.quality] = (stats[r.quality] || 0) + 1;
+    });
+
+    // 构建汇总消息
+    let summary = '🎰 10连抽结果汇总 🎰\n\n';
+    const qualityOrder = ['JACKPOT', 'LEGENDARY', 'EPIC', 'RARE', 'UNCOMMON', 'COMMON'];
+    
+    qualityOrder.forEach(quality => {
+      if (stats[quality]) {
+        const color = this.historyTracker.getQualityColor(quality);
+        summary += `${quality}: ${stats[quality]} 个\n`;
+      }
+    });
+
+    // NPC 评论
+    const hasLegendary = stats.LEGENDARY || stats.JACKPOT;
+    const hasEpic = stats.EPIC;
+    
+    let npcComment = '';
+    if (hasLegendary) {
+      npcComment = '\n\n赌徒：天选之人！这运气简直逆天！';
+    } else if (hasEpic) {
+      npcComment = '\n\n赌徒：不错的运气！史诗级的收获！';
+    } else {
+      npcComment = '\n\n赌徒：还不错，继续努力吧！';
+    }
+
+    summary += npcComment;
+
+    alert(summary);
+
+    // NPC 对话
+    if (this.gamblerNPC) {
+      if (hasLegendary) {
+        this.gamblerNPC.say('10连出传说！你的运气爆棚了！', 3000);
+      } else if (hasEpic) {
+        this.gamblerNPC.say('10连出史诗，运气不错！', 3000);
+      } else {
+        this.gamblerNPC.say('10连完成，继续加油！', 2000);
+      }
+    }
   }
 
   /**
@@ -595,11 +1100,17 @@ export class GamblerUI {
       : GAMBLER_CONFIG.PITY.THRESHOLD_STANDARD;
     
     let chances = { ...tier.chances };
+    let pityTriggered = false;
     
     if (this.player.stats.gamblerPityCount >= pityThreshold) {
       console.log('Gambler Pity Triggered!');
+      pityTriggered = true;
       // 应用保底权重：移除垃圾，大幅提升稀有度
       chances = GAMBLER_CONFIG.PITY.WEIGHT_MODIFIER;
+      
+      // 成就追踪：保底触发
+      this.achievementTracking.totalPityTriggers++;
+      this.saveAchievementTracking();
     }
 
     // 3. 滚动品质
@@ -614,7 +1125,42 @@ export class GamblerUI {
     }
 
     // 5. 根据品质生成具体物品
-    return this.generateItemByQuality(quality, tier);
+    const reward = this.generateItemByQuality(quality, tier);
+    reward.pityTriggered = pityTriggered;
+    return reward;
+  }
+
+  /**
+   * 检测成就
+   * @param {Object} reward - 奖励对象
+   */
+  checkAchievements(reward) {
+    const game = window.game;
+    if (!game || !game.achievementSystem) return;
+
+    // 1. 欧皇成就：连续3次史诗+
+    if (['EPIC', 'LEGENDARY', 'JACKPOT'].includes(reward.quality)) {
+      this.achievementTracking.consecutiveRare++;
+      if (this.achievementTracking.consecutiveRare >= 3) {
+        game.achievementSystem.unlockAchievement('ACH_LUCKY_EMPEROR');
+      }
+    } else {
+      // 重置连续计数
+      this.achievementTracking.consecutiveRare = 0;
+    }
+
+    // 2. 非酋之王成就：累计触发保底10次
+    if (this.achievementTracking.totalPityTriggers >= 10) {
+      game.achievementSystem.unlockAchievement('ACH_UNLUCKY_SOUL');
+    }
+
+    // 3. 梭哈王成就：豪赌获得传说
+    if (this.achievementTracking.lastSpinWasHighRoller && reward.quality === 'LEGENDARY') {
+      game.achievementSystem.unlockAchievement('ACH_HIGH_ROLLER');
+    }
+
+    // 重置豪赌标记
+    this.achievementTracking.lastSpinWasHighRoller = false;
   }
 
   generateItemByQuality(quality, tier) {
@@ -735,6 +1281,9 @@ export class GamblerUI {
       this.initSystems();
     }
 
+    // 检查减少动画模式
+    const skipAnimation = this.accessibilityManager && this.accessibilityManager.shouldSkipAnimation();
+
     // 1. 生成滚动序列 (例如 50 个物品，第 45 个是结果)
     const totalItems = 50;
     const winnerIndex = 45;
@@ -764,15 +1313,43 @@ export class GamblerUI {
       nearMissResult.missedItem?.quality
     );
 
-    // 4. 使用新动画控制器执行动画
-    await this.animationController.playSpinAnimation(finalReward, items, winnerIndex);
+    // 4. 使用新动画控制器执行动画（带错误处理和减少动画支持）
+    try {
+      if (skipAnimation) {
+        // 减少动画模式：立即显示结果
+        if (this.elements.reelStrip) {
+          // 渲染最终结果
+          this.elements.reelStrip.innerHTML = '';
+          const el = document.createElement('div');
+          el.className = `gambler-item-card quality-${finalReward.quality}`;
+          el.textContent = finalReward.icon || '?';
+          this.elements.reelStrip.appendChild(el);
+        }
+        // 短暂延迟以显示结果
+        await this.sleep(500);
+      } else {
+        // 正常动画
+        await this.animationController.playSpinAnimation(finalReward, items, winnerIndex);
+      }
+    } catch (error) {
+      console.error('Animation controller error:', error);
+      // 回退：立即显示结果
+      if (this.elements.reelStrip) {
+        this.elements.reelStrip.style.transition = 'none';
+        this.elements.reelStrip.style.transform = 'translateX(0)';
+      }
+    }
     
     // 5. 更新历史显示
     this.renderHistory();
     
-    // 播放"叮"的一声
-    const game = window.game;
-    if (game && game.audio) game.audio.playCoinDrop();
+    // 播放"叮"的一声（带错误处理）
+    try {
+      const game = window.game;
+      if (game && game.audio) game.audio.playCoinDrop();
+    } catch (error) {
+      console.warn('Coin drop sound failed:', error);
+    }
   }
 
   /**
@@ -781,17 +1358,22 @@ export class GamblerUI {
   async showResult(reward) {
     const game = window.game;
 
-    // 1. 播放音效
-    if (game && game.audio) {
-      if (reward.quality === 'JACKPOT') {
-        game.audio.playLevelUp(); // 暂用升级音效代替大奖音效
-      } else if (['RARE', 'EPIC', 'LEGENDARY'].includes(reward.quality)) {
-        game.audio.playCrit({ volume: 0.6 });
-      } else if (reward.type === 'trash') {
-        game.audio.playCloth({ volume: 0.5 });
-      } else {
-        game.audio.playCoins({ forceCategory: 'ui' });
+    // 1. 播放音效（带错误处理）
+    try {
+      if (game && game.audio) {
+        if (reward.quality === 'JACKPOT') {
+          game.audio.playLevelUp(); // 暂用升级音效代替大奖音效
+        } else if (['RARE', 'EPIC', 'LEGENDARY'].includes(reward.quality)) {
+          game.audio.playCrit({ volume: 0.6 });
+        } else if (reward.type === 'trash') {
+          game.audio.playCloth({ volume: 0.5 });
+        } else {
+          game.audio.playCoins({ forceCategory: 'ui' });
+        }
       }
+    } catch (error) {
+      console.warn('Audio playback error:', error);
+      // 继续执行，不中断流程
     }
 
     // 2. 显示文本
@@ -811,7 +1393,16 @@ export class GamblerUI {
       }
     }
 
-    // 3. NPC 对话
+    // 3. 屏幕阅读器公告
+    if (this.accessibilityManager) {
+      let announcement = `获得 ${reward.quality} 品质物品：${reward.name}`;
+      if (reward.quality === 'JACKPOT') {
+        announcement = `大奖！赢得 ${reward.value} 金币！`;
+      }
+      this.accessibilityManager.announceResult(announcement);
+    }
+
+    // 4. NPC 对话
     const lastHistory = this.historyTracker.getHistory()[0];
     const npcContext = {
       result: reward,
@@ -823,10 +1414,10 @@ export class GamblerUI {
     const dialogue = this.gamblerNPC.getContextualDialogue(npcContext);
     this.gamblerNPC.say(dialogue, 3000);
 
-    // 4. 应用奖励
+    // 5. 应用奖励
     this.applyReward(reward);
 
-    // 5. 成就检测
+    // 6. 成就检测
     if (game.achievementSystem) {
       if (reward.type === 'trash') {
         game.achievementSystem.check('onGamble', reward);
@@ -835,7 +1426,7 @@ export class GamblerUI {
       }
     }
     
-    // 6. 记录日志
+    // 7. 记录日志
     if (game.ui && game.ui.logMessage) {
       game.ui.logMessage(`获得 [${reward.quality}] ${reward.name}！`, 'gain');
     }
@@ -935,6 +1526,12 @@ export class GamblerUI {
     if (this.gamblerNPC) {
       this.gamblerNPC.destroy();
       this.gamblerNPC = null;
+    }
+
+    // 销毁无障碍管理器
+    if (this.accessibilityManager) {
+      this.accessibilityManager.destroy();
+      this.accessibilityManager = null;
     }
 
     this.player = null;
