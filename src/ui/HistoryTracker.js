@@ -87,9 +87,10 @@ export class HistoryTracker {
     // 创建历史卡片容器
     const historyContainer = document.createElement('div');
     historyContainer.style.display = 'flex';
-    historyContainer.style.gap = '5px';
+    historyContainer.style.gap = '6px';
     historyContainer.style.justifyContent = 'center';
     historyContainer.style.flexWrap = 'wrap';
+    historyContainer.style.padding = '4px 0';
 
     this.history.forEach((entry, index) => {
       const card = this.createHistoryCard(entry, index);
@@ -109,19 +110,19 @@ export class HistoryTracker {
     const card = document.createElement('div');
     card.className = 'history-card';
     card.style.cssText = `
-      width: 50px;
-      height: 50px;
+      width: 45px;
+      height: 45px;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      background: rgba(0, 0, 0, 0.5);
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(20, 20, 20, 0.7) 100%);
       border: 2px solid ${this.getQualityColor(entry.reward.quality)};
-      border-radius: 5px;
-      font-size: 20px;
+      border-radius: 6px;
+      font-size: 18px;
       position: relative;
-      box-shadow: 0 0 5px ${this.getQualityColor(entry.reward.quality)};
-      transition: transform 0.2s;
+      box-shadow: 0 0 8px ${this.getQualityColor(entry.reward.quality)};
+      transition: transform 0.2s, box-shadow 0.2s;
       cursor: pointer;
     `;
 
@@ -134,28 +135,31 @@ export class HistoryTracker {
       nearMissIndicator.textContent = '!';
       nearMissIndicator.style.cssText = `
         position: absolute;
-        top: -5px;
-        right: -5px;
-        width: 15px;
-        height: 15px;
-        background: #ff6600;
+        top: -6px;
+        right: -6px;
+        width: 14px;
+        height: 14px;
+        background: linear-gradient(135deg, #ff6600 0%, #ff3300 100%);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: bold;
         color: white;
+        box-shadow: 0 0 4px rgba(255, 102, 0, 0.8);
       `;
       card.appendChild(nearMissIndicator);
     }
 
     // 悬停效果
     card.addEventListener('mouseenter', () => {
-      card.style.transform = 'scale(1.1)';
+      card.style.transform = 'scale(1.15)';
+      card.style.boxShadow = `0 0 12px ${this.getQualityColor(entry.reward.quality)}`;
     });
     card.addEventListener('mouseleave', () => {
       card.style.transform = 'scale(1)';
+      card.style.boxShadow = `0 0 8px ${this.getQualityColor(entry.reward.quality)}`;
     });
 
     // 点击显示详情
