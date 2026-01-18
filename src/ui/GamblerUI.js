@@ -236,6 +236,22 @@ export class GamblerUI {
         pointer-events: none;
       }
       
+      /* 按钮点击反馈动画 */
+      @keyframes buttonPress {
+        0% { transform: scale(1); }
+        50% { transform: scale(0.90); }
+        100% { transform: scale(1); }
+      }
+      
+      .button-press-animation {
+        animation: buttonPress 0.9s ease-out;
+      }
+      
+      /* 模式显示区域点击动画 */
+      .mode-display-press {
+        animation: buttonPress 0.2s ease-out;
+      }
+      
       /* 响应式布局 */
       @media (max-width: 768px) {
         .gambler-panel {
@@ -485,30 +501,51 @@ export class GamblerUI {
     this.elements.overlay._listenersInitialized = true;
 
     // 关闭逻辑
-    const closeAction = () => { if (!this.isSpinning) this.close(); };
+    const closeAction = () => { 
+      if (!this.isSpinning) {
+        // 触发离开按钮动画
+        this.triggerButtonAnimation(this.elements.leaveBtn);
+        this.close();
+      }
+    };
     
     const closeBtn = this.elements.overlay.querySelector('.gambler-close-btn, .btn-gambler-close');
-    if (closeBtn) closeBtn.addEventListener('click', closeAction);
+    if (closeBtn) closeBtn.addEventListener('click', (e) => {
+      this.triggerButtonAnimation(closeBtn);
+      closeAction();
+    });
 
     this.elements.overlay.addEventListener('click', (e) => {
       if (e.target === this.elements.overlay) closeAction();
     });
 
     if (this.elements.leaveBtn) {
-      this.elements.leaveBtn.addEventListener('click', closeAction);
+      this.elements.leaveBtn.addEventListener('click', (e) => {
+        this.triggerButtonAnimation(this.elements.leaveBtn);
+        closeAction();
+      });
     }
 
     // 模式切换逻辑
     if (this.elements.modePrevBtn) {
-      this.elements.modePrevBtn.addEventListener('click', () => this.switchMode(-1));
+      this.elements.modePrevBtn.addEventListener('click', () => {
+        this.triggerButtonAnimation(this.elements.modePrevBtn);
+        this.switchMode(-1);
+      });
     }
     if (this.elements.modeNextBtn) {
-      this.elements.modeNextBtn.addEventListener('click', () => this.switchMode(1));
+      this.elements.modeNextBtn.addEventListener('click', () => {
+        this.triggerButtonAnimation(this.elements.modeNextBtn);
+        this.switchMode(1);
+      });
     }
     
     // 点击中间文本区域进行抽奖
     if (this.elements.modeDisplay) {
-      this.elements.modeDisplay.addEventListener('click', () => this.confirmSpin());
+      this.elements.modeDisplay.addEventListener('click', () => {
+        this.triggerButtonAnimation(this.elements.modeDisplay);
+        this.confirmSpin();
+      });
     }
 
     // 快速跳过逻辑（点击和滑动）
@@ -781,6 +818,28 @@ export class GamblerUI {
   }
 
   /**
+   * 触发按钮点击动画
+   * @param {HTMLElement} element - 要添加动画的元素
+   */
+  triggerButtonAnimation(element) {
+    if (!element) return;
+    
+    // 移除旧的动画类（如果存在）
+    element.classList.remove('button-press-animation');
+    
+    // 强制重排以重启动画
+    void element.offsetWidth;
+    
+    // 添加动画类
+    element.classList.add('button-press-animation');
+    
+    // 动画结束后移除类
+    setTimeout(() => {
+      element.classList.remove('button-press-animation');
+    }, 200);
+  }
+
+  /**
    * 确认抽奖
    */
   confirmSpin() {
@@ -871,6 +930,63 @@ export class GamblerUI {
     if (this.elements.jackpotDisplay && this.player) {
       const pool = Math.floor(this.player.stats.gamblerJackpotPool || 0);
       this.elements.jackpotDisplay.textContent = `${pool.toLocaleString()} G`;
+    }
+  }
+
+  /**
+   * 显示"抽取完毕"浮现文字
+   */
+  showCompletionMessage() {
+    // 添加动画样式（如果还没有）
+    if (!document.getElementById('gambler-completion-animation')) {
+      const style = document.createElement('style');
+      style.id = 'gambler-completion-animation';
+      style.textContent = `
+        @keyframes gamblerFadeInOut {
+          0% { opacity: 0; transform: translate(-50%, 0); }
+          20% { opacity: 1; transform: translate(-50%, -10px); }
+          80% { opacity: 1; transform: translate(-50%, -10px); }
+          100% { opacity: 0; transform: translate(-50%, -20px); }
+        }
+        .gambler-completion-msg {
+          position: absolute !important;
+          left: 52% !important;
+          top: 190px !important;
+          transform: translate(-50%, 0) !important;
+          color: #ffd700 !important;
+          font-size: 18px !important;
+          font-weight: bold !important;
+          text-shadow: 2px 2px 4px rgba(0,0,0,0.8) !important;
+          pointer-events: none !important;
+          z-index: 10000 !important;
+          animation: gamblerFadeInOut 2s ease-in-out !important;
+          white-space: nowrap !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // 创建浮现文字元素
+    const completionMsg = document.createElement('div');
+    completionMsg.className = 'gambler-completion-msg';
+    completionMsg.textContent = '抽取完毕';
+
+    // 添加到 slot-machine-container 内部
+    const container = document.getElementById('slot-machine-bg');
+    if (container) {
+      container.appendChild(completionMsg);
+      
+      console.log('[GamblerUI] 显示完成消息');
+      
+      // 2秒后移除
+      setTimeout(() => {
+        if (completionMsg && completionMsg.parentNode) {
+          completionMsg.parentNode.removeChild(completionMsg);
+          console.log('[GamblerUI] 移除完成消息');
+        }
+      }, 2000);
+    } else {
+      console.warn('[GamblerUI] slot-machine-bg 元素不存在，无法显示完成消息');
     }
   }
 
@@ -1125,16 +1241,16 @@ export class GamblerUI {
       await this.sleep(100);
     }
 
-    // 显示汇总（在解锁之前）
-    this.showBatchSummary(results);
-
-    // 更新显示
-    this.render();
-    this.renderHistory();
-
-    // 解锁状态（确保在所有操作完成后解锁）
+    // 解锁状态（在更新显示之前）
     this.isSpinning = false;
     this.spinStage = 0;
+
+    // 显示汇总
+    this.showBatchSummary(results);
+
+    // 更新显示（在状态解锁之后）
+    this.render();
+    this.renderHistory();
     
     console.log('[GamblerUI] 十连抽完成，状态已解锁');
   }
@@ -1150,32 +1266,12 @@ export class GamblerUI {
       stats[r.quality] = (stats[r.quality] || 0) + 1;
     });
 
-    // 构建汇总消息
-    let summary = '🎰 10连抽结果汇总 🎰\n\n';
-    const qualityOrder = ['JACKPOT', 'LEGENDARY', 'EPIC', 'RARE', 'UNCOMMON', 'COMMON'];
-    
-    qualityOrder.forEach(quality => {
-      if (stats[quality]) {
-        summary += `${quality}: ${stats[quality]} 个\n`;
-      }
-    });
+    // 在累计奖池下方显示"抽取完毕"文字
+    this.showCompletionMessage();
 
     // NPC 评论
     const hasLegendary = stats.LEGENDARY || stats.JACKPOT;
     const hasEpic = stats.EPIC;
-    
-    let npcComment = '';
-    if (hasLegendary) {
-      npcComment = '\n\n赌徒：天选之人！这运气简直逆天！';
-    } else if (hasEpic) {
-      npcComment = '\n\n赌徒：不错的运气！史诗级的收获！';
-    } else {
-      npcComment = '\n\n赌徒：还不错，继续努力吧！';
-    }
-
-    summary += npcComment;
-
-    alert(summary);
 
     // NPC 对话 - 使用 showJudgement 方法，保持一致性
     if (this.gamblerNPC) {
