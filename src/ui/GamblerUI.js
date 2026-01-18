@@ -128,6 +128,12 @@ export class GamblerUI {
     if (!this.accessibilityManager) {
       this.accessibilityManager = new AccessibilityManager(this);
     }
+    
+    // 为 GamblerNPC 设置活动状态检查回调
+    if (this.gamblerNPC) {
+      this.gamblerNPC.setActiveCallback(() => this.isOpen);
+      console.log('[GamblerUI] 已为 GamblerNPC 设置活动状态检查回调');
+    }
   }
 
   /**
@@ -623,9 +629,22 @@ export class GamblerUI {
         this.loadAchievementTracking();
       }
 
+      // 显示界面 - 使用平滑过渡动画
       this.elements.overlay.classList.remove('hidden');
-      this.elements.overlay.classList.add('overlay-fade-in');
       this.elements.overlay.style.setProperty('display', 'flex', 'important');
+      this.elements.overlay.style.pointerEvents = 'auto';
+      
+      // 强制重排以应用初始状态
+      void this.elements.overlay.offsetWidth;
+      
+      // 使用 requestAnimationFrame 确保平滑过渡
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          this.elements.overlay.classList.remove('overlay-fade-out');
+          this.elements.overlay.classList.add('overlay-fade-in');
+        });
+      });
+      
       this.isOpen = true;
       this.isSpinning = false;
       this.spinStage = 0;
@@ -643,12 +662,19 @@ export class GamblerUI {
         this.elements.resultDisplay.classList.add('hidden');
       }
 
+      // 为赌博机容器添加进场动画
+      const slotMachine = document.getElementById('slot-machine-bg');
+      if (slotMachine) {
+        slotMachine.classList.remove('modal-animate-exit');
+        slotMachine.classList.add('modal-animate-enter');
+      }
+
       // 延迟显示 NPC 欢迎语，等待淡入动画完成
       setTimeout(() => {
         if (this.gamblerNPC && this.isOpen) {
           this.gamblerNPC.showWelcome();
         }
-      }, 300); // 等待淡入动画完成
+      }, 400); // 等待淡入动画完成
 
       this.render();
       this.renderHistory();
@@ -746,24 +772,33 @@ export class GamblerUI {
 
   close() {
     if (this.elements.overlay) {
+      // 立即标记为关闭状态，防止任何异步操作继续执行
+      this.isOpen = false;
+      
+      // 为赌博机容器添加离场动画
+      const slotMachine = document.getElementById('slot-machine-bg');
+      if (slotMachine) {
+        slotMachine.classList.remove('modal-animate-enter');
+        slotMachine.classList.add('modal-animate-exit');
+      }
+      
       // 先移除淡入类，添加淡出动画
       this.elements.overlay.classList.remove('overlay-fade-in');
-      this.elements.overlay.style.transition = 'opacity 300ms ease-out';
-      this.elements.overlay.style.opacity = '0';
+      this.elements.overlay.classList.add('overlay-fade-out');
 
-      // 清理 NPC（立即停止催促，但不影响淡出动画）
+      // 立即清理 NPC（停止所有定时器）
       if (this.gamblerNPC) {
-        this.gamblerNPC.stopUrging();
+        this.gamblerNPC.stopUrging(); // 这会清除 urgeInterval 和 dialogueTimeout
         this.gamblerNPC.hide();
         this.gamblerNPC.resetWelcome();
+        console.log('[GamblerUI] NPC 已清理');
       }
 
       // 等待淡出动画完成后再隐藏
       setTimeout(() => {
         this.elements.overlay.classList.add('hidden');
         this.elements.overlay.style.setProperty('display', 'none', 'important');
-        this.elements.overlay.style.opacity = '1'; // 重置透明度供下次使用
-        this.isOpen = false;
+        this.elements.overlay.classList.remove('overlay-fade-out');
 
         // 清理粒子系统
         if (this.particleSystem) {

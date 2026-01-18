@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>商店和赌徒动画测试</title>
+  <link rel="stylesheet" href="src/css/main.css">
+  <link rel="stylesheet" href="src/css/components/modal.css">
+  <link rel="stylesheet" href="src/css/modules/shop.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #1a1a2e;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    
+    .test-controls {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 30000;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 20px;
+      border-radius: 8px;
+      border: 2px solid #ffd700;
+    }
+    
+    .test-controls h2 {
+      margin-top: 0;
+      color: #ffd700;
+    }
+    
+    .test-controls button {
+      display: block;
+      width: 200px;
+      margin: 10px 0;
+      padding: 10px;
+      background: #4a90e2;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .test-controls button:hover {
+      background: #357abd;
+    }
+    
+    /* 商店面板样式 */
+    .shop-panel {
+      position: relative;
+      background: linear-gradient(135deg, #2a1810 0%, #1a0d06 100%);
+      border: 3px solid #ffd700;
+      border-radius: 12px;
+      padding: 30px;
+      width: 80%;
+      max-width: 900px;
+      box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
+    }
+    
+    /* 赌博机容器样式 */
+    #slot-machine-bg {
+      position: relative;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      border: 3px solid #ffd700;
+      border-radius: 12px;
+      padding: 30px;
+      width: 80%;
+      max-width: 800px;
+      min-height: 500px;
+      box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
+    }
+  </style>
+</head>
+<body>
+  <div class="test-controls">
+    <h2>动画测试</h2>
+    <button onclick="testShopOpen()">打开商店</button>
+    <button onclick="testShopClose()">关闭商店</button>
+    <button onclick="testGamblerOpen()">打开赌徒</button>
+    <button onclick="testGamblerClose()">关闭赌徒</button>
+  </div>
+
+  <!-- 商店 Overlay -->
+  <div id="shop-overlay" class="modal-overlay hidden">
+    <div class="shop-panel">
+      <h2 class="modal-title-shop">地精商店</h2>
+      <p style="text-align: center; margin: 40px 0;">商店内容区域</p>
+      <button class="btn-core btn-modal-close" onclick="testShopClose()">关闭</button>
+    </div>
+  </div>
+
+  <!-- 赌徒 Overlay -->
+  <div id="gambler-overlay" class="modal-overlay hidden">
+    <div id="slot-machine-bg">
+      <h2 class="modal-title-shop">赌徒老虎机</h2>
+      <p style="text-align: center; margin: 40px 0;">赌博机内容区域</p>
+      <button class="btn-core btn-modal-close" onclick="testGamblerClose()">关闭</button>
+    </div>
+  </div>
+
+  <script>
+    // 商店动画测试
+    function testShopOpen() {
+      const overlay = document.getElementById('shop-overlay');
+      const panel = overlay.querySelector('.shop-panel');
+      
+      overlay.classList.remove('hidden');
+      overlay.style.display = 'flex';
+      overlay.style.pointerEvents = 'auto';
+      
+      // 强制重排
+      void overlay.offsetWidth;
+      
+      // 使用 requestAnimationFrame 确保平滑过渡
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          overlay.classList.remove('overlay-fade-out');
+          overlay.classList.add('overlay-fade-in');
+        });
+      });
+      
+      // 为面板添加进场动画
+      if (panel) {
+        panel.classList.remove('modal-animate-exit');
+        panel.classList.add('modal-animate-enter');
+      }
+    }
+    
+    function testShopClose() {
+      const overlay = document.getElementById('shop-overlay');
+      const panel = overlay.querySelector('.shop-panel');
+      
+      // 为面板添加离场动画
+      if (panel) {
+        panel.classList.remove('modal-animate-enter');
+        panel.classList.add('modal-animate-exit');
+      }
+      
+      // 使用平滑过渡隐藏
+      overlay.classList.remove('overlay-fade-in');
+      overlay.classList.add('overlay-fade-out');
+      
+      // 等待过渡完成后隐藏
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+        overlay.style.display = 'none';
+        overlay.classList.remove('overlay-fade-out');
+      }, 300);
+    }
+    
+    // 赌徒动画测试
+    function testGamblerOpen() {
+      const overlay = document.getElementById('gambler-overlay');
+      const slotMachine = document.getElementById('slot-machine-bg');
+      
+      overlay.classList.remove('hidden');
+      overlay.style.display = 'flex';
+      overlay.style.pointerEvents = 'auto';
+      
+      // 强制重排
+      void overlay.offsetWidth;
+      
+      // 使用 requestAnimationFrame 确保平滑过渡
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          overlay.classList.remove('overlay-fade-out');
+          overlay.classList.add('overlay-fade-in');
+        });
+      });
+      
+      // 为赌博机容器添加进场动画
+      if (slotMachine) {
+        slotMachine.classList.remove('modal-animate-exit');
+        slotMachine.classList.add('modal-animate-enter');
+      }
+    }
+    
+    function testGamblerClose() {
+      const overlay = document.getElementById('gambler-overlay');
+      const slotMachine = document.getElementById('slot-machine-bg');
+      
+      // 为赌博机容器添加离场动画
+      if (slotMachine) {
+        slotMachine.classList.remove('modal-animate-enter');
+        slotMachine.classList.add('modal-animate-exit');
+      }
+      
+      // 先移除淡入类，添加淡出动画
+      overlay.classList.remove('overlay-fade-in');
+      overlay.classList.add('overlay-fade-out');
+      
+      // 等待淡出动画完成后再隐藏
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+        overlay.style.display = 'none';
+        overlay.classList.remove('overlay-fade-out');
+      }, 300);
+    }
+  </script>
+</body>
+</html>

@@ -263,14 +263,33 @@ export class ShopUI {
         }
       }
 
-      // 显示界面
+      // 显示界面 - 使用平滑过渡动画
       this.elements.overlay.classList.remove('hidden');
-      this.elements.overlay.classList.add('overlay-fade-in');
       this.elements.overlay.style.display = 'flex';
+      this.elements.overlay.style.pointerEvents = 'auto';
+      
+      // 强制重排以应用初始状态
+      void this.elements.overlay.offsetWidth;
+      
+      // 使用 requestAnimationFrame 确保平滑过渡
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          this.elements.overlay.classList.remove('overlay-fade-out');
+          this.elements.overlay.classList.add('overlay-fade-in');
+        });
+      });
+      
       this.isOpen = true;
 
       // 渲染
       this.render();
+      
+      // 为商店面板添加进场动画
+      const shopPanel = this.elements.overlay.querySelector('.shop-panel');
+      if (shopPanel) {
+        shopPanel.classList.remove('modal-animate-exit');
+        shopPanel.classList.add('modal-animate-enter');
+      }
     }
   }
 
@@ -283,16 +302,31 @@ export class ShopUI {
         AudioManager.playBookClose();
       }
       
-      this.elements.overlay.classList.add('hidden');
-      this.elements.overlay.classList.remove('overlay-fade-in');
-      this.elements.overlay.style.display = 'none';
-      this.isOpen = false;
-
-      // 恢复游戏
-      const game = window.game;
-      if (game) {
-        game.isPaused = false;
+      // 为商店面板添加离场动画
+      const shopPanel = this.elements.overlay.querySelector('.shop-panel');
+      if (shopPanel) {
+        shopPanel.classList.remove('modal-animate-enter');
+        shopPanel.classList.add('modal-animate-exit');
       }
+      
+      // 使用平滑过渡隐藏
+      this.elements.overlay.classList.remove('overlay-fade-in');
+      this.elements.overlay.classList.add('overlay-fade-out');
+      
+      // 等待过渡完成后隐藏
+      setTimeout(() => {
+        this.elements.overlay.classList.add('hidden');
+        this.elements.overlay.style.display = 'none';
+        this.elements.overlay.classList.remove('overlay-fade-out');
+        
+        // 恢复游戏
+        const game = window.game;
+        if (game) {
+          game.isPaused = false;
+        }
+      }, 300);
+      
+      this.isOpen = false;
     }
   }
 

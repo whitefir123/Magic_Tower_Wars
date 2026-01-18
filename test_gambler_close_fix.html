@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>赌徒关闭催促语修复测试</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #1a1a2e;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    
+    .test-controls {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 30000;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 20px;
+      border-radius: 8px;
+      border: 2px solid #ffd700;
+    }
+    
+    .test-controls h2 {
+      margin-top: 0;
+      color: #ffd700;
+    }
+    
+    .test-controls button {
+      display: block;
+      width: 200px;
+      margin: 10px 0;
+      padding: 10px;
+      background: #4a90e2;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .test-controls button:hover {
+      background: #357abd;
+    }
+    
+    .console-output {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      height: 200px;
+      background: rgba(0, 0, 0, 0.9);
+      border: 2px solid #ffd700;
+      border-radius: 8px;
+      padding: 10px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+      z-index: 30000;
+    }
+    
+    .console-output .log {
+      color: #0f0;
+      margin: 2px 0;
+    }
+    
+    .console-output .warn {
+      color: #ff0;
+      margin: 2px 0;
+    }
+    
+    .console-output .error {
+      color: #f00;
+      margin: 2px 0;
+    }
+    
+    .status {
+      margin: 10px 0;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    
+    .status.open {
+      border-left: 4px solid #0f0;
+    }
+    
+    .status.closed {
+      border-left: 4px solid #f00;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-controls">
+    <h2>催促语修复测试</h2>
+    <div id="status" class="status closed">状态: 已关闭</div>
+    <button onclick="testOpen()">打开赌徒界面</button>
+    <button onclick="testClose()">关闭赌徒界面</button>
+    <button onclick="clearConsole()">清空控制台</button>
+    <p style="font-size: 12px; color: #aaa; margin-top: 20px;">
+      测试步骤：<br>
+      1. 点击"打开赌徒界面"<br>
+      2. 等待5秒，观察催促语开始<br>
+      3. 点击"关闭赌徒界面"<br>
+      4. 观察控制台，确认催促语已停止
+    </p>
+  </div>
+
+  <div class="console-output" id="console"></div>
+
+  <script type="module">
+    // 模拟 GamblerNPC 类
+    class GamblerNPC {
+      constructor() {
+        this.messageElement = null;
+        this.dialogueTimeout = null;
+        this.urgeInterval = null;
+        this.isUrging = false;
+        this.hasShownWelcome = false;
+        this.isActiveCallback = null;
+      }
+
+      setMessageElement(element) {
+        this.messageElement = element;
+      }
+
+      setActiveCallback(callback) {
+        this.isActiveCallback = callback;
+      }
+
+      isActive() {
+        if (this.isActiveCallback) {
+          return this.isActiveCallback();
+        }
+        return true;
+      }
+
+      say(message, duration = 5000, startUrge = false) {
+        this.stopUrging();
+
+        if (this.dialogueTimeout) {
+          clearTimeout(this.dialogueTimeout);
+        }
+
+        logToConsole(`[NPC] 说话: ${message}`, 'log');
+
+        if (startUrge) {
+          this.dialogueTimeout = setTimeout(() => {
+            this.startUrging();
+          }, duration);
+        }
+      }
+
+      showWelcome() {
+        if (this.hasShownWelcome) {
+          this.startUrging();
+          return;
+        }
+        
+        this.say('欢迎来到命运的老虎机！', 5000, true);
+        this.hasShownWelcome = true;
+        logToConsole('[NPC] 显示欢迎语，5秒后开始催促', 'log');
+      }
+
+      startUrging() {
+        if (!this.isActive()) {
+          logToConsole('[NPC] 界面已关闭，取消启动催促系统', 'warn');
+          return;
+        }
+        
+        this.stopUrging();
+        
+        logToConsole('[NPC] 启动催促系统', 'log');
+        
+        this.showUrgeMessage();
+        
+        this.urgeInterval = setInterval(() => {
+          if (!this.isActive()) {
+            logToConsole('[NPC] 界面已关闭，停止催促系统', 'warn');
+            this.stopUrging();
+            return;
+          }
+          this.showUrgeMessage();
+        }, 4000);
+        
+        this.isUrging = true;
+      }
+
+      stopUrging() {
+        if (this.urgeInterval) {
+          clearInterval(this.urgeInterval);
+          this.urgeInterval = null;
+          logToConsole('[NPC] 清除催促定时器', 'log');
+        }
+        
+        if (this.dialogueTimeout) {
+          clearTimeout(this.dialogueTimeout);
+          this.dialogueTimeout = null;
+          logToConsole('[NPC] 清除对话定时器', 'log');
+        }
+        
+        this.isUrging = false;
+        logToConsole('[NPC] 停止催促系统', 'log');
+      }
+
+      showUrgeMessage() {
+        if (!this.isActive()) {
+          logToConsole('[NPC] 界面已关闭，取消显示催促消息', 'warn');
+          this.stopUrging();
+          return;
+        }
+        
+        const messages = [
+          '还愣着干什么？再来一把啊！',
+          '别光看着，机器不会自己转的。',
+          '时间就是金币，朋友。快点决定吧。'
+        ];
+        const msg = messages[Math.floor(Math.random() * messages.length)];
+        logToConsole(`[NPC] 催促: ${msg}`, 'log');
+      }
+
+      hide() {
+        logToConsole('[NPC] 隐藏消息', 'log');
+      }
+
+      resetWelcome() {
+        this.hasShownWelcome = false;
+        logToConsole('[NPC] 重置欢迎语标记', 'log');
+      }
+
+      destroy() {
+        this.stopUrging();
+        
+        if (this.dialogueTimeout) {
+          clearTimeout(this.dialogueTimeout);
+          this.dialogueTimeout = null;
+        }
+        
+        if (this.urgeInterval) {
+          clearInterval(this.urgeInterval);
+          this.urgeInterval = null;
+        }
+        
+        this.isUrging = false;
+        this.resetWelcome();
+        
+        logToConsole('[NPC] 已销毁，所有定时器已清除', 'log');
+      }
+    }
+
+    // 模拟 GamblerUI
+    let gamblerUI = {
+      isOpen: false,
+      gamblerNPC: new GamblerNPC()
+    };
+
+    // 设置活动状态检查回调
+    gamblerUI.gamblerNPC.setActiveCallback(() => gamblerUI.isOpen);
+
+    window.testOpen = function() {
+      logToConsole('=== 打开赌徒界面 ===', 'log');
+      gamblerUI.isOpen = true;
+      updateStatus();
+      
+      setTimeout(() => {
+        if (gamblerUI.gamblerNPC && gamblerUI.isOpen) {
+          gamblerUI.gamblerNPC.showWelcome();
+        }
+      }, 400);
+    };
+
+    window.testClose = function() {
+      logToConsole('=== 关闭赌徒界面 ===', 'log');
+      gamblerUI.isOpen = false;
+      updateStatus();
+      
+      if (gamblerUI.gamblerNPC) {
+        gamblerUI.gamblerNPC.stopUrging();
+        gamblerUI.gamblerNPC.hide();
+        gamblerUI.gamblerNPC.resetWelcome();
+        logToConsole('[UI] NPC 已清理', 'log');
+      }
+    };
+
+    window.clearConsole = function() {
+      document.getElementById('console').innerHTML = '';
+    };
+
+    function logToConsole(message, type = 'log') {
+      const consoleEl = document.getElementById('console');
+      const timestamp = new Date().toLocaleTimeString();
+      const logEl = document.createElement('div');
+      logEl.className = type;
+      logEl.textContent = `[${timestamp}] ${message}`;
+      consoleEl.appendChild(logEl);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function updateStatus() {
+      const statusEl = document.getElementById('status');
+      if (gamblerUI.isOpen) {
+        statusEl.textContent = '状态: 已打开';
+        statusEl.className = 'status open';
+      } else {
+        statusEl.textContent = '状态: 已关闭';
+        statusEl.className = 'status closed';
+      }
+    }
+
+    // 初始化
+    logToConsole('测试页面已加载', 'log');
+    logToConsole('已为 GamblerNPC 设置活动状态检查回调', 'log');
+  </script>
+</body>
+</html>

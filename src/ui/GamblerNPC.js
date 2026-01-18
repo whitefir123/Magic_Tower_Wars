@@ -17,6 +17,9 @@ export class GamblerNPC {
     this.isUrging = false;
     this.hasShownWelcome = false; // 标记是否已显示欢迎语
     
+    // 添加一个回调函数，用于检查界面是否仍然打开
+    this.isActiveCallback = null;
+    
     // 对话库
     this.dialogues = {
       welcome: [
@@ -169,6 +172,24 @@ export class GamblerNPC {
   }
 
   /**
+   * 设置活动状态检查回调
+   * @param {Function} callback - 返回 true 表示界面仍然打开
+   */
+  setActiveCallback(callback) {
+    this.isActiveCallback = callback;
+  }
+
+  /**
+   * 检查是否应该继续显示消息
+   */
+  isActive() {
+    if (this.isActiveCallback) {
+      return this.isActiveCallback();
+    }
+    return true; // 默认返回 true（向后兼容）
+  }
+
+  /**
    * 说话
    */
   say(message, duration = 5000, startUrge = false) {
@@ -254,6 +275,12 @@ export class GamblerNPC {
    * 启动催促系统
    */
   startUrging() {
+    // 检查界面是否仍然打开
+    if (!this.isActive()) {
+      console.log('[GamblerNPC] 界面已关闭，取消启动催促系统');
+      return;
+    }
+    
     this.stopUrging();
     
     console.log('[GamblerNPC] 启动催促系统：立即显示第一条，之后每4秒更新');
@@ -263,6 +290,12 @@ export class GamblerNPC {
     
     // 之后每4秒显示新的催促语
     this.urgeInterval = setInterval(() => {
+      // 每次显示前检查界面是否仍然打开
+      if (!this.isActive()) {
+        console.log('[GamblerNPC] 界面已关闭，停止催促系统');
+        this.stopUrging();
+        return;
+      }
       this.showUrgeMessage();
     }, 4000);
     
@@ -278,6 +311,12 @@ export class GamblerNPC {
       this.urgeInterval = null;
     }
     
+    // 同时清除 dialogueTimeout，防止延迟启动催促
+    if (this.dialogueTimeout) {
+      clearTimeout(this.dialogueTimeout);
+      this.dialogueTimeout = null;
+    }
+    
     this.isUrging = false;
     console.log('[GamblerNPC] 停止催促系统');
   }
@@ -286,6 +325,13 @@ export class GamblerNPC {
    * 显示催促消息
    */
   showUrgeMessage() {
+    // 检查界面是否仍然打开
+    if (!this.isActive()) {
+      console.log('[GamblerNPC] 界面已关闭，取消显示催促消息');
+      this.stopUrging();
+      return;
+    }
+    
     if (!this.messageElement) {
       console.warn('[GamblerNPC] 没有消息元素');
       return;
@@ -384,10 +430,24 @@ export class GamblerNPC {
    * 销毁
    */
   destroy() {
+    // 停止催促（已包含清除 dialogueTimeout）
     this.stopUrging();
+    
+    // 清除所有定时器
     if (this.dialogueTimeout) {
       clearTimeout(this.dialogueTimeout);
+      this.dialogueTimeout = null;
     }
+    
+    if (this.urgeInterval) {
+      clearInterval(this.urgeInterval);
+      this.urgeInterval = null;
+    }
+    
+    // 重置状态
+    this.isUrging = false;
     this.resetWelcome();
+    
+    console.log('[GamblerNPC] 已销毁，所有定时器已清除');
   }
 }
