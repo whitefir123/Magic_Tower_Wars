@@ -922,6 +922,34 @@ class Game {
           this.achievementSystem.check('onLevelEnd');
         }
         
+        // 清除临时buff（赌徒界面的临时增益）
+        if (this.player && this.player.temporaryBuffs && this.player.temporaryBuffs.length > 0) {
+          const currentFloor = this.player.stats.floor;
+          for (const tempBuff of this.player.temporaryBuffs) {
+            // 移除临时buff的效果
+            const buffDef = BUFF_POOL.find(b => b.id === tempBuff.buffId);
+            if (buffDef) {
+              // 反向应用buff效果（减去之前加的数值）
+              if (tempBuff.buffId === 'str') {
+                this.player.stats.p_atk -= tempBuff.value;
+              } else if (tempBuff.buffId === 'iron') {
+                this.player.stats.p_def -= tempBuff.value;
+              } else if (tempBuff.buffId === 'arc') {
+                this.player.stats.m_atk -= tempBuff.value;
+              } else if (tempBuff.buffId === 'ward') {
+                this.player.stats.m_def -= tempBuff.value;
+              } else if (tempBuff.buffId === 'vit') {
+                this.player.stats.maxHp -= tempBuff.value;
+                // 确保当前生命值不超过新的最大值
+                this.player.stats.hp = Math.min(this.player.stats.hp, this.player.stats.maxHp);
+              }
+            }
+          }
+          // 清空临时buff列表
+          this.player.temporaryBuffs = [];
+          this.ui.logMessage('临时增益已消失', 'info');
+        }
+        
         // FIX: 层级切换时清除技能预备状态 - 防止玩家带着预搓好的技能进入下一层
         if (this.player && this.player.clearPrimedStates) {
           this.player.clearPrimedStates();

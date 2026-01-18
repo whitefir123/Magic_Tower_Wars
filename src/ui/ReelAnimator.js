@@ -1,6 +1,8 @@
 // ReelAnimator.js - 滚轮动画器
 // CS:GO风格的横向滚动抽奖动画
 
+import { globalTooltipManager } from '../utils/TooltipManager.js';
+
 /**
  * ReelAnimator - 滚轮动画器
  * 实现CS:GO风格的横向滚动动画
@@ -237,6 +239,23 @@ export class ReelAnimator {
       if (index === winnerPosition) {
         el.dataset.winner = 'true';
       }
+      
+      // 添加 tooltip 事件
+      el.addEventListener('mouseenter', (e) => {
+        // 优先使用完整的物品对象，而不仅仅是data字段
+        const tooltipItem = item.data ? item : (item.type ? item : null);
+        if (tooltipItem) {
+          globalTooltipManager.show(tooltipItem, e.clientX, e.clientY);
+        }
+      });
+      
+      el.addEventListener('mousemove', (e) => {
+        globalTooltipManager.updatePosition(e.clientX, e.clientY);
+      });
+      
+      el.addEventListener('mouseleave', () => {
+        globalTooltipManager.hide();
+      });
       
       strip.appendChild(el);
     });

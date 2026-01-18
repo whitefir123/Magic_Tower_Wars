@@ -697,6 +697,146 @@ export class ForgeUI {
         font-size: 14px;
         font-weight: 600;
       }
+
+      /* 幸运石槽位样式 */
+      .lucky-stone-section {
+        background: rgba(76, 175, 80, 0.1);
+        border-color: rgba(76, 175, 80, 0.3);
+      }
+
+      .lucky-stone-slots-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .lucky-stone-slot {
+        position: relative;
+        background: rgba(0, 0, 0, 0.5);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 6px;
+        padding: 10px;
+        text-align: center;
+        transition: all 0.3s ease;
+      }
+
+      .lucky-stone-slot.filled {
+        background: rgba(76, 175, 80, 0.2);
+        border-color: #4caf50;
+      }
+
+      .lucky-stone-slot.quality-COMMON { border-color: #a0a0a0; }
+      .lucky-stone-slot.quality-UNCOMMON { border-color: #5eff00; }
+      .lucky-stone-slot.quality-RARE { border-color: #0070dd; }
+      .lucky-stone-slot.quality-EPIC { border-color: #a335ee; }
+      .lucky-stone-slot.quality-LEGENDARY { border-color: #ff8000; }
+
+      .stone-icon {
+        font-size: 32px;
+        margin-bottom: 5px;
+      }
+
+      .stone-name {
+        font-size: 12px;
+        color: #fff;
+        margin-bottom: 3px;
+      }
+
+      .stone-bonus {
+        font-size: 11px;
+        color: #4caf50;
+        font-weight: 600;
+      }
+
+      .stone-remove-btn {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        background: rgba(231, 76, 60, 0.8);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      }
+
+      .stone-remove-btn:hover {
+        background: #e74c3c;
+        transform: scale(1.1);
+      }
+
+      .lucky-stone-list {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        max-height: 150px;
+        overflow-y: auto;
+      }
+
+      .lucky-stone-inv-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        padding: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .lucky-stone-inv-item:not(.disabled):hover {
+        background: rgba(76, 175, 80, 0.2);
+        border-color: #4caf50;
+        transform: translateX(5px);
+      }
+
+      .lucky-stone-inv-item.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .lucky-stone-inv-item .stone-icon {
+        font-size: 24px;
+        margin: 0;
+      }
+
+      .lucky-stone-inv-item .stone-info {
+        flex: 1;
+      }
+
+      .lucky-stone-inv-item .stone-name {
+        font-size: 13px;
+        margin: 0;
+      }
+
+      .lucky-stone-inv-item .stone-bonus {
+        font-size: 11px;
+      }
+
+      .lucky-stone-inv-item .stone-count {
+        font-size: 14px;
+        color: #aaa;
+        font-weight: 600;
+      }
+
+      .forge-btn-secondary {
+        background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+        color: #fff;
+      }
+
+      .forge-btn-secondary:hover:not(:disabled) {
+        background: linear-gradient(135deg, #7f8c8d 0%, #6c7a7b 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(149, 165, 166, 0.4);
+      }
     `;
     
     document.head.appendChild(style);
@@ -1012,6 +1152,24 @@ export class ForgeUI {
   renderEnhancePanel(item) {
     const details = this.blacksmithSystem.getItemDetails(item);
     
+    // 获取玩家背包中的幸运石
+    const luckyStones = this.getLuckyStones();
+    
+    // 初始化幸运石槽位（如果不存在）
+    if (!item.luckyStoneSlots) {
+      item.luckyStoneSlots = [];
+    }
+    
+    // 计算总成功率加成
+    let totalLuckyBonus = 0;
+    item.luckyStoneSlots.forEach(stone => {
+      totalLuckyBonus += stone.successRateBonus || 0;
+    });
+    
+    // 计算最终成功率
+    const baseSuccessRate = details.successRate || 1.0;
+    const finalSuccessRate = Math.min(baseSuccessRate + totalLuckyBonus, 0.95); // 上限95%
+    
     this.elements.itemDetails.innerHTML = `
       <div class="detail-section">
         <h4 style="color: ${details.qualityColor};">${details.name}</h4>
@@ -1023,6 +1181,13 @@ export class ForgeUI {
           <span class="stat-label">强化等级:</span>
           <span class="stat-value">+${details.enhanceLevel} / +${details.maxLevel}</span>
         </div>
+        <div class="stat-row">
+          <span class="stat-label">成功率:</span>
+          <span class="stat-value" style="color: ${finalSuccessRate >= 0.7 ? '#4caf50' : finalSuccessRate >= 0.4 ? '#ff9800' : '#e74c3c'};">
+            ${(finalSuccessRate * 100).toFixed(2)}%
+            ${totalLuckyBonus > 0 ? `<small style="color: #4caf50;">(+${(totalLuckyBonus * 100).toFixed(2)}%)</small>` : ''}
+          </span>
+        </div>
       </div>
 
       <div class="detail-section">
@@ -1033,6 +1198,20 @@ export class ForgeUI {
       <div class="detail-section">
         <h4>基础属性</h4>
         ${this.renderStats(details.baseStats)}
+      </div>
+
+      <!-- 幸运石槽位区域 -->
+      <div class="detail-section lucky-stone-section">
+        <h4>幸运石槽位 <small style="color: #888; font-size: 12px;">(同品质可叠加)</small></h4>
+        <div class="lucky-stone-slots" id="lucky-stone-slots">
+          ${this.renderLuckyStoneSlots(item)}
+        </div>
+        <div class="lucky-stone-inventory" style="margin-top: 10px;">
+          <div style="color: #888; font-size: 12px; margin-bottom: 5px;">背包中的幸运石:</div>
+          <div class="lucky-stone-list" id="lucky-stone-list">
+            ${this.renderLuckyStoneInventory(luckyStones, item)}
+          </div>
+        </div>
       </div>
 
       <div class="forge-actions">
@@ -1067,6 +1246,9 @@ export class ForgeUI {
     if (dismantleBtn) {
       dismantleBtn.addEventListener('click', () => this.handleDismantle());
     }
+    
+    // 幸运石相关事件监听器
+    this.setupLuckyStoneListeners(item);
   }
 
   /**
@@ -1775,6 +1957,229 @@ export class ForgeUI {
   }
 
   /**
+   * 获取玩家背包中的幸运石
+   */
+  getLuckyStones() {
+    if (!this.player || !this.player.inventory) return [];
+    
+    return this.player.inventory.filter(item => 
+      item && item.type === 'trash' && item.name && item.name.includes('幸运石')
+    );
+  }
+
+  /**
+   * 设置幸运石相关的事件监听器
+   */
+  setupLuckyStoneListeners(item) {
+    // 移除单个幸运石
+    const removeButtons = document.querySelectorAll('.stone-remove-btn');
+    removeButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const slotIndex = parseInt(btn.dataset.slotIndex);
+        this.removeLuckyStone(item, slotIndex);
+      });
+    });
+    
+    // 清空所有幸运石
+    const clearAllBtn = document.getElementById('clear-all-stones');
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener('click', () => {
+        this.clearAllLuckyStones(item);
+      });
+    }
+    
+    // 添加幸运石
+    const invItems = document.querySelectorAll('.lucky-stone-inv-item:not(.disabled)');
+    invItems.forEach(invItem => {
+      invItem.addEventListener('click', () => {
+        const quality = invItem.dataset.stoneQuality;
+        this.addLuckyStone(item, quality);
+      });
+    });
+  }
+
+  /**
+   * 添加幸运石到槽位
+   */
+  addLuckyStone(item, quality) {
+    if (!this.player || !this.player.inventory) return;
+    
+    // 检查是否已有不同品质的幸运石
+    if (item.luckyStoneSlots && item.luckyStoneSlots.length > 0) {
+      const existingQuality = item.luckyStoneSlots[0].quality;
+      if (existingQuality !== quality) {
+        this.showMessage('只能添加相同品质的幸运石！', 'error');
+        return;
+      }
+    }
+    
+    // 从背包中找到该品质的幸运石
+    const stoneIndex = this.player.inventory.findIndex(invItem => 
+      invItem && invItem.type === 'trash' && 
+      invItem.name && invItem.name.includes('幸运石') &&
+      (invItem.quality || 'COMMON') === quality
+    );
+    
+    if (stoneIndex === -1) {
+      this.showMessage('背包中没有该品质的幸运石！', 'error');
+      return;
+    }
+    
+    const stone = this.player.inventory[stoneIndex];
+    
+    // 添加到槽位
+    if (!item.luckyStoneSlots) {
+      item.luckyStoneSlots = [];
+    }
+    
+    item.luckyStoneSlots.push({
+      name: stone.name,
+      quality: stone.quality || 'COMMON',
+      successRateBonus: stone.successRateBonus || 0.0005,
+      uid: stone.uid
+    });
+    
+    // 从背包移除
+    this.player.inventory.splice(stoneIndex, 1);
+    
+    // 刷新显示
+    this.renderItemDetails(item);
+    this.showMessage(`添加了 ${stone.name}`, 'success');
+  }
+
+  /**
+   * 从槽位移除幸运石
+   */
+  removeLuckyStone(item, slotIndex) {
+    if (!item.luckyStoneSlots || slotIndex < 0 || slotIndex >= item.luckyStoneSlots.length) {
+      return;
+    }
+    
+    const stone = item.luckyStoneSlots[slotIndex];
+    
+    // 返还到背包
+    if (this.player && this.player.inventory) {
+      this.player.inventory.push({
+        type: 'trash',
+        name: stone.name,
+        quality: stone.quality,
+        successRateBonus: stone.successRateBonus,
+        uid: stone.uid || `stone_${Date.now()}_${Math.random()}`,
+        icon: '🪨'
+      });
+    }
+    
+    // 从槽位移除
+    item.luckyStoneSlots.splice(slotIndex, 1);
+    
+    // 刷新显示
+    this.renderItemDetails(item);
+    this.showMessage(`移除了 ${stone.name}`, 'info');
+  }
+
+  /**
+   * 清空所有幸运石
+   */
+  clearAllLuckyStones(item) {
+    if (!item.luckyStoneSlots || item.luckyStoneSlots.length === 0) {
+      return;
+    }
+    
+    // 返还所有幸运石到背包
+    if (this.player && this.player.inventory) {
+      item.luckyStoneSlots.forEach(stone => {
+        this.player.inventory.push({
+          type: 'trash',
+          name: stone.name,
+          quality: stone.quality,
+          successRateBonus: stone.successRateBonus,
+          uid: stone.uid || `stone_${Date.now()}_${Math.random()}`,
+          icon: '🪨'
+        });
+      });
+    }
+    
+    // 清空槽位
+    item.luckyStoneSlots = [];
+    
+    // 刷新显示
+    this.renderItemDetails(item);
+    this.showMessage('已清空所有幸运石', 'info');
+  }
+
+  /**
+   * 渲染幸运石槽位
+   */
+  renderLuckyStoneSlots(item) {
+    const slots = item.luckyStoneSlots || [];
+    
+    if (slots.length === 0) {
+      return '<div style="color: #888; font-size: 14px; padding: 10px; text-align: center;">暂无幸运石</div>';
+    }
+    
+    return `
+      <div class="lucky-stone-slots-grid">
+        ${slots.map((stone, index) => `
+          <div class="lucky-stone-slot filled quality-${stone.quality}" data-slot-index="${index}">
+            <div class="stone-icon">🪨</div>
+            <div class="stone-name">${stone.name}</div>
+            <div class="stone-bonus">+${(stone.successRateBonus * 100).toFixed(2)}%</div>
+            <button class="stone-remove-btn" data-slot-index="${index}" title="移除">✕</button>
+          </div>
+        `).join('')}
+      </div>
+      <button class="forge-btn forge-btn-secondary" id="clear-all-stones" style="margin-top: 10px; width: 100%;">
+        清空所有幸运石
+      </button>
+    `;
+  }
+
+  /**
+   * 渲染背包中的幸运石列表
+   */
+  renderLuckyStoneInventory(luckyStones, item) {
+    if (luckyStones.length === 0) {
+      return '<div style="color: #888; font-size: 12px; padding: 5px;">背包中没有幸运石</div>';
+    }
+    
+    // 按品质分组
+    const stonesByQuality = {};
+    luckyStones.forEach(stone => {
+      const quality = stone.quality || 'COMMON';
+      if (!stonesByQuality[quality]) {
+        stonesByQuality[quality] = [];
+      }
+      stonesByQuality[quality].push(stone);
+    });
+    
+    // 检查当前槽位中的品质
+    const currentQuality = item.luckyStoneSlots && item.luckyStoneSlots.length > 0 
+      ? item.luckyStoneSlots[0].quality 
+      : null;
+    
+    return Object.entries(stonesByQuality).map(([quality, stones]) => {
+      const canAdd = !currentQuality || currentQuality === quality;
+      const count = stones.length;
+      const stone = stones[0];
+      
+      return `
+        <div class="lucky-stone-inv-item quality-${quality} ${!canAdd ? 'disabled' : ''}" 
+             data-stone-quality="${quality}"
+             data-stone-uid="${stone.uid}"
+             title="${canAdd ? '点击添加' : '只能添加相同品质的幸运石'}">
+          <div class="stone-icon">🪨</div>
+          <div class="stone-info">
+            <div class="stone-name">${stone.name}</div>
+            <div class="stone-bonus">+${(stone.successRateBonus * 100).toFixed(2)}%</div>
+          </div>
+          <div class="stone-count">×${count}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  /**
    * 处理强化
    */
   handleEnhance() {
@@ -1785,9 +2190,27 @@ export class ForgeUI {
       AudioManager.playForge();
     }
 
-    const result = this.blacksmithSystem.enhanceItem(this.selectedItem, this.player);
+    // 计算幸运石加成
+    let luckyStoneBonus = 0;
+    if (this.selectedItem.luckyStoneSlots && this.selectedItem.luckyStoneSlots.length > 0) {
+      this.selectedItem.luckyStoneSlots.forEach(stone => {
+        luckyStoneBonus += stone.successRateBonus || 0;
+      });
+    }
+
+    // 传递幸运石加成给强化系统
+    const options = {
+      luckyStoneBonus: luckyStoneBonus
+    };
+
+    const result = this.blacksmithSystem.enhanceItem(this.selectedItem, this.player, options);
 
     if (result.success) {
+      // 强化成功，消耗所有幸运石
+      if (this.selectedItem.luckyStoneSlots) {
+        this.selectedItem.luckyStoneSlots = [];
+      }
+      
       // 显示成功消息
       this.showMessage(result.message, 'success');
       
@@ -1801,8 +2224,16 @@ export class ForgeUI {
         game.ui.updateStats(this.player);
       }
     } else {
+      // 强化失败，也消耗所有幸运石
+      if (this.selectedItem.luckyStoneSlots) {
+        this.selectedItem.luckyStoneSlots = [];
+      }
+      
       // 显示失败消息
       this.showMessage(result.message, 'error');
+      
+      // 刷新UI以显示幸运石已被消耗
+      this.renderItemDetails(this.selectedItem);
     }
   }
 

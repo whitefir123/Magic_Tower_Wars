@@ -18,9 +18,10 @@ export class EnhancementEngine {
    * 计算强化成功概率
    * @param {number} currentLevel - 当前强化等级
    * @param {number} blessingStoneCount - 使用的祝福石数量
+   * @param {number} luckyStoneBonus - 幸运石加成
    * @returns {number} 成功概率 (0-1)
    */
-  calculateSuccessProbability(currentLevel, blessingStoneCount = 0) {
+  calculateSuccessProbability(currentLevel, blessingStoneCount = 0, luckyStoneBonus = 0) {
     // 获取基础成功率
     const baseRate = FORGE_CONFIG.ENHANCE.BASE_SUCCESS_RATES[currentLevel] || 0.1;
     
@@ -28,9 +29,9 @@ export class EnhancementEngine {
     const stoneCount = Math.min(blessingStoneCount, FORGE_CONFIG.ENHANCE.MAX_BLESSING_STONES);
     const bonusRate = stoneCount * FORGE_CONFIG.ENHANCE.BLESSING_STONE_BONUS;
     
-    // 计算最终成功率（有上限）
+    // 计算最终成功率（有上限，包含幸运石加成）
     const finalRate = Math.min(
-      baseRate + bonusRate,
+      baseRate + bonusRate + luckyStoneBonus,
       FORGE_CONFIG.ENHANCE.MAX_SUCCESS_RATE
     );
     
@@ -43,6 +44,7 @@ export class EnhancementEngine {
    * @param {Object} options - 强化选项
    * @param {boolean} options.useProtectionScroll - 是否使用保护卷轴
    * @param {number} options.blessingStoneCount - 使用的祝福石数量
+   * @param {number} options.luckyStoneBonus - 幸运石加成
    * @returns {Object} 强化结果
    */
   enhance(equipment, options = {}) {
@@ -57,9 +59,10 @@ export class EnhancementEngine {
     const currentLevel = equipment.enhanceLevel || 0;
     const useProtection = options.useProtectionScroll || false;
     const blessingStones = options.blessingStoneCount || 0;
+    const luckyStoneBonus = options.luckyStoneBonus || 0;
 
     // 计算成功概率
-    const successProbability = this.calculateSuccessProbability(currentLevel, blessingStones);
+    const successProbability = this.calculateSuccessProbability(currentLevel, blessingStones, luckyStoneBonus);
     
     // 执行随机判定
     const roll = Math.random();
@@ -91,6 +94,7 @@ export class EnhancementEngine {
       newLevel: newLevel,
       protectionUsed: useProtection && !isSuccess,
       blessingStonesUsed: blessingStones,
+      luckyStoneBonus: luckyStoneBonus,
       successProbability: successProbability,
       roll: roll
     };

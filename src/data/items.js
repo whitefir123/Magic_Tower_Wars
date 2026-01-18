@@ -1418,7 +1418,7 @@ export function getEquipmentDropForFloor_Legacy(floor) {
 }
 
 // Consumable item IDs
-export const CONSUMABLE_IDS = ['POTION_HP_S', 'POTION_RAGE', 'SCROLL_XP', 'SCROLL_FIRE', 'ITEM_STARDUST_DRILL', 'ITEM_PROTECTION_SCROLL', 'ITEM_BLESSING_STONE'];
+export const CONSUMABLE_IDS = ['POTION_HP_S', 'POTION_RAGE', 'SCROLL_XP', 'SCROLL_FIRE', 'ITEM_STARDUST_DRILL'];
 
 // Get random consumable item
 /**

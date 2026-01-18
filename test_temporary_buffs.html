@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>临时Buff系统测试</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #1a1a2e;
+      color: #fff;
+    }
+    .test-section {
+      background: #16213e;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      border: 2px solid #0f3460;
+    }
+    h2 {
+      color: #ffd700;
+      border-bottom: 2px solid #ffd700;
+      padding-bottom: 10px;
+    }
+    .buff-card {
+      background: #0f3460;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 6px;
+      border-left: 4px solid;
+    }
+    .buff-card.temporary {
+      border-left-color: #ff6b6b;
+    }
+    .buff-card.permanent {
+      border-left-color: #4dabf7;
+    }
+    .quality-COMMON { color: #a0a0a0; }
+    .quality-UNCOMMON { color: #5eff00; }
+    .quality-RARE { color: #0070dd; }
+    .quality-EPIC { color: #a335ee; }
+    .quality-LEGENDARY { color: #ff8000; }
+    .stat-display {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .stat-item {
+      background: #0f3460;
+      padding: 10px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .stat-label {
+      color: #888;
+      font-size: 12px;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #ffd700;
+    }
+    button {
+      background: #ffd700;
+      color: #1a1a2e;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 5px;
+    }
+    button:hover {
+      background: #ffed4e;
+    }
+    .log {
+      background: #000;
+      padding: 10px;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .log-entry {
+      margin: 2px 0;
+      padding: 2px 5px;
+    }
+    .log-entry.info { color: #4dabf7; }
+    .log-entry.upgrade { color: #5eff00; }
+    .log-entry.warning { color: #ff6b6b; }
+  </style>
+</head>
+<body>
+  <h1>🎲 临时Buff系统测试</h1>
+  
+  <div class="test-section">
+    <h2>玩家状态</h2>
+    <div class="stat-display">
+      <div class="stat-item">
+        <div class="stat-label">物理攻击</div>
+        <div class="stat-value" id="stat-p-atk">10</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">物理防御</div>
+        <div class="stat-value" id="stat-p-def">5</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">魔法攻击</div>
+        <div class="stat-value" id="stat-m-atk">8</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">魔法防御</div>
+        <div class="stat-value" id="stat-m-def">5</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">最大生命</div>
+        <div class="stat-value" id="stat-maxHp">100</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">当前楼层</div>
+        <div class="stat-value" id="stat-floor">1</div>
+      </div>
+    </div>
+    
+    <div>
+      <button onclick="nextFloor()">进入下一层</button>
+      <button onclick="resetStats()">重置状态</button>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>临时Buff测试</h2>
+    <p>临时buff在当前层有效，进入下一层后会自动消失</p>
+    
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+      <button onclick="applyBuff('str', 'COMMON')">普通 力量Buff (+4)</button>
+      <button onclick="applyBuff('str', 'UNCOMMON')">优秀 力量Buff (+5)</button>
+      <button onclick="applyBuff('str', 'RARE')">稀有 力量Buff (+6)</button>
+      <button onclick="applyBuff('str', 'EPIC')">史诗 力量Buff (+8)</button>
+      <button onclick="applyBuff('str', 'LEGENDARY')">传说 力量Buff (+10)</button>
+      
+      <button onclick="applyBuff('iron', 'RARE')">稀有 铁皮Buff (+6)</button>
+      <button onclick="applyBuff('arc', 'EPIC')">史诗 奥术Buff (+8)</button>
+      <button onclick="applyBuff('ward', 'LEGENDARY')">传说 守护Buff (+10)</button>
+      
+      <button onclick="applyBuff('vit', 'COMMON')">普通 生命Buff (+20)</button>
+      <button onclick="applyBuff('vit', 'RARE')">稀有 生命Buff (+40)</button>
+      <button onclick="applyBuff('vit', 'LEGENDARY')">传说 生命Buff (+80)</button>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>永久Buff测试</h2>
+    <p>怒气和金币buff立即生效，不受楼层影响</p>
+    
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+      <button onclick="applyBuff('fury', 'COMMON')">普通 怒气Buff (+20)</button>
+      <button onclick="applyBuff('fury', 'LEGENDARY')">传说 怒气Buff (+50)</button>
+      <button onclick="applyBuff('fortune', 'COMMON')">普通 财富Buff (+100)</button>
+      <button onclick="applyBuff('fortune', 'LEGENDARY')">传说 财富Buff (+300)</button>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>当前激活的临时Buff</h2>
+    <div id="active-buffs">
+      <p style="color: #888;">暂无激活的临时buff</p>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>操作日志</h2>
+    <div class="log" id="log"></div>
+  </div>
+
+  <script>
+    // 模拟玩家数据
+    const player = {
+      stats: {
+        p_atk: 10,
+        p_def: 5,
+        m_atk: 8,
+        m_def: 5,
+        maxHp: 100,
+        hp: 100,
+        floor: 1,
+        rage: 0,
+        gold: 0
+      },
+      temporaryBuffs: []
+    };
+
+    // Buff定义
+    const BUFF_POOL = {
+      str: { id: 'str', name: 'Might', stat: 'p_atk', label: '物理攻击' },
+      iron: { id: 'iron', name: 'Iron Skin', stat: 'p_def', label: '物理防御' },
+      arc: { id: 'arc', name: 'Arcana', stat: 'm_atk', label: '魔法攻击' },
+      ward: { id: 'ward', name: 'Ward', stat: 'm_def', label: '魔法防御' },
+      vit: { id: 'vit', name: 'Vitality', stat: 'maxHp', label: '最大生命' },
+      fury: { id: 'fury', name: 'Fury', stat: 'rage', label: '怒气' },
+      fortune: { id: 'fortune', name: 'Fortune', stat: 'gold', label: '金币' }
+    };
+
+    // 品质对应的数值
+    const BUFF_VALUES = {
+      str: { COMMON: 4, UNCOMMON: 5, RARE: 6, EPIC: 8, LEGENDARY: 10 },
+      iron: { COMMON: 4, UNCOMMON: 5, RARE: 6, EPIC: 8, LEGENDARY: 10 },
+      arc: { COMMON: 4, UNCOMMON: 5, RARE: 6, EPIC: 8, LEGENDARY: 10 },
+      ward: { COMMON: 4, UNCOMMON: 5, RARE: 6, EPIC: 8, LEGENDARY: 10 },
+      vit: { COMMON: 20, UNCOMMON: 30, RARE: 40, EPIC: 60, LEGENDARY: 80 },
+      fury: { COMMON: 20, UNCOMMON: 25, RARE: 30, EPIC: 40, LEGENDARY: 50 },
+      fortune: { COMMON: 100, UNCOMMON: 150, RARE: 200, EPIC: 250, LEGENDARY: 300 }
+    };
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function updateDisplay() {
+      document.getElementById('stat-p-atk').textContent = player.stats.p_atk;
+      document.getElementById('stat-p-def').textContent = player.stats.p_def;
+      document.getElementById('stat-m-atk').textContent = player.stats.m_atk;
+      document.getElementById('stat-m-def').textContent = player.stats.m_def;
+      document.getElementById('stat-maxHp').textContent = player.stats.maxHp;
+      document.getElementById('stat-floor').textContent = player.stats.floor;
+
+      // 更新临时buff显示
+      const activeBuffsDiv = document.getElementById('active-buffs');
+      if (player.temporaryBuffs.length === 0) {
+        activeBuffsDiv.innerHTML = '<p style="color: #888;">暂无激活的临时buff</p>';
+      } else {
+        activeBuffsDiv.innerHTML = player.temporaryBuffs.map(buff => {
+          const buffDef = BUFF_POOL[buff.buffId];
+          return `
+            <div class="buff-card temporary">
+              <strong>${buffDef.name}</strong> - ${buffDef.label} +${buff.value}
+              <br><small style="color: #888;">应用于第${buff.appliedFloor}层</small>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function applyBuff(buffId, quality) {
+      const buff = BUFF_POOL[buffId];
+      const value = BUFF_VALUES[buffId][quality];
+      const isTemporary = ['str', 'iron', 'arc', 'ward', 'vit'].includes(buffId);
+
+      // 应用buff效果
+      player.stats[buff.stat] += value;
+
+      // 如果是临时buff，记录
+      if (isTemporary) {
+        player.temporaryBuffs.push({
+          buffId: buffId,
+          value: value,
+          appliedFloor: player.stats.floor
+        });
+        log(`应用临时buff: ${buff.name} (${quality}) - ${buff.label} +${value}`, 'upgrade');
+      } else {
+        log(`应用永久buff: ${buff.name} (${quality}) - ${buff.label} +${value}`, 'upgrade');
+      }
+
+      updateDisplay();
+    }
+
+    function nextFloor() {
+      const oldFloor = player.stats.floor;
+      player.stats.floor++;
+
+      // 清除临时buff
+      if (player.temporaryBuffs.length > 0) {
+        log(`进入第${player.stats.floor}层，清除临时buff...`, 'warning');
+        
+        for (const tempBuff of player.temporaryBuffs) {
+          const buffDef = BUFF_POOL[tempBuff.buffId];
+          player.stats[buffDef.stat] -= tempBuff.value;
+          log(`移除临时buff: ${buffDef.name} - ${buffDef.label} -${tempBuff.value}`, 'info');
+        }
+        
+        player.temporaryBuffs = [];
+        log('所有临时buff已清除', 'info');
+      } else {
+        log(`进入第${player.stats.floor}层`, 'info');
+      }
+
+      updateDisplay();
+    }
+
+    function resetStats() {
+      player.stats = {
+        p_atk: 10,
+        p_def: 5,
+        m_atk: 8,
+        m_def: 5,
+        maxHp: 100,
+        hp: 100,
+        floor: 1,
+        rage: 0,
+        gold: 0
+      };
+      player.temporaryBuffs = [];
+      log('状态已重置', 'info');
+      updateDisplay();
+    }
+
+    // 初始化
+    updateDisplay();
+    log('临时Buff系统测试已启动', 'info');
+  </script>
+</body>
+</html>

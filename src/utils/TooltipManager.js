@@ -95,6 +95,139 @@ export class TooltipManager {
       return this.generateSkillTooltip(itemOrId);
     }
     
+    // ✅ 处理特殊物品类型（幸运石、符文等）
+    if (itemOrId && typeof itemOrId === 'object') {
+      // 幸运石（所有品质）
+      if (itemOrId.type === 'trash' && itemOrId.name && itemOrId.name.includes('幸运石')) {
+        const displayName = itemOrId.name || '幸运石';
+        const qualityKey = (itemOrId.quality || 'COMMON').toUpperCase();
+        const qualityConfig = ITEM_QUALITY[qualityKey] || ITEM_QUALITY.COMMON;
+        const qualityColor = qualityConfig.color || '#ffffff';
+        const displayColor = this.qualityColorMap[qualityColor] || (qualityColor === '#ffffff' ? '#5d4037' : qualityColor);
+        
+        let content = `<div class="tt-name" style="color: ${displayColor};">${displayName}</div>`;
+        content += `<div class="tt-type">强化材料</div>`;
+        
+        if (itemOrId.desc) {
+          content += `<div class="tt-desc">${itemOrId.desc}</div>`;
+        }
+        
+        if (itemOrId.successRateBonus) {
+          // 将小数转换为百分比显示
+          const bonusPercent = (itemOrId.successRateBonus * 100).toFixed(2);
+          content += `<div class="tt-stat" style="color: #4caf50;">强化成功率: +${bonusPercent}%</div>`;
+        }
+        
+        return content;
+      }
+      
+      // 符文
+      if (itemOrId.type === 'rune' && itemOrId.data) {
+        const rune = itemOrId.data;
+        const displayName = itemOrId.name || rune.nameZh || rune.name || '未知符文';
+        const qualityKey = (itemOrId.quality || 'COMMON').toUpperCase();
+        const qualityConfig = ITEM_QUALITY[qualityKey] || ITEM_QUALITY.COMMON;
+        const qualityColor = qualityConfig.color || '#ffffff';
+        const displayColor = this.qualityColorMap[qualityColor] || (qualityColor === '#ffffff' ? '#5d4037' : qualityColor);
+        
+        let content = `<div class="tt-name" style="color: ${displayColor};">${displayName}</div>`;
+        content += `<div class="tt-type">符文</div>`;
+        
+        // 符文类型
+        const runeTypeMap = {
+          'STAT': '属性提升',
+          'MECHANIC': '战斗机制',
+          'CURSE': '诅咒'
+        };
+        const runeTypeName = runeTypeMap[rune.type] || rune.type;
+        content += `<div class="tt-quality" style="color: ${displayColor};">${runeTypeName}</div>`;
+        
+        // 符文描述
+        if (itemOrId.desc) {
+          content += `<div class="tt-desc">${itemOrId.desc}</div>`;
+        } else if (rune.description) {
+          content += `<div class="tt-desc">${rune.description}</div>`;
+        }
+        
+        return content;
+      }
+      
+      // Buff
+      if (itemOrId.type === 'buff' && itemOrId.data) {
+        const buff = itemOrId.data;
+        const displayName = itemOrId.name || buff.name || '未知Buff';
+        const qualityKey = (itemOrId.quality || 'COMMON').toUpperCase();
+        const qualityConfig = ITEM_QUALITY[qualityKey] || ITEM_QUALITY.COMMON;
+        const qualityColor = qualityConfig.color || '#ffffff';
+        const displayColor = this.qualityColorMap[qualityColor] || (qualityColor === '#ffffff' ? '#5d4037' : qualityColor);
+        
+        let content = `<div class="tt-name" style="color: ${displayColor};">${displayName}</div>`;
+        
+        // 显示类型（区分临时和永久）
+        if (itemOrId.isTemporary) {
+          content += `<div class="tt-type">临时增益（本层有效）</div>`;
+        } else {
+          content += `<div class="tt-type">永久增益</div>`;
+        }
+        
+        // 显示详细描述（优先使用buffDesc）
+        if (itemOrId.buffDesc) {
+          content += `<div class="tt-desc">${itemOrId.buffDesc}</div>`;
+        } else if (buff.desc) {
+          content += `<div class="tt-desc">${buff.desc}</div>`;
+        }
+        
+        // Buff标签
+        if (buff.tags && buff.tags.length > 0) {
+          const tagNames = {
+            'OFFENSE': '进攻',
+            'DEFENSE': '防御',
+            'PHYS': '物理',
+            'MAG': '魔法',
+            'RESOURCE': '资源'
+          };
+          const tagText = buff.tags.map(tag => tagNames[tag] || tag).join(' · ');
+          content += `<div class="tt-stat" style="color: #888; font-size: 12px; margin-top: 5px;">${tagText}</div>`;
+        }
+        
+        return content;
+      }
+      
+      // 灵魂水晶
+      if (itemOrId.type === 'soul_crystal') {
+        const displayName = itemOrId.name || '灵魂水晶';
+        const qualityKey = (itemOrId.quality || 'COMMON').toUpperCase();
+        const qualityConfig = ITEM_QUALITY[qualityKey] || ITEM_QUALITY.COMMON;
+        const qualityColor = qualityConfig.color || '#ffffff';
+        const displayColor = this.qualityColorMap[qualityColor] || (qualityColor === '#ffffff' ? '#5d4037' : qualityColor);
+        
+        let content = `<div class="tt-name" style="color: ${displayColor};">${displayName}</div>`;
+        content += `<div class="tt-type">货币</div>`;
+        content += `<div class="tt-desc">用于元进度系统的特殊货币，可以在死亡后保留并用于永久升级。</div>`;
+        
+        if (itemOrId.value) {
+          content += `<div class="tt-stat" style="color: #bb00ff;">数量: ${itemOrId.value}</div>`;
+        }
+        
+        return content;
+      }
+      
+      // 金币
+      if (itemOrId.type === 'gold') {
+        const displayName = itemOrId.name || '金币';
+        const qualityKey = (itemOrId.quality || 'COMMON').toUpperCase();
+        const qualityConfig = ITEM_QUALITY[qualityKey] || ITEM_QUALITY.COMMON;
+        const qualityColor = qualityConfig.color || '#ffffff';
+        const displayColor = this.qualityColorMap[qualityColor] || (qualityColor === '#ffffff' ? '#5d4037' : qualityColor);
+        
+        let content = `<div class="tt-name" style="color: ${displayColor};">${displayName}</div>`;
+        content += `<div class="tt-type">货币</div>`;
+        content += `<div class="tt-desc">游戏中的通用货币，可用于购买物品、强化装备等。</div>`;
+        
+        return content;
+      }
+    }
+    
     // ✅ FIX: 支持物品对象和字符串ID
     let item = null;
     let itemId = null;
@@ -107,10 +240,19 @@ export class TooltipManager {
       // 物品对象
       item = itemOrId;
       itemId = item.itemId || item.id;
-      // 如果对象缺少某些属性，从数据库补充
-      if (itemId && EQUIPMENT_DB[itemId]) {
+      
+      // ✅ FIX: 如果对象有data字段且type是'equipment'或'consumable'，优先使用data
+      if (item.type === 'equipment' && item.data) {
+        // 赌徒界面的装备对象结构：{ type: 'equipment', itemId, data, quality, ... }
+        // 使用data作为基础，然后用外层的quality等覆盖
+        item = { ...item.data, quality: item.quality, itemId: item.itemId };
+      } else if (item.type === 'consumable' && item.data) {
+        // 赌徒界面的消耗品对象结构：{ type: 'consumable', itemId, data, quality, ... }
+        item = { ...item.data, quality: item.quality, itemId: item.itemId };
+      } else if (itemId && EQUIPMENT_DB[itemId]) {
+        // 标准情况：从数据库补充缺失的字段
         const dbItem = EQUIPMENT_DB[itemId];
-        // 合并，实例属性优先（这样可以使用强化后的属性）
+        // 合并，数据库属性优先，然后用实例属性覆盖（如quality、enhanceLevel等）
         item = { ...dbItem, ...itemOrId };
       }
     }
@@ -152,8 +294,23 @@ export class TooltipManager {
     // }
     
     // 显示描述（包括 Jackpot 等特殊标记）
-    if (item.description) {
-      content += `<div class="tt-desc">${item.description}</div>`;
+    // ✅ FIX: 支持 descZh 和 description 字段
+    let description = item.descZh || item.description || item.desc;
+    
+    // ✅ FIX: 替换描述中的占位符
+    if (description && item.effect) {
+      // 替换 {amount} 占位符
+      if (item.effect.amount !== undefined) {
+        description = description.replace(/\{amount\}/g, item.effect.amount);
+      }
+      // 替换 {damage} 占位符
+      if (item.effect.damage !== undefined) {
+        description = description.replace(/\{damage\}/g, item.effect.damage);
+      }
+    }
+    
+    if (description) {
+      content += `<div class="tt-desc">${description}</div>`;
     }
     
     // ✅ v2.0: 显示词缀信息（改进版，支持特殊词缀描述）
@@ -165,46 +322,11 @@ export class TooltipManager {
         
         if (!affixName) continue; // 如果没有中文名，跳过显示
         
-        // 检查是否有特殊效果（转化、触发等）
-        let affixDesc = '';
-        if (affix.stats) {
-          const statEntries = Object.entries(affix.stats);
-          const descParts = [];
-          
-          for (const [statKey, statValue] of statEntries) {
-            // v2.1 FIX: 隐藏 multiplier 属性，它是内部计算用的
-            if (statKey === 'multiplier') continue;
-
-            // 检查是否是转化类词缀
-            if (statKey.includes('_to_') || statKey.includes('_percent')) {
-              // 转化类词缀：显示完整描述
-              if (statKey === 'p_def_to_p_atk') {
-                descParts.push(`将${(statValue * 100).toFixed(0)}%的护甲转化为攻击力`);
-              } else if (statKey === 'm_def_to_m_atk') {
-                descParts.push(`将${(statValue * 100).toFixed(0)}%的魔法防御转化为魔法攻击`);
-              } else {
-                descParts.push(`${this.statNameMap[statKey] || statKey}: ${statValue}`);
-              }
-            } else {
-              // 普通词缀：显示数值
-              const statName = this.statNameMap[statKey] || statKey;
-              const isPercentage = statKey.includes('rate') || statKey.includes('dodge') || 
-                                   statKey.includes('pen') || statKey.includes('gold') || 
-                                   statKey.includes('lifesteal');
-              const displayValue = isPercentage 
-                ? `${(statValue * 100).toFixed(1)}%` 
-                : `+${Math.floor(statValue)}`;
-              descParts.push(`${statName} ${displayValue}`);
-            }
-          }
-          
-          if (descParts.length > 0) {
-            affixDesc = `: ${descParts.join(', ')}`;
-          }
-        }
+        // 隐藏词缀的具体数值描述，因为下方属性详情已经显示了完整信息
+        // 只显示词缀名称即可
         
         const affixClass = affix.type === 'prefix' ? 'tt-affix tt-prefix' : 'tt-affix tt-suffix';
-        content += `<div class="${affixClass}">${affixType}: ${affixName}${affixDesc}</div>`;
+        content += `<div class="${affixClass}">${affixType}: ${affixName}</div>`;
       }
     } else if (item.meta) {
       // 兼容旧格式（只有 prefix/suffix 字符串）
@@ -220,7 +342,7 @@ export class TooltipManager {
     // ✅ 宝石镶嵌系统：显示孔位状态（在传奇特效之前）
     if (item.meta && item.meta.sockets && Array.isArray(item.meta.sockets) && item.meta.sockets.length > 0) {
       content += `<div class="tt-sockets" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(212, 175, 55, 0.3);">`;
-      content += `<div style="color: #d4af37; font-weight: 600; margin-bottom: 5px;">镶嵌槽位:</div>`;
+      content += `<div style="color: #eab300ff; font-weight: 600; margin-bottom: 5px;">镶嵌槽位:</div>`;
       
       item.meta.sockets.forEach((socket, index) => {
         if (socket.status === 'FILLED' && socket.gemId) {
@@ -335,10 +457,15 @@ export class TooltipManager {
                                k.includes('pen') || k.includes('gold') || 
                                k.includes('lifesteal') || k.includes('_percent');
           
-          // 主数值（最终值）
-          const displayValue = isPercentage 
-            ? `${(v * 100).toFixed(1)}%` 
-            : `+${Math.floor(v)}`;
+          // 主数值（最终值）- 正确处理正负数
+          let displayValue;
+          if (isPercentage) {
+            const percentValue = (v * 100).toFixed(1);
+            displayValue = v >= 0 ? `+${percentValue}%` : `${percentValue}%`;
+          } else {
+            const intValue = Math.floor(v);
+            displayValue = v >= 0 ? `+${intValue}` : `${intValue}`;
+          }
           
           // ✅ V2.0: 计算底材和词缀加成
           let subText = '';
@@ -365,11 +492,20 @@ export class TooltipManager {
             
             // 如果有词缀加成，显示副说明
             if (affixBonus > 0.001 || affixBonus < -0.001) {
-              const bonusDisplay = isPercentage 
-                ? `${(affixBonus * 100).toFixed(1)}%`
-                : `+${Math.floor(affixBonus)}`;
+              // 正确处理词缀加成的正负数显示
+              let bonusDisplay;
+              if (isPercentage) {
+                const bonusPercent = (affixBonus * 100).toFixed(1);
+                bonusDisplay = affixBonus >= 0 ? `+${bonusPercent}%` : `${bonusPercent}%`;
+              } else {
+                const bonusInt = Math.floor(affixBonus);
+                bonusDisplay = affixBonus >= 0 ? `+${bonusInt}` : `${bonusInt}`;
+              }
               
-              subText = ` <span class="val-sub">(基础: ${baseDisplay} <span class="val-bonus" style="color:#00ffff">${bonusDisplay}</span>)</span>`;
+              // 根据增益/减益显示不同颜色：增益为深绿色，减益为深红色
+              const bonusColor = affixBonus >= 0 ? '#2e7d32' : '#c62828';
+              
+              subText = ` <span class="val-sub">(基础: ${baseDisplay} <span class="val-bonus" style="color:${bonusColor}">${bonusDisplay}</span>)</span>`;
             } else {
               // v2.1 FIX: 如果没有词缀加成，不显示冗余的“基础”数值
               subText = '';

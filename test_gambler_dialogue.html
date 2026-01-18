@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>赌徒对话系统测试</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    .test-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .test-section {
+      background: #2a2a2a;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      border: 1px solid #444;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+    .info {
+      background: #333;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    h2 {
+      color: #ffcc00;
+      margin-top: 0;
+    }
+    h3 {
+      color: #d4af37;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>🎰 赌徒对话系统测试</h1>
+    
+    <div class="test-section">
+      <h2>测试说明</h2>
+      <div class="info">
+        <p>✅ 新功能：抽奖完成后，先显示评判语（3秒），然后显示催促语（4秒）</p>
+        <p>📝 催促语包含20条带黑色幽默的文本，催促玩家继续游戏</p>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>1. 测试单独对话</h2>
+      <button onclick="testWelcome()">欢迎语</button>
+      <button onclick="testUrge()">催促语</button>
+      <button onclick="testJudgement()">评判语（传说）</button>
+    </div>
+
+    <div class="test-section">
+      <h2>2. 测试组合对话（评判 + 催促）</h2>
+      <button onclick="testWithUrge('legendary')">传说品质</button>
+      <button onclick="testWithUrge('epic')">史诗品质</button>
+      <button onclick="testWithUrge('rare')">稀有品质</button>
+      <button onclick="testWithUrge('trash')">垃圾品质</button>
+      <button onclick="testWithUrge('jackpot')">大奖</button>
+    </div>
+
+    <div class="test-section">
+      <h2>3. 测试特殊情况</h2>
+      <button onclick="testNearMiss()">差一点</button>
+      <button onclick="testHighPity()">高保底</button>
+      <button onclick="testLowGold()">金币不足</button>
+    </div>
+
+    <div class="test-section">
+      <h2>催促语预览</h2>
+      <div class="info" id="urgePreview" style="max-height: 300px; overflow-y: auto;">
+        加载中...
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { GamblerNPC } from './src/ui/GamblerNPC.js';
+
+    // 创建全局 NPC 实例
+    window.npc = new GamblerNPC();
+
+    // 测试函数
+    window.testWelcome = () => {
+      const msg = window.npc.getRandomDialogue('welcome');
+      window.npc.say(msg, 3000);
+    };
+
+    window.testUrge = () => {
+      const msg = window.npc.getRandomDialogue('urge');
+      window.npc.say(msg, 4000);
+    };
+
+    window.testJudgement = () => {
+      const msg = window.npc.getRandomDialogue('legendary');
+      window.npc.say(msg, 3000);
+    };
+
+    window.testWithUrge = (quality) => {
+      const context = {
+        result: { quality: quality.toUpperCase(), type: quality === 'trash' ? 'trash' : 'item' },
+        pityCount: 0,
+        isNearMiss: false,
+        playerGold: 1000
+      };
+      const dialogue = window.npc.getContextualDialogue(context);
+      window.npc.sayWithUrge(dialogue, 3000, 4000);
+    };
+
+    window.testNearMiss = () => {
+      const context = {
+        result: { quality: 'COMMON', type: 'trash' },
+        pityCount: 3,
+        isNearMiss: true,
+        playerGold: 1000
+      };
+      const dialogue = window.npc.getContextualDialogue(context);
+      window.npc.sayWithUrge(dialogue, 3000, 4000);
+    };
+
+    window.testHighPity = () => {
+      const context = {
+        result: { quality: 'COMMON', type: 'trash' },
+        pityCount: 8,
+        isNearMiss: false,
+        playerGold: 1000
+      };
+      const dialogue = window.npc.getContextualDialogue(context);
+      window.npc.sayWithUrge(dialogue, 3000, 4000);
+    };
+
+    window.testLowGold = () => {
+      const context = {
+        result: { quality: 'COMMON', type: 'trash' },
+        pityCount: 0,
+        isNearMiss: false,
+        playerGold: 50
+      };
+      const dialogue = window.npc.getContextualDialogue(context);
+      window.npc.sayWithUrge(dialogue, 3000, 4000);
+    };
+
+    // 显示所有催促语
+    const urgePreview = document.getElementById('urgePreview');
+    const urgeDialogues = window.npc.dialogues.urge;
+    urgePreview.innerHTML = urgeDialogues.map((msg, i) => 
+      `<p><strong>${i + 1}.</strong> ${msg}</p>`
+    ).join('');
+
+    console.log('✅ 赌徒对话系统测试页面已加载');
+    console.log('📊 催促语数量:', urgeDialogues.length);
+  </script>
+</body>
+</html>

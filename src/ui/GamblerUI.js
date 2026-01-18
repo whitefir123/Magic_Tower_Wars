@@ -10,6 +10,7 @@ import {
   getEquipmentDropForFloor, 
   getRandomConsumable 
 } from '../constants.js';
+import { RUNE_POOL } from '../data/Runes.js';
 import { ParticleSystem } from './ParticleSystem.js';
 import { AnimationController } from './AnimationController.js';
 import { HistoryTracker } from './HistoryTracker.js';
@@ -71,7 +72,7 @@ export class GamblerUI {
     // 新系统
     this.particleSystem = null;
     this.animationController = null;
-    this.historyTracker = new HistoryTracker(5);
+    this.historyTracker = new HistoryTracker(30); // 增加到30，可以显示3次十连的完整记录
     this.gamblerNPC = new GamblerNPC();
     this.accessibilityManager = null;
 
@@ -197,6 +198,18 @@ export class GamblerUI {
       .quality-RARE { color: #0070dd; }
       .quality-EPIC { color: #a335ee; }
       .quality-LEGENDARY { color: #ff8000; }
+
+      /* 历史记录容器滚动条隐藏 */
+      #gambler-history-container::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+        display: none;
+      }
+      
+      #gambler-history-container {
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+      }
       .quality-JACKPOT { color: #ff0000; }
 
       .jackpot-counter {
@@ -374,7 +387,7 @@ export class GamblerUI {
             </div>
             
             <!-- 历史记录显示 -->
-            <div style="background: transparent; padding: 8px 10px; border-radius: 6px; min-height: 150px; width: 100%; box-sizing: border-box;">
+            <div id="gambler-history-container" style="background: transparent; padding: 8px 10px; border-radius: 6px; min-height: 150px; max-height: 350px; width: 100%; box-sizing: border-box; overflow-y: auto; overflow-x: hidden;">
               <div style="color: #5c4033; font-size: 11px; text-align: center; margin-bottom: 6px; font-weight: bold;">最近结果</div>
               <div id="gambler-history" style="min-height: 50px;"></div>
             </div>
@@ -429,6 +442,13 @@ export class GamblerUI {
     }
     
     this.elements.messageText = document.getElementById('gambler-message');
+    
+    // 将 messageText 元素传递给 GamblerNPC
+    if (this.gamblerNPC && this.elements.messageText) {
+      this.gamblerNPC.setMessageElement(this.elements.messageText);
+      console.log('[GamblerUI] GamblerNPC 已绑定 messageText 元素');
+    }
+    
     this.elements.reelContainer = document.getElementById('gambler-reel-container');
     this.elements.reelStrip = document.getElementById('gambler-reel-strip');
     this.elements.jackpotDisplay = document.getElementById('gambler-jackpot');
@@ -586,11 +606,12 @@ export class GamblerUI {
         this.elements.resultDisplay.classList.add('hidden');
       }
 
-      // NPC 欢迎语
-      if (this.gamblerNPC) {
-        const welcomeMsg = this.gamblerNPC.getRandomDialogue('welcome');
-        this.gamblerNPC.say(welcomeMsg, 3000);
-      }
+      // 延迟显示 NPC 欢迎语，等待淡入动画完成
+      setTimeout(() => {
+        if (this.gamblerNPC && this.isOpen) {
+          this.gamblerNPC.showWelcome();
+        }
+      }, 300); // 等待淡入动画完成
 
       this.render();
       this.renderHistory();
@@ -688,42 +709,52 @@ export class GamblerUI {
 
   close() {
     if (this.elements.overlay) {
-      this.elements.overlay.classList.add('hidden');
+      // 先移除淡入类，添加淡出动画
       this.elements.overlay.classList.remove('overlay-fade-in');
-      this.elements.overlay.style.setProperty('display', 'none', 'important');
-      this.isOpen = false;
+      this.elements.overlay.style.transition = 'opacity 300ms ease-out';
+      this.elements.overlay.style.opacity = '0';
 
-      // 清理粒子系统
-      if (this.particleSystem) {
-        this.particleSystem.clear();
-      }
-
-      // 清理动画控制器
-      if (this.animationController) {
-        this.animationController.cleanup();
-      }
-
-      // 清理 NPC
+      // 清理 NPC（立即停止催促，但不影响淡出动画）
       if (this.gamblerNPC) {
+        this.gamblerNPC.stopUrging();
         this.gamblerNPC.hide();
+        this.gamblerNPC.resetWelcome();
       }
 
-      // 重置状态
-      this.isSpinning = false;
-      this.spinStage = 0;
-      this.lastSpinTime = 0;
+      // 等待淡出动画完成后再隐藏
+      setTimeout(() => {
+        this.elements.overlay.classList.add('hidden');
+        this.elements.overlay.style.setProperty('display', 'none', 'important');
+        this.elements.overlay.style.opacity = '1'; // 重置透明度供下次使用
+        this.isOpen = false;
 
-      // 清理滚轮
-      if (this.elements.reelStrip) {
-        this.elements.reelStrip.style.transition = 'none';
-        this.elements.reelStrip.style.transform = 'translateX(0)';
-        this.elements.reelStrip.style.filter = 'none';
-      }
+        // 清理粒子系统
+        if (this.particleSystem) {
+          this.particleSystem.clear();
+        }
 
-      const game = window.game;
-      if (game) game.isPaused = false;
-      
-      console.log('✓ GamblerUI 已关闭并清理资源');
+        // 清理动画控制器
+        if (this.animationController) {
+          this.animationController.cleanup();
+        }
+
+        // 重置状态
+        this.isSpinning = false;
+        this.spinStage = 0;
+        this.lastSpinTime = 0;
+
+        // 清理滚轮
+        if (this.elements.reelStrip) {
+          this.elements.reelStrip.style.transition = 'none';
+          this.elements.reelStrip.style.transform = 'translateX(0)';
+          this.elements.reelStrip.style.filter = 'none';
+        }
+
+        const game = window.game;
+        if (game) game.isPaused = false;
+        
+        console.log('✓ GamblerUI 已关闭并清理资源');
+      }, 300); // 等待淡出动画完成
     }
   }
 
@@ -844,20 +875,8 @@ export class GamblerUI {
   }
 
   updateMessage() {
-    if (this.elements.messageText) {
-      if (this.spinStage === 0) {
-        const pity = this.player?.stats?.gamblerPityCount || 0;
-        if (pity > 5) {
-          this.elements.messageText.textContent = '我感觉到你的运气正在积聚...';
-          this.elements.messageText.style.color = '#ff6600';
-        } else {
-          this.elements.messageText.textContent = '手气不错，陌生人？老虎机知道你的命运...';
-          this.elements.messageText.style.color = '#ffcc00';
-        }
-      } else if (this.spinStage === 1) {
-        this.elements.messageText.textContent = '祝你好运...';
-      }
-    }
+    // 消息现在由 GamblerNPC 系统控制，不在这里更新
+    // 保留此方法以防其他地方调用
   }
 
   updateButtonStates() {
@@ -913,6 +932,11 @@ export class GamblerUI {
     if (this.isSpinning) return;
     if (!this.player) return;
 
+    // 停止催促系统
+    if (this.gamblerNPC) {
+      this.gamblerNPC.stopUrging();
+    }
+
     // 防抖检查
     const now = Date.now();
     if (now - this.lastSpinTime < this.spinDebounceMs) {
@@ -945,7 +969,12 @@ export class GamblerUI {
     // 2. 锁定状态
     this.isSpinning = true;
     this.spinStage = 1;
-    this.updateMessage();
+    
+    // 显示等待语
+    if (this.gamblerNPC) {
+      this.gamblerNPC.showSpinning();
+    }
+    
     if (this.elements.resultDisplay) this.elements.resultDisplay.classList.add('hidden');
     
     // 显示跳过提示
@@ -1000,6 +1029,11 @@ export class GamblerUI {
     if (this.isSpinning) return;
     if (!this.player) return;
 
+    // 停止催促系统
+    if (this.gamblerNPC) {
+      this.gamblerNPC.stopUrging();
+    }
+
     const batchCost = 450;
     const batchCount = 10;
 
@@ -1013,6 +1047,11 @@ export class GamblerUI {
     // 锁定状态
     this.isSpinning = true;
     this.spinStage = 1;
+    
+    // 显示等待语
+    if (this.gamblerNPC) {
+      this.gamblerNPC.showSpinning();
+    }
 
     // 存储所有结果
     const results = [];
@@ -1020,6 +1059,11 @@ export class GamblerUI {
     // 执行 10 次抽取
     for (let i = 0; i < batchCount; i++) {
       const tier = GAMBLE_TIERS.STANDARD;
+      
+      // 更新进度提示
+      if (this.gamblerNPC && this.gamblerNPC.messageElement) {
+        this.gamblerNPC.messageElement.textContent = `正在抽取... (${i + 1}/10)`;
+      }
       
       // Jackpot 贡献
       const contrib = Math.floor((batchCost / batchCount) * GAMBLER_CONFIG.JACKPOT.CONTRIBUTION_RATE);
@@ -1038,7 +1082,24 @@ export class GamblerUI {
         // 更新results数组中的奖励
         results[i] = finalReward;
         
-        await this.showResult(finalReward);
+        // 显示结果但不启动催促（十连抽中）
+        await this.showResultWithoutUrge(finalReward);
+        
+        // 添加到历史记录
+        const totalItems = 50;
+        const winnerIndex = 45;
+        const items = [];
+        for (let j = 0; j < totalItems; j++) {
+          if (j === winnerIndex) {
+            items.push(finalReward);
+          } else {
+            const randomQ = Math.random() < 0.8 ? 'COMMON' : 'UNCOMMON';
+            items.push({ icon: '?', quality: randomQ });
+          }
+        }
+        const nearMissResult = this.historyTracker.detectNearMiss(winnerIndex, items);
+        this.historyTracker.addResult(finalReward, nearMissResult.isNearMiss, nearMissResult.missedItem?.quality);
+        
         await this.sleep(800); // 短暂暂停
       } else {
         // 直接应用奖励，不显示动画
@@ -1059,18 +1120,23 @@ export class GamblerUI {
         const nearMissResult = this.historyTracker.detectNearMiss(winnerIndex, items);
         this.historyTracker.addResult(reward, nearMissResult.isNearMiss, nearMissResult.missedItem?.quality);
       }
+      
+      // 短暂延迟，让玩家感受到抽取过程
+      await this.sleep(100);
     }
 
-    // 显示汇总
+    // 显示汇总（在解锁之前）
     this.showBatchSummary(results);
 
     // 更新显示
     this.render();
     this.renderHistory();
 
-    // 解锁
+    // 解锁状态（确保在所有操作完成后解锁）
     this.isSpinning = false;
     this.spinStage = 0;
+    
+    console.log('[GamblerUI] 十连抽完成，状态已解锁');
   }
 
   /**
@@ -1090,7 +1156,6 @@ export class GamblerUI {
     
     qualityOrder.forEach(quality => {
       if (stats[quality]) {
-        const color = this.historyTracker.getQualityColor(quality);
         summary += `${quality}: ${stats[quality]} 个\n`;
       }
     });
@@ -1112,15 +1177,27 @@ export class GamblerUI {
 
     alert(summary);
 
-    // NPC 对话
+    // NPC 对话 - 使用 showJudgement 方法，保持一致性
     if (this.gamblerNPC) {
+      // 构建一个虚拟的上下文，用于生成评判语
+      let quality = 'COMMON';
       if (hasLegendary) {
-        this.gamblerNPC.say('10连出传说！你的运气爆棚了！', 3000);
+        quality = 'LEGENDARY';
       } else if (hasEpic) {
-        this.gamblerNPC.say('10连出史诗，运气不错！', 3000);
-      } else {
-        this.gamblerNPC.say('10连完成，继续加油！', 2000);
+        quality = 'EPIC';
+      } else if (stats.RARE) {
+        quality = 'RARE';
       }
+      
+      const context = {
+        result: { quality: quality, type: 'batch' },
+        pityCount: this.player?.stats?.gamblerPityCount || 0,
+        isNearMiss: false,
+        playerGold: this.player?.stats?.gold || 0
+      };
+      
+      // 显示评判语，5秒后开始催促
+      this.gamblerNPC.showJudgement(context);
     }
   }
 
@@ -1211,19 +1288,70 @@ export class GamblerUI {
   generateItemByQuality(quality, tier) {
     const floor = this.player.stats.floor || 1;
     
-    // 如果是 COMMON，50% 概率是垃圾
-    if (quality === 'COMMON' && Math.random() < 0.5) {
+    // 幸运石生成逻辑 - 根据品质生成不同等级的幸运石
+    const shouldGenerateLuckyStone = (
+      (quality === 'COMMON' && Math.random() < 0.5) ||
+      (quality === 'UNCOMMON' && Math.random() < 0.3) ||
+      (quality === 'RARE' && Math.random() < 0.2) ||
+      (quality === 'EPIC' && Math.random() < 0.15) ||
+      (quality === 'LEGENDARY' && Math.random() < 0.1)
+    );
+    
+    if (shouldGenerateLuckyStone) {
+      // 根据品质生成不同的幸运石数据
+      const luckyStoneData = {
+        COMMON: {
+          name: '幸运石',
+          nameEn: 'Lucky Rock',
+          value: 1,
+          successRateBonus: 0.0005, // 0.05%
+          desc: '普通的幸运石，可作为强化底料使用，提升0.05%的强化成功率。虽然效果微弱，但总比一无所获要好。'
+        },
+        UNCOMMON: {
+          name: '优质幸运石',
+          nameEn: 'Quality Lucky Rock',
+          value: 2,
+          successRateBonus: 0.002, // 0.2%
+          desc: '优质的幸运石，蕴含更多的幸运之力，可作为强化底料使用，提升0.2%的强化成功率。'
+        },
+        RARE: {
+          name: '稀有幸运石',
+          nameEn: 'Rare Lucky Rock',
+          value: 5,
+          successRateBonus: 0.005, // 0.5%
+          desc: '稀有的幸运石，散发着淡淡的光芒，可作为强化底料使用，提升0.5%的强化成功率。'
+        },
+        EPIC: {
+          name: '史诗幸运石',
+          nameEn: 'Epic Lucky Rock',
+          value: 10,
+          successRateBonus: 0.008, // 0.8%
+          desc: '史诗级的幸运石，闪耀着迷人的光辉，可作为强化底料使用，提升0.8%的强化成功率。'
+        },
+        LEGENDARY: {
+          name: '传说幸运石',
+          nameEn: 'Legendary Lucky Rock',
+          value: 20,
+          successRateBonus: 0.01, // 1%
+          desc: '传说中的幸运石，蕴含着命运女神的祝福，可作为强化底料使用，提升1%的强化成功率。'
+        }
+      };
+      
+      const data = luckyStoneData[quality] || luckyStoneData.COMMON;
+      
       return {
         type: 'trash',
-        name: '幸运石',
-        nameEn: 'Lucky Rock',
-        quality: 'COMMON',
-        value: 1,
-        icon: '🪨'
+        name: data.name,
+        nameEn: data.nameEn,
+        quality: quality,
+        value: data.value,
+        icon: '🪨',
+        desc: data.desc,
+        successRateBonus: data.successRateBonus
       };
     }
 
-    // 决定物品类型 (Equipment / Consumable / Buff / Soul Crystal)
+    // 决定物品类型 (Equipment / Consumable / Rune / Buff / Soul Crystal)
     // 根据配置权重随机
     const typeRoll = Math.random() * 100;
     let currentWeight = 0;
@@ -1241,6 +1369,11 @@ export class GamblerUI {
     if (selectedType === 'SOUL_CRYSTAL' && ['COMMON', 'UNCOMMON'].includes(quality)) {
       selectedType = 'CONSUMABLE'; // 降级
     }
+    
+    // 特殊限制：符文只能在 UNCOMMON 以上出现
+    if (selectedType === 'RUNE' && quality === 'COMMON') {
+      selectedType = 'CONSUMABLE'; // 降级
+    }
 
     switch (selectedType) {
       case 'SOUL_CRYSTAL':
@@ -1253,13 +1386,127 @@ export class GamblerUI {
           icon: '💎'
         };
 
+      case 'RUNE':
+        // 根据品质筛选符文
+        let runeRarity = 'COMMON';
+        if (quality === 'LEGENDARY') runeRarity = 'LEGENDARY';
+        else if (quality === 'EPIC') runeRarity = 'RARE';
+        else if (quality === 'RARE') runeRarity = 'RARE';
+        else if (quality === 'UNCOMMON') runeRarity = 'COMMON';
+        
+        // 筛选符文池（只选择STAT类型的符文）
+        const availableRunes = RUNE_POOL.filter(r => 
+          r.rarity === runeRarity && r.type === 'STAT'
+        );
+        
+        if (availableRunes.length > 0) {
+          const selectedRune = availableRunes[Math.floor(Math.random() * availableRunes.length)];
+          
+          // 计算符文数值（根据品质）
+          const multiplier = ITEM_QUALITY[quality]?.multiplier || 1.0;
+          let runeValue = 2; // 默认值
+          
+          // 根据符文类型计算数值
+          if (selectedRune.id.includes('strength') || selectedRune.id.includes('power')) {
+            runeValue = Math.floor(5 * multiplier);
+          } else if (selectedRune.id.includes('vitality') || selectedRune.id.includes('life')) {
+            runeValue = Math.floor(10 * multiplier);
+          } else if (selectedRune.id.includes('precision') || selectedRune.id.includes('deadly') || selectedRune.id.includes('assassin')) {
+            runeValue = Math.floor(5 * multiplier);
+          } else if (selectedRune.id.includes('agility') || selectedRune.id.includes('phantom')) {
+            runeValue = Math.floor(5 * multiplier);
+          } else if (selectedRune.id.includes('fortune') || selectedRune.id.includes('greed')) {
+            runeValue = Math.floor(20 * multiplier);
+          } else {
+            runeValue = Math.floor(3 * multiplier);
+          }
+          
+          // 替换描述中的占位符
+          let runeDescription = selectedRune.description || '';
+          runeDescription = runeDescription.replace(/\{\{value\}\}/g, runeValue);
+          
+          // 根据品质生成描述
+          let desc = '';
+          if (quality === 'LEGENDARY') {
+            desc = `传说级符文，蕴含强大的力量。${runeDescription}`;
+          } else if (quality === 'EPIC') {
+            desc = `史诗级符文，效果显著。${runeDescription}`;
+          } else if (quality === 'RARE') {
+            desc = `稀有符文，具有不错的效果。${runeDescription}`;
+          } else {
+            desc = `普通符文，提供基础属性加成。${runeDescription}`;
+          }
+          
+          return {
+            type: 'rune',
+            runeId: selectedRune.id,
+            name: selectedRune.nameZh || selectedRune.name,
+            quality: quality,
+            data: selectedRune,
+            icon: '📜',
+            desc: desc,
+            runeValue: runeValue // 保存计算的数值
+          };
+        }
+        // Fallthrough if no runes available
+
       case 'BUFF':
         const buff = BUFF_POOL[Math.floor(Math.random() * BUFF_POOL.length)];
+        
+        // 根据品质计算Buff数值（临时增益，数值更高）
+        let buffValue = 1;
+        let buffDesc = '';
+        
+        // 根据Buff类型和品质计算数值
+        if (buff.id === 'str' || buff.id === 'iron' || buff.id === 'arc' || buff.id === 'ward') {
+          // 攻击/防御类Buff（临时增益，数值提高3-5点）
+          if (quality === 'LEGENDARY') buffValue = 10;
+          else if (quality === 'EPIC') buffValue = 8;
+          else if (quality === 'RARE') buffValue = 6;
+          else if (quality === 'UNCOMMON') buffValue = 5;
+          else buffValue = 4;
+          
+          const statName = buff.id === 'str' ? '物理攻击' : 
+                          buff.id === 'iron' ? '物理防御' :
+                          buff.id === 'arc' ? '魔法攻击' : '魔法防御';
+          buffDesc = `本层临时提升 ${buffValue} 点${statName}（进入下一层后消失）`;
+        } else if (buff.id === 'vit') {
+          // 生命类Buff（临时增益，数值提高）
+          if (quality === 'LEGENDARY') buffValue = 80;
+          else if (quality === 'EPIC') buffValue = 60;
+          else if (quality === 'RARE') buffValue = 40;
+          else if (quality === 'UNCOMMON') buffValue = 30;
+          else buffValue = 20;
+          
+          buffDesc = `本层临时提升 ${buffValue} 点最大生命值并立即回复等量生命（进入下一层后消失）`;
+        } else if (buff.id === 'fury') {
+          // 怒气类Buff（立即生效，不受层级影响）
+          if (quality === 'LEGENDARY') buffValue = 50;
+          else if (quality === 'EPIC') buffValue = 40;
+          else if (quality === 'RARE') buffValue = 30;
+          else if (quality === 'UNCOMMON') buffValue = 25;
+          else buffValue = 20;
+          
+          buffDesc = `立即获得 ${buffValue} 点怒气`;
+        } else if (buff.id === 'fortune') {
+          // 金币类Buff（立即生效，不受层级影响）
+          if (quality === 'LEGENDARY') buffValue = 300;
+          else if (quality === 'EPIC') buffValue = 250;
+          else if (quality === 'RARE') buffValue = 200;
+          else if (quality === 'UNCOMMON') buffValue = 150;
+          else buffValue = 100;
+          
+          buffDesc = `立即获得 ${buffValue} 金币`;
+        }
+        
         return {
           type: 'buff',
           name: `Buff: ${buff.name}`,
           quality: quality,
           data: buff,
+          buffValue: buffValue,
+          buffDesc: buffDesc,
+          isTemporary: (buff.id === 'str' || buff.id === 'iron' || buff.id === 'arc' || buff.id === 'ward' || buff.id === 'vit'), // 标记临时buff
           icon: '⚡'
         };
 
@@ -1436,6 +1683,24 @@ export class GamblerUI {
    * 显示结果并发放奖励
    */
   async showResult(reward) {
+    await this.showResultWithoutUrge(reward);
+    
+    // 启动催促系统
+    const lastHistory = this.historyTracker.getHistory()[0];
+    const npcContext = {
+      result: reward,
+      pityCount: this.player?.stats?.gamblerPityCount || 0,
+      isNearMiss: lastHistory?.wasNearMiss || false,
+      consecutiveRare: 0,
+      playerGold: this.player?.stats?.gold || 0
+    };
+    this.gamblerNPC.showJudgement(npcContext);
+  }
+
+  /**
+   * 显示结果但不启动催促（用于十连抽）
+   */
+  async showResultWithoutUrge(reward) {
     const game = window.game;
 
     // 1. 播放音效（带错误处理）
@@ -1482,22 +1747,10 @@ export class GamblerUI {
       this.accessibilityManager.announceResult(announcement);
     }
 
-    // 4. NPC 对话
-    const lastHistory = this.historyTracker.getHistory()[0];
-    const npcContext = {
-      result: reward,
-      pityCount: this.player?.stats?.gamblerPityCount || 0,
-      isNearMiss: lastHistory?.wasNearMiss || false,
-      consecutiveRare: 0, // TODO: 实现连续稀有追踪
-      playerGold: this.player?.stats?.gold || 0
-    };
-    const dialogue = this.gamblerNPC.getContextualDialogue(npcContext);
-    this.gamblerNPC.say(dialogue, 3000);
-
-    // 5. 应用奖励
+    // 4. 应用奖励
     this.applyReward(reward);
 
-    // 6. 成就检测
+    // 5. 成就检测
     if (game.achievementSystem) {
       if (reward.type === 'trash') {
         game.achievementSystem.check('onGamble', reward);
@@ -1506,7 +1759,7 @@ export class GamblerUI {
       }
     }
     
-    // 7. 记录日志
+    // 6. 记录日志
     if (game.ui && game.ui.logMessage) {
       game.ui.logMessage(`获得 [${reward.quality}] ${reward.name}！`, 'gain');
     }
@@ -1531,11 +1784,26 @@ export class GamblerUI {
         break;
 
       case 'buff':
-        // 简单实现：直接加属性，或者添加临时状态
-        // 这里暂时直接永久加属性（简化版），或者应该加到 temporaryBuffs
+        // 应用Buff效果，使用计算好的buffValue
         if (reward.data && reward.data.effect) {
-           reward.data.effect(game.player, 5); // 稍微强力一点的效果
-           game.ui.logMessage(`${reward.name} 生效！`, 'upgrade');
+          const value = reward.buffValue || 1; // 使用计算好的数值
+          reward.data.effect(game.player, value);
+          
+          // 如果是临时buff，记录到玩家状态中
+          if (reward.isTemporary) {
+            if (!game.player.temporaryBuffs) {
+              game.player.temporaryBuffs = [];
+            }
+            game.player.temporaryBuffs.push({
+              buffId: reward.data.id,
+              value: value,
+              appliedFloor: game.player.stats.floor
+            });
+          }
+          
+          // 显示详细的效果消息
+          const effectMsg = reward.buffDesc || `${reward.name} 生效！`;
+          game.ui.logMessage(effectMsg, 'upgrade');
         }
         break;
 
@@ -1547,8 +1815,18 @@ export class GamblerUI {
       case 'consumable':
         if (reward.itemId) {
           const success = game.player.addToInventory(reward.itemId);
-          if (!success && game.map) {
+          if (!success && game.map && typeof game.map.addConsumableAt === 'function') {
             game.map.addConsumableAt(reward.itemId, game.player.x, game.player.y);
+          }
+        }
+        break;
+
+      case 'rune':
+        // 添加符文到玩家
+        if (reward.runeId && game.roguelikeSystem) {
+          game.roguelikeSystem.addRune(reward.runeId);
+          if (game.ui && game.ui.logMessage) {
+            game.ui.logMessage(`获得符文: ${reward.name}`, 'gain');
           }
         }
         break;
@@ -1573,8 +1851,8 @@ export class GamblerUI {
           }
           
           const success = game.player.addToInventory(itemInstance);
-          if (!success && game.map) {
-            game.map.addEquipAt(reward.itemId, game.player.x, game.player.y);
+          if (!success && game.map && typeof game.map.addEquipAt === 'function') {
+            game.map.addEquipAt(itemInstance, game.player.x, game.player.y);
           }
         }
         break;

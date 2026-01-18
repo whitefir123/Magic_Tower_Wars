@@ -1,9 +1,11 @@
 // HistoryTracker.js - 历史追踪器
 // 管理旋转历史记录和差一点检测
 
+import { globalTooltipManager } from '../utils/TooltipManager.js';
+
 /**
  * HistoryTracker - 历史追踪器
- * 追踪最近的旋转结果，检测"差一点"情况
+ * 追踪最近的旋转结果,检测"差一点"情况
  */
 export class HistoryTracker {
   constructor(maxHistory = 5) {
@@ -158,18 +160,28 @@ export class HistoryTracker {
     }
 
     // 悬停效果
-    card.addEventListener('mouseenter', () => {
+    card.addEventListener('mouseenter', (e) => {
       card.style.transform = 'scale(1.15)';
       card.style.boxShadow = `0 0 12px ${this.getQualityColor(entry.reward.quality)}`;
+      
+      // 显示物品详情 tooltip - 优先使用完整的物品对象
+      const tooltipItem = entry.reward.data ? entry.reward : (entry.reward.type ? entry.reward : null);
+      if (tooltipItem) {
+        globalTooltipManager.show(tooltipItem, e.clientX, e.clientY);
+      }
     });
+    
+    card.addEventListener('mousemove', (e) => {
+      // 更新 tooltip 位置
+      globalTooltipManager.updatePosition(e.clientX, e.clientY);
+    });
+    
     card.addEventListener('mouseleave', () => {
       card.style.transform = 'scale(1)';
       card.style.boxShadow = `0 0 8px ${this.getQualityColor(entry.reward.quality)}`;
-    });
-
-    // 点击显示详情
-    card.addEventListener('click', () => {
-      this.showEntryDetails(entry);
+      
+      // 隐藏 tooltip
+      globalTooltipManager.hide();
     });
 
     return card;

@@ -3,16 +3,17 @@
 
 /**
  * GamblerNPC - 赌徒 NPC 对话系统
- * 直接使用 GamblerUI 的 messageText 元素显示对话
+ * 根据游戏状态和旋转结果提供动态对话
  * 支持自动催促：欢迎语/评判语 3秒后开始每4秒显示催促语
  */
 export class GamblerNPC {
   constructor(messageElement = null) {
-    this.messageElement = messageElement; // 使用外部提供的元素
+    this.dialogueElement = messageElement; // 使用外部提供的元素
     this.currentDialogue = null;
     this.dialogueTimeout = null;
     
     // 催促系统
+    this.urgeTimer = null;
     this.urgeInterval = null;
     this.isUrging = false;
     this.hasShownWelcome = false; // 标记是否已显示欢迎语
@@ -145,36 +146,19 @@ export class GamblerNPC {
         '稀有装备，够用了，别太贪心。',
         '看，蓝色的！虽然不是紫色，但也不错。',
         '命运女神给了你一个及格分。'
-      ],
-      spinning: [
-        '祝你好运...',
-        '命运的齿轮正在转动...',
-        '让我们看看会发生什么...',
-        '屏住呼吸...',
-        '奇迹即将发生...或许。',
-        '机器正在思考...',
-        '命运女神正在掷骰子...',
-        '你的运气正在被评估中...',
-        '稍等，让我摇一摇...',
-        '这次会是什么呢？'
       ]
     };
   }
 
   /**
-   * 设置消息元素
-   */
-  setMessageElement(element) {
-    this.messageElement = element;
-  }
-
-  /**
    * 说话
+   * @param {string} message - 消息内容
+   * @param {number} duration - 持续时间（毫秒）
+   * @param {boolean} startUrge - 是否在消息后启动催促系统
    */
-  say(message, duration = 5000, startUrge = false) {
-    if (!this.messageElement) {
-      console.warn('[GamblerNPC] 没有消息元素');
-      return;
+  say(message, duration = 3000, startUrge = false) {
+    if (!this.dialogueElement) {
+      this.createDialogueElement();
     }
 
     // 停止之前的催促
@@ -185,19 +169,29 @@ export class GamblerNPC {
       clearTimeout(this.dialogueTimeout);
     }
 
-    // 直接更新文本，统一使用金色
+    // 设置消息
     this.currentDialogue = message;
-    this.messageElement.textContent = message;
-    this.messageElement.style.color = '#ffcc00';
+    this.dialogueElement.textContent = message;
     
-    console.log('[GamblerNPC] 显示消息:', message);
+    // 显示对话气泡
+    this.dialogueElement.style.opacity = '0';
+    this.dialogueElement.style.display = 'block';
+    
+    // 淡入动画
+    setTimeout(() => {
+      this.dialogueElement.style.transition = 'opacity 300ms ease-in';
+      this.dialogueElement.style.opacity = '1';
+    }, 10);
 
-    // 启动催促或等待
-    if (startUrge) {
-      this.dialogueTimeout = setTimeout(() => {
+    // 自动隐藏
+    this.dialogueTimeout = setTimeout(() => {
+      // 如果需要启动催促系统，不隐藏对话气泡
+      if (startUrge) {
         this.startUrging();
-      }, duration);
-    }
+      } else {
+        this.hide();
+      }
+    }, duration);
   }
 
   /**
@@ -211,49 +205,27 @@ export class GamblerNPC {
     }
     
     const welcomeMsg = this.getRandomDialogue('welcome');
-    this.say(welcomeMsg, 5000, true); // 5秒后启动催促
+    this.say(welcomeMsg, 3000, true); // 3秒后启动催促
     this.hasShownWelcome = true;
-    console.log('[GamblerNPC] 显示欢迎语，5秒后开始催促');
-  }
-
-  /**
-   * 显示等待语（抽奖中）
-   */
-  showSpinning() {
-    this.stopUrging();
-    
-    // 清除之前的定时器，防止催促在抽奖中触发
-    if (this.dialogueTimeout) {
-      clearTimeout(this.dialogueTimeout);
-      this.dialogueTimeout = null;
-    }
-    
-    if (!this.messageElement) {
-      console.warn('[GamblerNPC] 没有消息元素');
-      return;
-    }
-
-    const spinningMsg = this.getRandomDialogue('spinning');
-    this.currentDialogue = spinningMsg;
-    this.messageElement.textContent = spinningMsg;
-    this.messageElement.style.color = '#ffcc00'; // 统一使用金色
-    
-    console.log('[GamblerNPC] 显示等待语:', spinningMsg);
+    console.log('[GamblerNPC] 显示欢迎语，3秒后开始催促');
   }
 
   /**
    * 显示评判语（抽奖结果）
+   * @param {Object} context - 上下文对象
    */
   showJudgement(context) {
     const dialogue = this.getContextualDialogue(context);
-    this.say(dialogue, 5000, true); // 5秒后启动催促
-    console.log('[GamblerNPC] 显示评判语，5秒后开始催促');
+    this.say(dialogue, 3000, true); // 3秒后启动催促
+    console.log('[GamblerNPC] 显示评判语，3秒后开始催促');
   }
 
   /**
    * 启动催促系统
+   * 立即显示第一条催促语，之后每4秒更新
    */
   startUrging() {
+    // 清除旧的催促定时器
     this.stopUrging();
     
     console.log('[GamblerNPC] 启动催促系统：立即显示第一条，之后每4秒更新');
@@ -273,6 +245,11 @@ export class GamblerNPC {
    * 停止催促系统
    */
   stopUrging() {
+    if (this.urgeTimer) {
+      clearTimeout(this.urgeTimer);
+      this.urgeTimer = null;
+    }
+    
     if (this.urgeInterval) {
       clearInterval(this.urgeInterval);
       this.urgeInterval = null;
@@ -286,21 +263,68 @@ export class GamblerNPC {
    * 显示催促消息
    */
   showUrgeMessage() {
-    if (!this.messageElement) {
-      console.warn('[GamblerNPC] 没有消息元素');
-      return;
+    const urgeMsg = this.getRandomDialogue('urge');
+    
+    if (!this.dialogueElement) {
+      console.log('[GamblerNPC] 创建对话元素');
+      this.createDialogueElement();
     }
 
-    const urgeMsg = this.getRandomDialogue('urge');
-    this.currentDialogue = urgeMsg;
-    this.messageElement.textContent = urgeMsg;
-    this.messageElement.style.color = '#ffcc00'; // 统一使用金色
+    // 清除之前的超时（如果有）
+    if (this.dialogueTimeout) {
+      clearTimeout(this.dialogueTimeout);
+      this.dialogueTimeout = null;
+    }
     
-    console.log('[GamblerNPC] 催促:', urgeMsg);
+    console.log('[GamblerNPC] 催促消息已设置:', urgeMsg);
+    console.log('[GamblerNPC] 对话元素状态:', {
+      display: this.dialogueElement.style.display,
+      opacity: this.dialogueElement.style.opacity,
+      textContent: this.dialogueElement.textContent,
+      parentNode: this.dialogueElement.parentNode ? 'attached' : 'detached'
+    });
+    
+    // 如果对话气泡已经显示，使用淡出-更新-淡入的效果
+    if (this.dialogueElement.style.display === 'block' && this.dialogueElement.style.opacity === '1') {
+      console.log('[GamblerNPC] 催促: 更新已显示的文本，使用淡出-淡入效果');
+      
+      // 1. 淡出
+      this.dialogueElement.style.transition = 'opacity 200ms ease-out';
+      this.dialogueElement.style.opacity = '0';
+      
+      // 2. 在淡出完成后更新文本并淡入
+      setTimeout(() => {
+        // 更新文本
+        this.currentDialogue = urgeMsg;
+        this.dialogueElement.textContent = urgeMsg;
+        console.log('[GamblerNPC] 文本已更新为:', urgeMsg);
+        
+        // 3. 淡入
+        this.dialogueElement.style.transition = 'opacity 200ms ease-in';
+        this.dialogueElement.style.opacity = '1';
+      }, 200);
+      
+      return;
+    }
+    
+    // 首次显示对话气泡
+    this.currentDialogue = urgeMsg;
+    this.dialogueElement.textContent = urgeMsg;
+    this.dialogueElement.style.opacity = '0';
+    this.dialogueElement.style.display = 'block';
+    
+    console.log('[GamblerNPC] 催促: 首次显示，执行淡入动画');
+    
+    // 淡入动画
+    setTimeout(() => {
+      this.dialogueElement.style.transition = 'opacity 300ms ease-in';
+      this.dialogueElement.style.opacity = '1';
+      console.log('[GamblerNPC] 催促: 淡入完成');
+    }, 10);
   }
 
   /**
-   * 重置欢迎语标记
+   * 重置欢迎语标记（当界面关闭时调用）
    */
   resetWelcome() {
     this.hasShownWelcome = false;
@@ -309,12 +333,15 @@ export class GamblerNPC {
 
   /**
    * 获取上下文对话
+   * @param {Object} context - 上下文对象
+   * @returns {string} 对话内容
    */
   getContextualDialogue(context) {
     const {
       result,
       pityCount = 0,
       isNearMiss = false,
+      consecutiveRare = 0,
       playerGold = 0
     } = context;
 
@@ -326,6 +353,8 @@ export class GamblerNPC {
       playerGold 
     });
 
+    // 优先级：大奖 > 传说 > 差一点 > 史诗 > 稀有 > 高保底 > 低金币 > 垃圾
+    
     if (result.quality === 'JACKPOT') {
       return this.getRandomDialogue('jackpot');
     }
@@ -363,6 +392,8 @@ export class GamblerNPC {
 
   /**
    * 获取随机对话
+   * @param {string} category - 对话类别
+   * @returns {string} 对话内容
    */
   getRandomDialogue(category) {
     const dialogues = this.dialogues[category] || this.dialogues.welcome;
@@ -372,11 +403,68 @@ export class GamblerNPC {
   }
 
   /**
-   * 隐藏（清空文本）
+   * 创建对话元素
+   */
+  createDialogueElement() {
+    this.dialogueElement = document.createElement('div');
+    this.dialogueElement.className = 'gambler-npc-dialogue';
+    this.dialogueElement.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.9);
+      color: #ffcc00;
+      padding: 15px 25px;
+      border-radius: 10px;
+      border: 2px solid #d4af37;
+      font-size: 16px;
+      font-style: italic;
+      text-align: center;
+      max-width: 400px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      z-index: 10000;
+      display: none;
+      opacity: 0;
+      pointer-events: none;
+    `;
+
+    // 添加三角形指示器
+    const triangle = document.createElement('div');
+    triangle.style.cssText = `
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-top: 10px solid #d4af37;
+    `;
+    this.dialogueElement.appendChild(triangle);
+
+    document.body.appendChild(this.dialogueElement);
+  }
+
+  /**
+   * 隐藏对话
    */
   hide() {
-    if (this.messageElement) {
-      this.messageElement.textContent = '';
+    if (!this.dialogueElement) return;
+
+    this.dialogueElement.style.transition = 'opacity 300ms ease-out';
+    this.dialogueElement.style.opacity = '0';
+
+    setTimeout(() => {
+      if (this.dialogueElement) {
+        this.dialogueElement.style.display = 'none';
+      }
+    }, 300);
+
+    if (this.dialogueTimeout) {
+      clearTimeout(this.dialogueTimeout);
+      this.dialogueTimeout = null;
     }
   }
 
@@ -385,9 +473,11 @@ export class GamblerNPC {
    */
   destroy() {
     this.stopUrging();
-    if (this.dialogueTimeout) {
-      clearTimeout(this.dialogueTimeout);
+    this.hide();
+    if (this.dialogueElement && this.dialogueElement.parentNode) {
+      this.dialogueElement.parentNode.removeChild(this.dialogueElement);
     }
+    this.dialogueElement = null;
     this.resetWelcome();
   }
 }

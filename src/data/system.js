@@ -262,8 +262,9 @@ export const GAMBLER_CONFIG = {
   },
   // 奖励类型权重 (总和 100)
   REWARD_WEIGHTS: {
-    EQUIPMENT: 65,    // 65% 装备
-    CONSUMABLE: 25,   // 25% 消耗品
+    EQUIPMENT: 60,    // 60% 装备
+    CONSUMABLE: 20,   // 20% 消耗品
+    RUNE: 10,         // 10% 符文
     BUFF: 8,          // 8% 临时 Buff
     SOUL_CRYSTAL: 2   // 2% 灵魂水晶 (仅在高品质时生效)
   }
