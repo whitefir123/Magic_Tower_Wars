@@ -29,6 +29,12 @@ export class AnimationController {
    * @returns {Promise<Object>} 动画完成时解析，返回实际获得的物品
    */
   async playSpinAnimation(finalReward, items, winnerIndex) {
+    // 并发保护：如果已有动画在运行，先清理
+    if (this.animationPhase !== 'idle') {
+      console.warn('[AnimationController] 检测到未完成的动画，强制清理');
+      this.cleanup();
+    }
+
     this.skipRequested = false;
     this.currentAnimation = {
       reward: finalReward,

@@ -1048,6 +1048,11 @@ export class GamblerUI {
     if (this.isSpinning) return;
     if (!this.player) return;
 
+    // 清理动画控制器状态（防止状态残留）
+    if (this.animationController) {
+      this.animationController.cleanup();
+    }
+
     // 停止催促系统
     if (this.gamblerNPC) {
       this.gamblerNPC.stopUrging();
@@ -1144,6 +1149,11 @@ export class GamblerUI {
   async batchSpin() {
     if (this.isSpinning) return;
     if (!this.player) return;
+
+    // 清理动画控制器状态（防止状态残留）
+    if (this.animationController) {
+      this.animationController.cleanup();
+    }
 
     // 停止催促系统
     if (this.gamblerNPC) {
