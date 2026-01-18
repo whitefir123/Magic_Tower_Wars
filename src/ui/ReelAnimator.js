@@ -306,6 +306,12 @@ export class ReelAnimator {
    * 滚动到获胜物品
    */
   scrollToWinner(winnerPosition, duration, resolve, shouldNearMiss = false, displayItems = []) {
+    // 清理之前可能存在的动画帧
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
+    
     const cards = this.reelStrip.querySelectorAll('.gambler-item-card');
     const winnerCard = cards[winnerPosition];
     
@@ -393,6 +399,12 @@ export class ReelAnimator {
    * "差一点"效果：从near miss位置滑到实际获胜位置
    */
   slideToActualWinner(fromOffset, toOffset, winnerCard, resolve) {
+    // 清理之前可能存在的动画帧
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
+    
     const startTime = Date.now();
     const slideDuration = 1200; // 滑动持续时间增加到1.2秒
     
@@ -407,7 +419,7 @@ export class ReelAnimator {
       this.reelStrip.style.transform = `translateX(${currentOffset}px)`;
       
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        this.animationFrame = requestAnimationFrame(animate);
       } else {
         // 滑动结束，停顿后再高亮
         setTimeout(() => {
@@ -417,7 +429,7 @@ export class ReelAnimator {
       }
     };
     
-    requestAnimationFrame(animate);
+    this.animationFrame = requestAnimationFrame(animate);
   }
 
   /**
@@ -502,14 +514,22 @@ export class ReelAnimator {
    */
   cleanup() {
     this.skipRequested = false;
+    
+    // 取消所有动画帧
     if (this.animationFrame) {
       cancelAnimationFrame(this.animationFrame);
       this.animationFrame = null;
     }
+    
+    // 清理finalStopInfo
+    this.finalStopInfo = null;
+    
     if (this.reelStrip) {
+      // 立即停止所有过渡和动画
+      this.reelStrip.style.transition = 'none';
+      this.reelStrip.style.animation = 'none';
       this.reelStrip.style.filter = 'none';
       this.reelStrip.style.transform = 'translateX(0)';
-      this.reelStrip.style.transition = 'none';
       
       // 移除指示器
       const container = this.reelStrip.parentElement;
@@ -520,14 +540,11 @@ export class ReelAnimator {
         }
       }
       
-      // 重置所有卡片
-      const cards = this.reelStrip.querySelectorAll('.gambler-item-card');
-      cards.forEach(card => {
-        card.style.opacity = '1';
-        card.style.transform = 'scale(1)';
-        card.style.filter = 'none';
-        card.style.animation = 'none';
-      });
+      // 清空滚轮内容（关键修复）
+      this.reelStrip.innerHTML = '';
+      
+      // 强制重排，确保样式立即应用
+      void this.reelStrip.offsetHeight;
     }
   }
 }

@@ -89,7 +89,6 @@ export class ResultEffectRenderer {
   async playPurpleExplosion() {
     const gamblerUI = this.controller.gamblerUI;
     const resultDisplay = gamblerUI.elements.resultDisplay;
-    const container = gamblerUI.elements.reelContainer;
     
     // 播放音效
     const game = window.game;
@@ -97,11 +96,12 @@ export class ResultEffectRenderer {
       game.audio.playCrit({ volume: 0.6 });
     }
 
-    // 粒子爆炸
-    if (this.particleSystem && container) {
-      const rect = container.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
+    // 粒子爆炸 - 使用resultDisplay的位置
+    // resultDisplay的样式：left: 297px; top: 409px; width: 350px
+    if (this.particleSystem && resultDisplay) {
+      // 直接使用resultDisplay的CSS位置值（相对于slot-machine-bg容器）
+      const centerX = 297 + 350 / 2; // left + width/2 = 472px
+      const centerY = 309; // top + 向下偏移20px，在文字下方
       
       this.particleSystem.emitExplosion(centerX, centerY, 'rgba(163, 53, 238, 0.8)', 25);
     }
@@ -124,7 +124,6 @@ export class ResultEffectRenderer {
   async playLegendaryEffect() {
     const gamblerUI = this.controller.gamblerUI;
     const resultDisplay = gamblerUI.elements.resultDisplay;
-    const container = gamblerUI.elements.reelContainer;
     const overlay = gamblerUI.elements.overlay;
     
     // 播放音效
@@ -150,11 +149,12 @@ export class ResultEffectRenderer {
       setTimeout(() => flash.remove(), 200);
     }
 
-    // 闪光粒子
-    if (this.particleSystem && container) {
-      const rect = container.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
+    // 闪光粒子 - 使用resultDisplay的位置
+    // resultDisplay的样式：left: 297px; top: 409px; width: 350px
+    if (this.particleSystem && resultDisplay) {
+      // 直接使用resultDisplay的CSS位置值（相对于slot-machine-bg容器）
+      const centerX = 297 + 350 / 2; // left + width/2 = 472px
+      const centerY = 409 + 20; // top + 向下偏移20px，在文字下方
       
       this.particleSystem.emitSparkles(centerX, centerY, 60);
     }
@@ -235,7 +235,23 @@ export class ResultEffectRenderer {
    * 清理
    */
   cleanup() {
-    // 清理任何残留的动画
+    const gamblerUI = this.controller.gamblerUI;
+    
+    // 清理结果显示的动画
+    if (gamblerUI.elements.resultDisplay) {
+      gamblerUI.elements.resultDisplay.style.animation = 'none';
+      gamblerUI.elements.resultDisplay.style.transition = 'none';
+    }
+    
+    // 清理overlay的动画
+    if (gamblerUI.elements.overlay) {
+      gamblerUI.elements.overlay.style.animation = 'none';
+    }
+    
+    // 清理粒子系统
+    if (this.particleSystem) {
+      this.particleSystem.clear();
+    }
   }
 
   /**

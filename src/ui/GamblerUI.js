@@ -1052,6 +1052,18 @@ export class GamblerUI {
     if (this.animationController) {
       this.animationController.cleanup();
     }
+    
+    // 清空滚轮内容（关键修复）
+    if (this.elements.reelStrip) {
+      this.elements.reelStrip.innerHTML = '';
+      this.elements.reelStrip.style.transform = 'translateX(0)';
+      this.elements.reelStrip.style.transition = 'none';
+    }
+    
+    // 隐藏结果显示
+    if (this.elements.resultDisplay) {
+      this.elements.resultDisplay.classList.add('hidden');
+    }
 
     // 停止催促系统
     if (this.gamblerNPC) {
@@ -1067,6 +1079,13 @@ export class GamblerUI {
     this.lastSpinTime = now;
 
     const tier = GAMBLE_TIERS[tierKey];
+    
+    // 防御性检查
+    if (!tier) {
+      console.error('Invalid tier key:', tierKey, 'GAMBLE_TIERS:', GAMBLE_TIERS);
+      return;
+    }
+    
     if (this.player.stats.gold < tier.cost) return;
 
     // 成就检测：破产边缘（金币<100时赌博）
@@ -1154,6 +1173,18 @@ export class GamblerUI {
     if (this.animationController) {
       this.animationController.cleanup();
     }
+    
+    // 清空滚轮内容（关键修复）
+    if (this.elements.reelStrip) {
+      this.elements.reelStrip.innerHTML = '';
+      this.elements.reelStrip.style.transform = 'translateX(0)';
+      this.elements.reelStrip.style.transition = 'none';
+    }
+    
+    // 隐藏结果显示
+    if (this.elements.resultDisplay) {
+      this.elements.resultDisplay.classList.add('hidden');
+    }
 
     // 停止催促系统
     if (this.gamblerNPC) {
@@ -1181,9 +1212,26 @@ export class GamblerUI {
 
     // 存储所有结果
     const results = [];
+    
+    // 确保GAMBLE_TIERS已正确导入
+    if (!GAMBLE_TIERS || !GAMBLE_TIERS.STANDARD) {
+      console.error('GAMBLE_TIERS not properly imported!', GAMBLE_TIERS);
+      this.isSpinning = false;
+      this.spinStage = 0;
+      return;
+    }
 
     // 执行 10 次抽取
     for (let i = 0; i < batchCount; i++) {
+      // 在每次抽取开始时清理状态（关键修复）
+      if (this.animationController) {
+        this.animationController.cleanup();
+      }
+      if (this.elements.reelStrip) {
+        this.elements.reelStrip.innerHTML = '';
+        this.elements.reelStrip.style.transform = 'translateX(0)';
+      }
+      
       const tier = GAMBLE_TIERS.STANDARD;
       
       // 更新进度提示
@@ -1201,6 +1249,9 @@ export class GamblerUI {
 
       // 如果是稀有以上，暂停展示
       if (['EPIC', 'LEGENDARY', 'JACKPOT'].includes(reward.quality)) {
+        // 额外等待，确保上一次动画完全结束
+        await this.sleep(100);
+        
         // 快速动画，获取实际奖励
         const actualReward = await this.performReelAnimation(reward);
         const finalReward = actualReward || reward;
@@ -1226,7 +1277,8 @@ export class GamblerUI {
         const nearMissResult = this.historyTracker.detectNearMiss(winnerIndex, items);
         this.historyTracker.addResult(finalReward, nearMissResult.isNearMiss, nearMissResult.missedItem?.quality);
         
-        await this.sleep(800); // 短暂暂停
+        // 增加等待时间，确保动画完全结束（关键修复）
+        await this.sleep(1200);
       } else {
         // 直接应用奖励，不显示动画
         this.applyReward(reward);
@@ -1311,6 +1363,23 @@ export class GamblerUI {
    * 决定奖励内容 (包含保底和 Jackpot 逻辑)
    */
   determineReward(tier) {
+    // 防御性检查：确保tier对象有效
+    if (!tier || !tier.chances) {
+      console.error('Invalid tier object:', tier);
+      // 使用默认的STANDARD tier
+      tier = {
+        id: 'STANDARD',
+        cost: 50,
+        chances: {
+          COMMON: 50,
+          UNCOMMON: 30,
+          RARE: 15,
+          EPIC: 4,
+          LEGENDARY: 1
+        }
+      };
+    }
+    
     // 1. 检查 Jackpot (极低概率)
     if (Math.random() < GAMBLER_CONFIG.JACKPOT.CHANCE) {
       return {
@@ -1334,7 +1403,7 @@ export class GamblerUI {
       console.log('Gambler Pity Triggered!');
       pityTriggered = true;
       // 应用保底权重：移除垃圾，大幅提升稀有度
-      chances = GAMBLER_CONFIG.PITY.WEIGHT_MODIFIER;
+      chances = { ...GAMBLER_CONFIG.PITY.WEIGHT_MODIFIER };
       
       // 成就追踪：保底触发
       this.achievementTracking.totalPityTriggers++;
@@ -1392,6 +1461,27 @@ export class GamblerUI {
   }
 
   generateItemByQuality(quality, tier) {
+    // 防御性检查
+    if (!tier || typeof tier === 'string') {
+      // 如果tier是字符串（如'STANDARD'），尝试从GAMBLE_TIERS获取
+      if (typeof tier === 'string' && GAMBLE_TIERS && GAMBLE_TIERS[tier]) {
+        tier = GAMBLE_TIERS[tier];
+      } else {
+        // 使用默认tier
+        tier = {
+          id: 'STANDARD',
+          cost: 50,
+          chances: {
+            COMMON: 50,
+            UNCOMMON: 30,
+            RARE: 15,
+            EPIC: 4,
+            LEGENDARY: 1
+          }
+        };
+      }
+    }
+    
     const floor = this.player.stats.floor || 1;
     
     // 幸运石生成逻辑 - 根据品质生成不同等级的幸运石
@@ -1659,6 +1749,12 @@ export class GamblerUI {
   }
 
   rollQuality(chances) {
+    // 防御性检查
+    if (!chances || typeof chances !== 'object') {
+      console.error('Invalid chances object:', chances);
+      return 'COMMON';
+    }
+    
     const total = Object.values(chances).reduce((sum, c) => sum + c, 0);
     if (total === 0) return 'COMMON';
     

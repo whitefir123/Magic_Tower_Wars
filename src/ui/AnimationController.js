@@ -33,6 +33,11 @@ export class AnimationController {
     if (this.animationPhase !== 'idle') {
       console.warn('[AnimationController] 检测到未完成的动画，强制清理');
       this.cleanup();
+      // 等待两帧，确保清理完成和DOM更新
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      // 额外等待一小段时间确保所有清理完成
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
 
     this.skipRequested = false;
