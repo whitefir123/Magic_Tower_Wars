@@ -154,7 +154,7 @@ export class ResultEffectRenderer {
     if (this.particleSystem && resultDisplay) {
       // 直接使用resultDisplay的CSS位置值（相对于slot-machine-bg容器）
       const centerX = 297 + 350 / 2; // left + width/2 = 472px
-      const centerY = 409 + 20; // top + 向下偏移20px，在文字下方
+      const centerY = 309; // top + 向下偏移20px，在文字下方
       
       this.particleSystem.emitSparkles(centerX, centerY, 60);
     }
