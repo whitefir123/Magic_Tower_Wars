@@ -68,7 +68,18 @@ export class ForgeUI {
         <div class="forge-modal">
           <!-- Header -->
           <div class="forge-header">
-            <h2 class="forge-title">铁匠铺</h2>
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <!-- 铁匠NPC头像 (2行3列精灵图，显示第一帧) -->
+              <div class="blacksmith-avatar">
+                <canvas id="blacksmith-avatar-canvas" width="64" height="64"></canvas>
+              </div>
+              <div class="blacksmith-info">
+                <h2 class="forge-title">铁匠铺</h2>
+                <p class="blacksmith-level">
+                  铁匠等级: <span id="blacksmith-level-text">1</span>
+                </p>
+              </div>
+            </div>
             <button class="forge-close-btn">✕</button>
           </div>
 
@@ -129,7 +140,9 @@ export class ForgeUI {
     style.textContent = `
       .forge-modal {
         position: relative;
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        /* 铁匠铺背景图片 + 渐变色降级方案 */
+        background: url('https://i.postimg.cc/NMZFpb0P/tiejiangpubackground1.png') center/cover no-repeat,
+                    linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
         border: 3px solid #d4af37;
         border-radius: 12px;
         width: 90%;
@@ -139,6 +152,20 @@ export class ForgeUI {
         flex-direction: column;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
       }
+      
+      /* 添加半透明遮罩层确保文字可读性 */
+      .forge-modal::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 12px;
+        pointer-events: none;
+        z-index: 0;
+      }
 
       .forge-header {
         display: flex;
@@ -147,6 +174,39 @@ export class ForgeUI {
         padding: 20px 30px;
         border-bottom: 2px solid #d4af37;
         background: rgba(212, 175, 55, 0.1);
+        position: relative;
+        z-index: 1;
+      }
+      
+      /* 铁匠NPC头像容器 */
+      .blacksmith-avatar {
+        width: 64px;
+        height: 64px;
+        border: 2px solid #d4af37;
+        border-radius: 8px;
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.5);
+        flex-shrink: 0;
+      }
+      
+      .blacksmith-avatar img {
+        width: 100%;
+        height: 100%;
+        image-rendering: pixelated;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: crisp-edges;
+      }
+      
+      .blacksmith-info {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      
+      .blacksmith-level {
+        font-size: 12px;
+        color: #aaa;
+        margin: 0;
       }
 
       .forge-title {
@@ -185,6 +245,8 @@ export class ForgeUI {
         padding: 20px;
         flex: 1;
         overflow: hidden;
+        position: relative;
+        z-index: 1;
       }
 
       .forge-list-panel {
@@ -378,6 +440,8 @@ export class ForgeUI {
         padding: 20px;
         border-top: 2px solid #d4af37;
         background: rgba(212, 175, 55, 0.1);
+        position: relative;
+        z-index: 1;
       }
 
       .forge-close-footer {
@@ -906,6 +970,12 @@ export class ForgeUI {
     // 重置模式为强化/重铸
     this.currentMode = 'enhance';
     this.switchMode('enhance');
+
+    // 渲染铁匠NPC头像
+    this.renderBlacksmithAvatar();
+    
+    // 更新铁匠等级显示
+    this.updateBlacksmithLevel();
 
     // 渲染装备列表
     this.renderItemList();
@@ -2205,6 +2275,22 @@ export class ForgeUI {
 
     const result = this.blacksmithSystem.enhanceItem(this.selectedItem, this.player, options);
 
+    // 播放强化特效（成功或失败）
+    const game = window.game;
+    if (game && game.enhancementEffects) {
+      const canvas = game.canvas;
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      if (result.success) {
+        // 播放成功特效（金色闪光）
+        game.enhancementEffects.playSuccessEffect(centerX, centerY);
+      } else {
+        // 播放失败特效（红色烟雾）
+        game.enhancementEffects.playFailureEffect(centerX, centerY);
+      }
+    }
+
     if (result.success) {
       // 强化成功，消耗所有幸运石
       if (this.selectedItem.luckyStoneSlots) {
@@ -2219,7 +2305,6 @@ export class ForgeUI {
       this.renderItemDetails(this.selectedItem);
       
       // 更新游戏UI
-      const game = window.game;
       if (game && game.ui) {
         game.ui.updateStats(this.player);
       }
@@ -2367,6 +2452,70 @@ export class ForgeUI {
       AMULET: '护身符'
     };
     return slotNames[slot] || slot;
+  }
+
+  /**
+   * 渲染铁匠NPC头像
+   * 从 FORGE_BLACKSMITH_NPC 精灵图（2行3列，6帧）中提取第一帧
+   */
+  renderBlacksmithAvatar() {
+    const game = window.game;
+    const loader = game?.loader;
+    const blacksmithImg = loader?.getImage('FORGE_BLACKSMITH_NPC');
+    
+    const canvas = document.getElementById('blacksmith-avatar-canvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    
+    if (!blacksmithImg || !blacksmithImg.complete) {
+      // 降级方案：显示占位符
+      ctx.fillStyle = '#333';
+      ctx.fillRect(0, 0, 64, 64);
+      ctx.fillStyle = '#d4af37';
+      ctx.font = '40px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🔨', 32, 32);
+      
+      // 图片加载完成后重新渲染
+      if (blacksmithImg) {
+        blacksmithImg.onload = () => this.renderBlacksmithAvatar();
+      }
+      return;
+    }
+    
+    // 精灵图布局：2行3列，共6帧
+    // 显示第一帧（待机动作）：row=0, col=0
+    const totalRows = 2;
+    const totalCols = 3;
+    const cellW = Math.floor(blacksmithImg.width / totalCols);
+    const cellH = Math.floor(blacksmithImg.height / totalRows);
+    
+    const row = 0; // 第一行
+    const col = 0; // 第一列
+    const sx = col * cellW;
+    const sy = row * cellH;
+    
+    // 清空画布
+    ctx.clearRect(0, 0, 64, 64);
+    
+    // 绘制铁匠头像
+    ctx.drawImage(blacksmithImg, sx, sy, cellW, cellH, 0, 0, 64, 64);
+  }
+  
+  /**
+   * 更新铁匠等级显示
+   */
+  updateBlacksmithLevel() {
+    const game = window.game;
+    const blacksmithNPC = game?.blacksmithNPC;
+    
+    const levelText = document.getElementById('blacksmith-level-text');
+    if (levelText && blacksmithNPC) {
+      levelText.textContent = blacksmithNPC.level || 1;
+    }
   }
 
   /**

@@ -114,7 +114,34 @@ export const GAMEPLAY_ASSETS = {
   SPRITE_STATUS_ICONS: { url: "https://i.postimg.cc/jqB3BxsY/smalltubiao1.png" },
   
   // 特效资源
-  TEX_VFX_SLASH: { url: "https://i.postimg.cc/zvmXqRkS/daopin-A1.png" } // 横向排列的序列图，包含5帧挥砍动作
+  TEX_VFX_SLASH: { url: "https://i.postimg.cc/zvmXqRkS/daopin-A1.png" }, // 横向排列的序列图，包含5帧挥砍动作
+  
+  // 铁匠铺系统资源
+  // 品质边框图标 - 2行3列精灵图，共6个品质边框
+  // 布局: [白色(普通), 绿色(优秀), 蓝色(稀有)]
+  //      [紫色(史诗), 橙色(传说), 金色(神话)]
+  FORGE_QUALITY_BORDERS: { url: "https://i.postimg.cc/J79PSBd1/pinzhikuang1.png" },
+  
+  // 铁匠NPC角色 - 2行3列精灵图，共6帧动画
+  // 用于铁匠角色的动画展示（待机、锻造等动作）
+  FORGE_BLACKSMITH_NPC: { url: "https://i.postimg.cc/rpT0xfH5/tiejiang1.png" },
+  
+  // 强化成功特效 - 2行4列精灵图，共8帧动画
+  // 金色闪光特效，用于装备强化成功时的视觉反馈
+  FORGE_SUCCESS_EFFECT: { url: "https://i.postimg.cc/fTmDhDHs/tiezhentexiao1.png" },
+  
+  // 强化失败特效 - 2行4列精灵图，共8帧动画
+  // 红色烟雾特效，用于装备强化失败时的视觉反馈
+  FORGE_FAILURE_EFFECT: { url: "https://i.postimg.cc/DyMsRQMn/tiejiangtexiao2.png" },
+  
+  // 铁匠铺背景图 - 完整背景图片
+  // 用于铁匠铺UI界面的背景装饰
+  FORGE_BACKGROUND: { url: "https://i.postimg.cc/NMZFpb0P/tiejiangpubackground1.png" },
+  
+  // 强化材料图标集 - 2行3列精灵图，共6种材料
+  // 布局: [保护卷轴(盾牌羊皮纸), 祝福石(蓝色水晶), 套装精华(紫色宝石簇)]
+  //      [觉醒石(金色辐射水晶), 附魔卷轴(符文羊皮纸), 幸运石]
+  FORGE_MATERIALS: { url: "https://i.postimg.cc/02M3Tnyf/qianghuacailiao1.png" }
 };
 
 // 合并所有资源（向后兼容）

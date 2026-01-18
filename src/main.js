@@ -31,6 +31,7 @@ import { FLOOR_ZONES } from './data/config.js';
 import { VisualEffectsSystem } from './systems/VisualEffectsSystem.js';
 import { MenuVisuals } from './ui/MenuVisuals.js';
 import { RUNES } from './data/Runes.js';
+import { EnhancementEffects } from './systems/EnhancementEffects.js'; // 铁匠铺强化特效系统
 
 class Game {
   constructor() {
@@ -534,6 +535,11 @@ class Game {
       this.map = new MapSystem(this.loader, this.difficultyMultiplier);
       this.player = new Player(this.map, this.loader);
       this.camera = new Camera(800, 800, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE);
+      
+      // 初始化铁匠铺强化特效系统
+      // 用于在装备强化成功/失败时播放视觉特效动画
+      this.enhancementEffects = new EnhancementEffects(this);
+      console.log('[Init] ✨ 铁匠铺特效系统已初始化');
       
       // 设置输入与事件
       this.setupInputs();
@@ -1996,6 +2002,19 @@ class Game {
     // 在相机/缩放变换下绘制粒子效果
     if (this.vfx) {
       this.vfx.draw(this.ctx, this.camera);
+    }
+    
+    // 绘制铁匠铺强化特效（在相机变换下）
+    // 特效会显示在屏幕中心，需要在相机变换恢复前绘制
+    if (this.enhancementEffects) {
+      // 保存当前变换状态
+      this.ctx.save();
+      // 恢复到屏幕坐标系（不受相机影响）
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      // 更新和渲染特效
+      this.enhancementEffects.update(this.ctx);
+      // 恢复变换
+      this.ctx.restore();
     }
     
     // 每日挑战模式：绘制水印（使用屏幕坐标）
