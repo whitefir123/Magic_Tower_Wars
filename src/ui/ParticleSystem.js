@@ -145,6 +145,8 @@ export class ParticleSystem {
     element.style.borderRadius = type === 'coin' ? '50%' : '2px';
     element.style.willChange = 'transform, opacity';
     element.style.zIndex = '1000';
+    element.style.top = '0';  // 明确设置初始位置
+    element.style.left = '0'; // 明确设置初始位置
     
     // 金币特殊样式
     if (type === 'coin') {

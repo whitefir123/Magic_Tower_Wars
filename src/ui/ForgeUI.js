@@ -2,6 +2,20 @@
 // 独立管理铁匠铺UI的所有渲染和交互逻辑
 
 import AudioManager from '../audio/AudioManager.js';
+import { InventoryBinder } from './forge/InventoryBinder.js';
+import { spriteManager } from './forge/SpriteManager.js';
+import { ForgeHistoryTracker } from './forge/ForgeHistoryTracker.js';
+import { ForgeSoundManager } from './forge/ForgeSoundManager.js';
+import { MaterialInventoryDisplay } from './forge/MaterialInventoryDisplay.js';
+import { EquipmentSlotDisplay } from './forge/EquipmentSlotDisplay.js';
+import { PerformanceOptimizer } from './forge/PerformanceOptimizer.js';
+import { ForgeAutoSave } from './forge/ForgeAutoSave.js';
+import { ForgeErrorHandler } from './forge/ForgeErrorHandler.js';
+import { BatchOperationPanel } from './forge/BatchOperationPanel.js';
+import { FeatureUnlockManager } from './forge/FeatureUnlockManager.js';
+import { BlacksmithLevelDisplay } from './forge/BlacksmithLevelDisplay.js';
+import { InitialView } from './forge/InitialView.js';
+import { DynamicPanelManager } from './forge/DynamicPanelManager.js';
 
 /**
  * ForgeUI - 铁匠铺界面管理器
@@ -11,6 +25,12 @@ import AudioManager from '../audio/AudioManager.js';
 export class ForgeUI {
   constructor(blacksmithSystem, config = {}) {
     this.blacksmithSystem = blacksmithSystem;
+    
+    // 精灵图管理器
+    this.spriteManager = spriteManager;
+    
+    // 火花特效动画帧ID
+    this.sparkleAnimationFrame = null;
     
     // 样式配置对象
     this.style = {
@@ -28,6 +48,48 @@ export class ForgeUI {
     this.selectedItem = null;
     this.selectedSlot = null;
     this.currentMode = 'enhance'; // 'enhance' 或 'socket' (强化/重铸 或 宝石镶嵌)
+
+    // 初始界面管理器
+    this.initialView = null;
+    
+    // 动态面板管理器
+    this.dynamicPanelManager = null;
+    
+    // 背包绑定器
+    this.inventoryBinder = null;
+    
+    // NPC渲染器
+    this.npcRenderer = null;
+    
+    // 历史记录追踪器
+    this.historyTracker = null;
+    
+    // 音效管理器
+    this.soundManager = null;
+    
+    // 材料库存显示器
+    this.materialInventory = null;
+    
+    // 装备槽位显示器
+    this.equipmentSlotDisplay = null;
+    
+    // 性能优化器
+    this.performanceOptimizer = null;
+    
+    // 自动保存系统
+    this.autoSave = null;
+    
+    // 错误处理系统
+    this.errorHandler = null;
+    
+    // 批量操作面板
+    this.batchOperationPanel = null;
+    
+    // 功能解锁管理器
+    this.featureUnlockManager = null;
+    
+    // 铁匠等级显示
+    this.blacksmithLevelDisplay = null;
 
     // DOM 元素引用
     this.elements = {
@@ -64,55 +126,6 @@ export class ForgeUI {
       overlay = document.createElement('div');
       overlay.id = 'forge-overlay';
       overlay.className = 'modal-overlay hidden';
-      overlay.innerHTML = `
-        <div class="forge-modal">
-          <!-- Header -->
-          <div class="forge-header">
-            <div style="display: flex; align-items: center; gap: 15px;">
-              <!-- 铁匠NPC头像 (2行3列精灵图，显示第一帧) -->
-              <div class="blacksmith-avatar">
-                <canvas id="blacksmith-avatar-canvas" width="64" height="64"></canvas>
-              </div>
-              <div class="blacksmith-info">
-                <h2 class="forge-title">铁匠铺</h2>
-                <p class="blacksmith-level">
-                  铁匠等级: <span id="blacksmith-level-text">1</span>
-                </p>
-              </div>
-            </div>
-            <button class="forge-close-btn">✕</button>
-          </div>
-
-          <!-- Main Content -->
-          <div class="forge-content">
-            <!-- Left Panel - Equipment List -->
-            <div class="forge-list-panel">
-              <div class="forge-item-list" id="forge-item-list">
-                <!-- Items will be generated here -->
-              </div>
-            </div>
-
-            <!-- Right Panel - Item Details -->
-            <div class="forge-detail-panel">
-              <!-- Tab 切换 -->
-              <div class="forge-tabs">
-                <button class="forge-tab-btn active" data-mode="enhance">强化/重铸</button>
-                <button class="forge-tab-btn" data-mode="socket">宝石镶嵌</button>
-                <button class="forge-tab-btn" data-mode="synthesis">宝石合成</button>
-              </div>
-              
-              <div id="forge-item-details" class="forge-item-details">
-                <p class="forge-placeholder">选择一件装备来查看详情</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div class="forge-footer">
-            <button class="btn-core btn-modal-close forge-close-footer">关闭</button>
-          </div>
-        </div>
-      `;
       
       document.body.appendChild(overlay);
       
@@ -122,10 +135,19 @@ export class ForgeUI {
 
     // 缓存元素引用
     this.elements.overlay = overlay;
-    this.elements.itemList = document.getElementById('forge-item-list');
-    this.elements.itemDetails = document.getElementById('forge-item-details');
-    this.elements.closeBtn = overlay.querySelector('.forge-close-btn');
-    this.elements.closeFooterBtn = overlay.querySelector('.forge-close-footer');
+    
+    // 初始化InitialView
+    if (!this.initialView) {
+      this.initialView = new InitialView(this);
+    }
+    
+    // 初始化DynamicPanelManager
+    if (!this.dynamicPanelManager) {
+      this.dynamicPanelManager = new DynamicPanelManager(this);
+    }
+    
+    // 渲染初始界面
+    this.initialView.render();
   }
 
   /**
@@ -138,768 +160,16 @@ export class ForgeUI {
     const style = document.createElement('style');
     style.id = 'forge-ui-styles';
     style.textContent = `
-      .forge-modal {
-        position: relative;
-        /* 铁匠铺背景图片 + 渐变色降级方案 */
-        background: url('https://i.postimg.cc/NMZFpb0P/tiejiangpubackground1.png') center/cover no-repeat,
-                    linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        border: 3px solid #d4af37;
-        border-radius: 12px;
-        width: 90%;
-        max-width: 900px;
-        max-height: 80vh;
-        display: flex;
-        flex-direction: column;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
-      }
+      /* ForgeUI内联样式 - 最小化，主要样式在forge.css中 */
       
-      /* 添加半透明遮罩层确保文字可读性 */
-      .forge-modal::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        border-radius: 12px;
-        pointer-events: none;
-        z-index: 0;
-      }
-
-      .forge-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 20px 30px;
-        border-bottom: 2px solid #d4af37;
-        background: rgba(212, 175, 55, 0.1);
-        position: relative;
-        z-index: 1;
-      }
-      
-      /* 铁匠NPC头像容器 */
-      .blacksmith-avatar {
-        width: 64px;
-        height: 64px;
-        border: 2px solid #d4af37;
-        border-radius: 8px;
-        overflow: hidden;
-        background: rgba(0, 0, 0, 0.5);
-        flex-shrink: 0;
-      }
-      
-      .blacksmith-avatar img {
-        width: 100%;
-        height: 100%;
-        image-rendering: pixelated;
-        image-rendering: -moz-crisp-edges;
-        image-rendering: crisp-edges;
-      }
-      
-      .blacksmith-info {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-      }
-      
-      .blacksmith-level {
-        font-size: 12px;
-        color: #aaa;
-        margin: 0;
-      }
-
-      .forge-title {
-        font-family: 'Cinzel', serif;
-        font-size: 28px;
-        font-weight: 700;
-        color: #d4af37;
-        margin: 0;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-      }
-
-      .forge-close-btn {
-        background: rgba(255, 255, 255, 0.1);
-        border: 2px solid #d4af37;
-        color: #d4af37;
-        font-size: 24px;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .forge-close-btn:hover {
-        background: #d4af37;
-        color: #1a1a2e;
-        transform: rotate(90deg);
-      }
-
-      .forge-content {
-        display: flex;
-        gap: 20px;
-        padding: 20px;
-        flex: 1;
-        overflow: hidden;
-        position: relative;
-        z-index: 1;
-      }
-
-      .forge-list-panel {
-        flex: 1;
-        min-width: 300px;
-        display: flex;
-        flex-direction: column;
-        background: rgba(0, 0, 0, 0.3);
-        border: 2px solid rgba(212, 175, 55, 0.3);
-        border-radius: 8px;
-        padding: 15px;
-      }
-
+      /* 确保旧的header、content、footer等元素不显示 */
+      .forge-header,
+      .forge-content,
+      .forge-footer,
+      .forge-navigation,
+      .forge-list-panel,
       .forge-detail-panel {
-        flex: 1.5;
-        display: flex;
-        flex-direction: column;
-        background: rgba(0, 0, 0, 0.3);
-        border: 2px solid rgba(212, 175, 55, 0.3);
-        border-radius: 8px;
-        padding: 20px;
-      }
-
-      .panel-subtitle {
-        font-family: 'Cinzel', serif;
-        font-size: 18px;
-        color: #d4af37;
-        margin: 15px 0;
-        text-align: center;
-      }
-
-      .forge-list-divider {
-        height: 2px;
-        background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.5), transparent);
-        margin: 15px 0;
-      }
-
-      .forge-item-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        overflow-y: auto;
-        max-height: 400px;
-      }
-
-      .forge-item-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 2px solid rgba(212, 175, 55, 0.3);
-        border-radius: 6px;
-        padding: 12px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-      }
-
-      .forge-item-card:hover {
-        background: rgba(212, 175, 55, 0.2);
-        border-color: #d4af37;
-        transform: translateX(5px);
-      }
-
-      .forge-item-card.selected {
-        background: rgba(212, 175, 55, 0.3);
-        border-color: #d4af37;
-        box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
-      }
-
-      .forge-item-name {
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 5px;
-      }
-
-      .forge-item-type {
-        font-size: 12px;
-        color: #aaa;
-        text-transform: uppercase;
-      }
-
-      .forge-item-details {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-      }
-
-      .forge-placeholder {
-        text-align: center;
-        color: #888;
-        font-size: 16px;
-        margin-top: 50px;
-      }
-
-      .detail-section {
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(212, 175, 55, 0.3);
-        border-radius: 6px;
-        padding: 15px;
-      }
-
-      .detail-section h4 {
-        font-family: 'Cinzel', serif;
-        font-size: 18px;
-        color: #d4af37;
-        margin: 0 0 10px 0;
-      }
-
-      .stat-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 5px 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      }
-
-      .stat-row:last-child {
-        border-bottom: none;
-      }
-
-      .stat-label {
-        color: #aaa;
-      }
-
-      .stat-value {
-        color: #fff;
-        font-weight: 600;
-      }
-
-      .forge-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 20px;
-      }
-
-      .forge-btn {
-        flex: 1;
-        padding: 12px 20px;
-        font-size: 16px;
-        font-weight: 600;
-        border: 2px solid #d4af37;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-transform: uppercase;
-      }
-
-      .forge-btn-enhance {
-        background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
-        color: #fff;
-      }
-
-      .forge-btn-enhance:hover:not(:disabled) {
-        background: linear-gradient(135deg, #357abd 0%, #2868a8 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(74, 144, 226, 0.4);
-      }
-
-      .forge-btn-reforge {
-        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-        color: #fff;
-      }
-
-      .forge-btn-reforge {
-        background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
-        color: #fff;
-      }
-
-      .forge-btn-reforge:hover:not(:disabled) {
-        background: linear-gradient(135deg, #8e44ad 0%, #7d3c98 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(155, 89, 182, 0.4);
-      }
-
-      .forge-btn-dismantle {
-        background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
-        color: #fff;
-      }
-
-      .forge-btn-dismantle:hover:not(:disabled) {
-        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
-      }
-
-      .forge-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none;
-      }
-
-      .forge-footer {
-        display: flex;
-        justify-content: center;
-        padding: 20px;
-        border-top: 2px solid #d4af37;
-        background: rgba(212, 175, 55, 0.1);
-        position: relative;
-        z-index: 1;
-      }
-
-      .forge-close-footer {
-        padding: 12px 40px;
-      }
-
-      /* 滚动条样式 */
-      .forge-item-list::-webkit-scrollbar {
-        width: 8px;
-      }
-
-      .forge-item-list::-webkit-scrollbar-track {
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 4px;
-      }
-
-      .forge-item-list::-webkit-scrollbar-thumb {
-        background: rgba(212, 175, 55, 0.5);
-        border-radius: 4px;
-      }
-
-      .forge-item-list::-webkit-scrollbar-thumb:hover {
-        background: rgba(212, 175, 55, 0.8);
-      }
-
-      /* Tab 切换样式 */
-      .forge-tabs {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-        border-bottom: 2px solid rgba(212, 175, 55, 0.3);
-      }
-
-      .forge-tab-btn {
-        flex: 1;
-        padding: 12px 20px;
-        font-size: 16px;
-        font-weight: 600;
-        background: rgba(0, 0, 0, 0.3);
-        border: 2px solid rgba(212, 175, 55, 0.3);
-        border-bottom: none;
-        border-radius: 6px 6px 0 0;
-        color: #aaa;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-transform: uppercase;
-      }
-
-      .forge-tab-btn:hover {
-        background: rgba(212, 175, 55, 0.1);
-        color: #d4af37;
-      }
-
-      .forge-tab-btn.active {
-        background: rgba(212, 175, 55, 0.2);
-        border-color: #d4af37;
-        color: #d4af37;
-        border-bottom: 2px solid rgba(0, 0, 0, 0.3);
-        margin-bottom: -2px;
-      }
-
-      /* 宝石镶嵌面板样式 */
-      .socket-panel {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-      }
-
-      .socket-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 15px;
-        margin-top: 10px;
-      }
-
-      .socket-slot {
-        position: relative;
-        width: 80px;
-        height: 80px;
-        background: rgba(0, 0, 0, 0.5);
-        border: 2px solid rgba(212, 175, 55, 0.5);
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-      }
-
-      .socket-slot:hover {
-        border-color: #d4af37;
-        background: rgba(212, 175, 55, 0.1);
-        transform: scale(1.05);
-      }
-
-      .socket-slot.empty {
-        border-style: dashed;
-      }
-
-      .socket-slot.filled {
-        border-style: solid;
-      }
-
-      .socket-slot img {
-        width: 60px;
-        height: 60px;
-        image-rendering: pixelated;
-      }
-
-      .socket-slot-label {
-        position: absolute;
-        bottom: 2px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 10px;
-        color: #aaa;
-        background: rgba(0, 0, 0, 0.7);
-        padding: 2px 4px;
-        border-radius: 3px;
-      }
-
-      .socket-unsocket-btn {
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        width: 24px;
-        height: 24px;
-        background: rgba(231, 76, 60, 0.9);
-        border: 2px solid #e74c3c;
-        border-radius: 50%;
-        color: #fff;
-        font-size: 14px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-      }
-
-      .socket-unsocket-btn:hover {
-        background: #e74c3c;
-        transform: scale(1.1);
-      }
-
-      /* 宝石选择模态框 */
-      .gem-select-modal {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        border: 3px solid #d4af37;
-        border-radius: 12px;
-        padding: 20px;
-        z-index: 10001;
-        max-width: 500px;
-        max-height: 70vh;
-        overflow-y: auto;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
-      }
-
-      .gem-select-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid rgba(212, 175, 55, 0.3);
-      }
-
-      .gem-select-title {
-        font-family: 'Cinzel', serif;
-        font-size: 20px;
-        color: #d4af37;
-        margin: 0;
-      }
-
-      .gem-select-close {
-        background: rgba(255, 255, 255, 0.1);
-        border: 2px solid #d4af37;
-        color: #d4af37;
-        font-size: 20px;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .gem-select-close:hover {
-        background: #d4af37;
-        color: #1a1a2e;
-      }
-
-      .gem-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-        gap: 10px;
-      }
-
-      .gem-item {
-        position: relative;
-        width: 80px;
-        height: 80px;
-        background: rgba(0, 0, 0, 0.5);
-        border: 2px solid rgba(212, 175, 55, 0.5);
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-      }
-
-      .gem-item:hover {
-        border-color: #d4af37;
-        background: rgba(212, 175, 55, 0.1);
-        transform: scale(1.1);
-      }
-
-      .gem-item img {
-        width: 60px;
-        height: 60px;
-        image-rendering: pixelated;
-      }
-
-      .gem-item-name {
-        position: absolute;
-        bottom: -20px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 10px;
-        color: #aaa;
-        white-space: nowrap;
-      }
-
-      /* 合成列表样式 */
-      .gem-synthesis-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        max-height: 400px;
-        overflow-y: auto;
-      }
-
-      .synthesis-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(212, 175, 55, 0.3);
-        border-radius: 6px;
-        padding: 10px;
-        transition: all 0.3s ease;
-      }
-
-      .synthesis-row:hover {
-        background: rgba(212, 175, 55, 0.1);
-        border-color: #d4af37;
-      }
-
-      .synthesis-gem-info {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-      }
-
-      .synthesis-icon-wrapper {
-        position: relative;
-        width: 60px;
-        height: 60px;
-      }
-
-      .synthesis-count {
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        background: rgba(0, 0, 0, 0.7);
-        color: #fff;
-        font-size: 12px;
-        padding: 2px 4px;
-        border-radius: 4px;
-      }
-
-      .synthesis-details {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .synthesis-name {
-        font-weight: 600;
-        font-size: 16px;
-      }
-
-      .synthesis-tier {
-        font-size: 12px;
-        color: #aaa;
-      }
-
-      .synthesis-action {
-        min-width: 100px;
-        display: flex;
-        justify-content: flex-end;
-      }
-
-      .synthesis-btn {
-        padding: 8px 12px;
-        font-size: 14px;
-      }
-
-      .max-level-text {
-        color: #d4af37;
-        font-size: 14px;
-        font-weight: 600;
-      }
-
-      /* 幸运石槽位样式 */
-      .lucky-stone-section {
-        background: rgba(76, 175, 80, 0.1);
-        border-color: rgba(76, 175, 80, 0.3);
-      }
-
-      .lucky-stone-slots-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-        gap: 10px;
-        margin-bottom: 10px;
-      }
-
-      .lucky-stone-slot {
-        position: relative;
-        background: rgba(0, 0, 0, 0.5);
-        border: 2px solid rgba(255, 255, 255, 0.2);
-        border-radius: 6px;
-        padding: 10px;
-        text-align: center;
-        transition: all 0.3s ease;
-      }
-
-      .lucky-stone-slot.filled {
-        background: rgba(76, 175, 80, 0.2);
-        border-color: #4caf50;
-      }
-
-      .lucky-stone-slot.quality-COMMON { border-color: #a0a0a0; }
-      .lucky-stone-slot.quality-UNCOMMON { border-color: #5eff00; }
-      .lucky-stone-slot.quality-RARE { border-color: #0070dd; }
-      .lucky-stone-slot.quality-EPIC { border-color: #a335ee; }
-      .lucky-stone-slot.quality-LEGENDARY { border-color: #ff8000; }
-
-      .stone-icon {
-        font-size: 32px;
-        margin-bottom: 5px;
-      }
-
-      .stone-name {
-        font-size: 12px;
-        color: #fff;
-        margin-bottom: 3px;
-      }
-
-      .stone-bonus {
-        font-size: 11px;
-        color: #4caf50;
-        font-weight: 600;
-      }
-
-      .stone-remove-btn {
-        position: absolute;
-        top: 2px;
-        right: 2px;
-        background: rgba(231, 76, 60, 0.8);
-        color: #fff;
-        border: none;
-        border-radius: 50%;
-        width: 20px;
-        height: 20px;
-        font-size: 12px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
-      }
-
-      .stone-remove-btn:hover {
-        background: #e74c3c;
-        transform: scale(1.1);
-      }
-
-      .lucky-stone-list {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-        max-height: 150px;
-        overflow-y: auto;
-      }
-
-      .lucky-stone-inv-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: rgba(0, 0, 0, 0.3);
-        border: 2px solid rgba(255, 255, 255, 0.2);
-        border-radius: 4px;
-        padding: 8px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-      }
-
-      .lucky-stone-inv-item:not(.disabled):hover {
-        background: rgba(76, 175, 80, 0.2);
-        border-color: #4caf50;
-        transform: translateX(5px);
-      }
-
-      .lucky-stone-inv-item.disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-
-      .lucky-stone-inv-item .stone-icon {
-        font-size: 24px;
-        margin: 0;
-      }
-
-      .lucky-stone-inv-item .stone-info {
-        flex: 1;
-      }
-
-      .lucky-stone-inv-item .stone-name {
-        font-size: 13px;
-        margin: 0;
-      }
-
-      .lucky-stone-inv-item .stone-bonus {
-        font-size: 11px;
-      }
-
-      .lucky-stone-inv-item .stone-count {
-        font-size: 14px;
-        color: #aaa;
-        font-weight: 600;
-      }
-
-      .forge-btn-secondary {
-        background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-        color: #fff;
-      }
-
-      .forge-btn-secondary:hover:not(:disabled) {
-        background: linear-gradient(135deg, #7f8c8d 0%, #6c7a7b 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(149, 165, 166, 0.4);
+        display: none !important;
       }
     `;
     
@@ -912,34 +182,23 @@ export class ForgeUI {
   setupEventListeners() {
     if (!this.elements.overlay) return;
 
-    // 关闭按钮
-    if (this.elements.closeBtn) {
-      this.elements.closeBtn.addEventListener('click', () => this.close());
-    }
-    
-    if (this.elements.closeFooterBtn) {
-      this.elements.closeFooterBtn.addEventListener('click', () => this.close());
-    }
-
     // 点击 overlay 外部关闭
     this.elements.overlay.addEventListener('click', (e) => {
       if (e.target === this.elements.overlay) {
         this.close();
       }
     });
+    
+    // 注意：其他事件监听器由InitialView和DynamicPanelManager管理
+  }
 
-    // Tab 切换事件
-    const tabButtons = this.elements.overlay.querySelectorAll('.forge-tab-btn');
-    tabButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        // ✅ 第一步：标签页切换音效
-        if (AudioManager && typeof AudioManager.playBookFlip === 'function') {
-          AudioManager.playBookFlip();
-        }
-        const mode = btn.dataset.mode;
-        this.switchMode(mode);
-      });
-    });
+  /**
+   * 显示功能面板
+   */
+  showFunctionPanel(panelId) {
+    if (this.dynamicPanelManager) {
+      this.dynamicPanelManager.showPanel(panelId);
+    }
   }
 
   /**
@@ -957,30 +216,119 @@ export class ForgeUI {
       this.player = game.player;
     }
 
+    // 初始化背包绑定器
+    if (this.player && !this.inventoryBinder) {
+      try {
+        this.inventoryBinder = new InventoryBinder(this.player);
+        this.inventoryBinder.initialize();
+        
+        // 监听背包变化（使用防抖优化）
+        const debouncedUpdate = this.performanceOptimizer ? 
+          this.performanceOptimizer.debounce(() => {
+            this.renderItemList();
+            // 更新材料库存显示
+            if (this.materialInventory) {
+              this.materialInventory.update();
+            }
+            // 更新装备槽位显示
+            if (this.equipmentSlotDisplay) {
+              this.equipmentSlotDisplay.update();
+            }
+          }, 100) : 
+          () => {
+            this.renderItemList();
+            if (this.materialInventory) {
+              this.materialInventory.update();
+            }
+            if (this.equipmentSlotDisplay) {
+              this.equipmentSlotDisplay.update();
+            }
+          };
+        
+        this.inventoryBinder.on('onAnyChange', debouncedUpdate);
+      } catch (error) {
+        if (this.errorHandler) {
+          this.errorHandler.handleInventoryDataError(error);
+        }
+      }
+    }
+    
+    // 初始化历史记录追踪器
+    if (!this.historyTracker) {
+      this.historyTracker = new ForgeHistoryTracker(this);
+    }
+    
+    // 初始化音效管理器
+    if (!this.soundManager) {
+      this.soundManager = new ForgeSoundManager(AudioManager);
+    }
+    
+    // 初始化材料库存显示器
+    if (!this.materialInventory) {
+      this.materialInventory = new MaterialInventoryDisplay(this);
+    }
+    
+    // 初始化装备槽位显示器
+    if (!this.equipmentSlotDisplay) {
+      this.equipmentSlotDisplay = new EquipmentSlotDisplay(this);
+    }
+    
+    // 初始化性能优化器
+    if (!this.performanceOptimizer) {
+      this.performanceOptimizer = new PerformanceOptimizer(this);
+    }
+    
+    // 初始化自动保存系统
+    if (!this.autoSave) {
+      this.autoSave = new ForgeAutoSave(this);
+    }
+    
+    // 初始化错误处理系统
+    if (!this.errorHandler) {
+      this.errorHandler = new ForgeErrorHandler(this);
+    }
+    
+    // 初始化批量操作面板
+    if (!this.batchOperationPanel) {
+      this.batchOperationPanel = new BatchOperationPanel(this);
+    }
+    
+    // 初始化功能解锁管理器
+    if (!this.featureUnlockManager) {
+      this.featureUnlockManager = new FeatureUnlockManager(this);
+      // 更新解锁状态
+      const game = window.game;
+      const blacksmithLevel = game?.blacksmithNPC?.level || 1;
+      this.featureUnlockManager.updateUnlockStatus(blacksmithLevel);
+    }
+    
+    // 初始化铁匠等级显示
+    if (!this.blacksmithLevelDisplay) {
+      this.blacksmithLevelDisplay = new BlacksmithLevelDisplay(this);
+      const game = window.game;
+      const blacksmithLevel = game?.blacksmithNPC?.level || 1;
+      this.blacksmithLevelDisplay.lastLevel = blacksmithLevel;
+    }
+    
+    // 启动自动保存
+    this.autoSave.start();
+
     // 打开铁匠铺时播放柔和的 UI 打开音效
-    if (AudioManager && typeof AudioManager.playUIOpen === 'function') {
-      AudioManager.playUIOpen();
+    if (this.soundManager) {
+      this.soundManager.playOpen();
     }
 
     this.elements.overlay.classList.remove('hidden');
     this.elements.overlay.classList.add('overlay-fade-in');
     this.elements.overlay.style.display = 'flex';
     this.isOpen = true;
-    
-    // 重置模式为强化/重铸
-    this.currentMode = 'enhance';
-    this.switchMode('enhance');
-
-    // 渲染铁匠NPC头像
-    this.renderBlacksmithAvatar();
-    
-    // 更新铁匠等级显示
-    this.updateBlacksmithLevel();
-
-    // 渲染装备列表
-    this.renderItemList();
 
     console.log('✓ ForgeUI 已打开');
+    
+    // 在 DOM 更新后启动火花特效（使用 setTimeout 确保布局已完成）
+    setTimeout(() => {
+      this.startSparkleEffect();
+    }, 100);
   }
 
   /**
@@ -994,15 +342,46 @@ export class ForgeUI {
       this.isOpen = false;
 
       // 关闭铁匠铺时播放 UI 关闭音效
-      if (AudioManager && typeof AudioManager.playUIClose === 'function') {
-        AudioManager.playUIClose();
+      if (this.soundManager) {
+        this.soundManager.playClose();
       }
+      
+      // 停止自动保存
+      if (this.autoSave) {
+        this.autoSave.stop();
+      }
+      
+      // 停止火花特效
+      this.stopSparkleEffect();
 
       // 恢复游戏
       const game = window.game;
       if (game) {
         game.isPaused = false;
       }
+
+      // 清理背包绑定器
+      if (this.inventoryBinder) {
+        this.inventoryBinder.destroy();
+        this.inventoryBinder = null;
+      }
+      
+      // 不清理NPC渲染器，保持引用以便下次使用
+      // NPC渲染器会在下次打开时继续使用
+      
+      // 清理历史记录追踪器
+      if (this.historyTracker) {
+        this.historyTracker.cleanup();
+        this.historyTracker = null;
+      }
+      
+      // 清理性能优化器
+      if (this.performanceOptimizer) {
+        this.performanceOptimizer.cleanup();
+        // 不设置为null，保持引用以便下次使用
+      }
+      
+      // 音效管理器不需要清理（保持引用）
 
       // 清除选中状态
       this.selectedItem = null;
@@ -1014,11 +393,58 @@ export class ForgeUI {
 
   /**
    * 渲染装备列表（包括已装备和背包中的装备）
+   * @param {string} containerId - 可选的容器ID，如果不提供则使用默认的itemList
    */
-  renderItemList() {
-    if (!this.elements.itemList || !this.player) return;
+  renderItemList(containerId = null) {
+    console.log('[ForgeUI] renderItemList 被调用, containerId:', containerId);
+    
+    if (!this.player) {
+      console.log('[ForgeUI] ✗ player 不存在');
+      return;
+    }
+    
+    console.log('[ForgeUI] ✓ player 存在');
+    
+    // 确定要渲染到哪个容器
+    const container = containerId ? document.getElementById(containerId) : this.elements.itemList;
+    console.log('[ForgeUI] 容器查找结果:', container ? '找到' : '未找到', containerId || 'itemList');
+    
+    if (!container) {
+      console.log('[ForgeUI] ✗ 容器不存在，退出渲染');
+      return;
+    }
 
-    this.elements.itemList.innerHTML = '';
+    console.log('[ForgeUI] ✓ 开始渲染物品列表');
+    container.innerHTML = '';
+    
+    // 添加装备槽位状态显示
+    if (this.equipmentSlotDisplay) {
+      const slotDisplayHtml = this.equipmentSlotDisplay.render(this.player);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = slotDisplayHtml;
+      const slotPanel = tempDiv.firstElementChild;
+      if (slotPanel) {
+        container.appendChild(slotPanel);
+        
+        // 绑定槽位点击事件
+        this.equipmentSlotDisplay.bindSlotClickEvents((slotId, isEmpty, itemUid) => {
+          if (isEmpty) {
+            // 点击空槽位，显示提示
+            this.showMessage(`${this.equipmentSlotDisplay.getSlotInfo(slotId)?.name || slotId} 槽位为空`, 'info');
+          } else {
+            // 点击已装备槽位，选中该装备
+            const equipment = this.player.equipment[slotId];
+            if (equipment) {
+              // 找到对应的装备卡片并触发点击
+              const itemCard = container.querySelector(`[data-slot="${slotId}"]`);
+              if (itemCard) {
+                itemCard.click();
+              }
+            }
+          }
+        });
+      }
+    }
 
     // 导入装备数据库
     import('../constants.js').then(module => {
@@ -1034,7 +460,7 @@ export class ForgeUI {
       const equippedTitle = document.createElement('h3');
       equippedTitle.className = 'panel-subtitle';
       equippedTitle.textContent = '已装备物品';
-      this.elements.itemList.appendChild(equippedTitle);
+      container.appendChild(equippedTitle);
 
       slots.forEach(slot => {
         const equippedItem = equippedItems[slot];
@@ -1071,7 +497,7 @@ export class ForgeUI {
             this.blacksmithSystem.initializeItem(itemInstance);
             
             const itemCard = this.createItemCard(itemInstance, slot, 'equipped');
-            this.elements.itemList.appendChild(itemCard);
+            container.appendChild(itemCard);
           }
         }
       });
@@ -1080,22 +506,36 @@ export class ForgeUI {
       const inventory = this.player.inventory || [];
       const inventoryItems = [];
       
+      console.log('[ForgeUI] 背包物品总数:', inventory.length);
+      console.log('[ForgeUI] 背包内容:', inventory);
+      
       inventory.forEach((item, index) => {
+        console.log(`[ForgeUI] 检查物品 ${index}:`, item);
         if (item && typeof item === 'object' && item.type !== 'CONSUMABLE') {
+          console.log(`[ForgeUI] ✓ 物品 ${index} 符合条件:`, item.name || item.nameZh);
           inventoryItems.push({ item, index });
+        } else {
+          console.log(`[ForgeUI] ✗ 物品 ${index} 不符合条件:`, {
+            exists: !!item,
+            isObject: typeof item === 'object',
+            type: item?.type,
+            isNotConsumable: item?.type !== 'CONSUMABLE'
+          });
         }
       });
+      
+      console.log('[ForgeUI] 符合条件的背包物品数:', inventoryItems.length);
 
       if (inventoryItems.length > 0) {
         // 添加分割线和标题
         const divider = document.createElement('div');
         divider.className = 'forge-list-divider';
-        this.elements.itemList.appendChild(divider);
+        container.appendChild(divider);
         
         const inventoryTitle = document.createElement('h3');
         inventoryTitle.className = 'panel-subtitle';
         inventoryTitle.textContent = '背包物品';
-        this.elements.itemList.appendChild(inventoryTitle);
+        container.appendChild(inventoryTitle);
 
         inventoryItems.forEach(({ item, index }) => {
           hasItems = true;
@@ -1104,12 +544,12 @@ export class ForgeUI {
           this.blacksmithSystem.initializeItem(item);
           
           const itemCard = this.createItemCard(item, `inventory_${index}`, 'inventory');
-          this.elements.itemList.appendChild(itemCard);
+          container.appendChild(itemCard);
         });
       }
 
       if (!hasItems) {
-        this.elements.itemList.innerHTML = '<p class="forge-placeholder">没有可操作的装备</p>';
+        container.innerHTML = '<p class="forge-placeholder">没有可操作的装备</p>';
       }
     });
   }
@@ -1140,19 +580,89 @@ export class ForgeUI {
     
     const itemName = this.blacksmithSystem.getItemDisplayName(itemInstance);
     const itemColor = this.blacksmithSystem.getItemQualityColor(itemInstance);
+    const quality = itemInstance.quality || 'COMMON';
     
     const slotLabel = source === 'equipped' 
       ? this.getSlotName(slot)
       : '背包';
     
+    // 创建物品图标
+    const iconCanvas = this.createItemIcon(itemInstance);
+    
     itemCard.innerHTML = `
-      <div class="forge-item-name" style="color: ${itemColor};">${itemName}</div>
-      <div class="forge-item-type">${slotLabel}</div>
+      <div class="forge-item-icon-wrapper quality-${quality}" style="border-color: ${itemColor};">
+        ${iconCanvas ? iconCanvas.outerHTML : '<div class="forge-item-icon-placeholder">?</div>'}
+      </div>
+      <div class="forge-item-info">
+        <div class="forge-item-name" style="color: ${itemColor};">${itemName}</div>
+        <div class="forge-item-type">${slotLabel}</div>
+      </div>
     `;
     
     itemCard.addEventListener('click', () => this.selectItem(itemInstance, slot, itemCard));
     
     return itemCard;
+  }
+
+  /**
+   * 创建物品图标（Canvas渲染）
+   * @param {Object} item - 物品对象
+   * @returns {HTMLCanvasElement|null} Canvas元素
+   */
+  createItemIcon(item) {
+    const loader = window.game?.loader;
+    if (!loader) return null;
+    
+    // 根据物品类型选择精灵图
+    let spriteImage = null;
+    let iconIndex = item.iconIndex || 0;
+    
+    if (item.type === 'GEM') {
+      spriteImage = loader.getImage('ICONS_GEMS');
+    } else if (item.type === 'CONSUMABLE' || item.type === 'MATERIAL') {
+      spriteImage = loader.getImage('ICONS_CONSUMABLES');
+    } else {
+      // 装备类型
+      spriteImage = loader.getImage('ICONS_EQUIP');
+    }
+    
+    if (!spriteImage) return null;
+    
+    // 创建Canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 48;
+    canvas.height = 48;
+    canvas.className = 'forge-item-icon-canvas';
+    
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    
+    // 计算精灵图中的位置
+    const cols = 4; // 假设精灵图是4列
+    const natW = spriteImage.naturalWidth || spriteImage.width;
+    const natH = spriteImage.naturalHeight || spriteImage.height;
+    const cellW = natW / cols;
+    const cellH = natH / 4; // 假设4行
+    
+    const col = iconIndex % cols;
+    const row = Math.floor(iconIndex / cols);
+    
+    const sx = col * cellW;
+    const sy = row * cellH;
+    
+    // 绘制图标
+    try {
+      ctx.drawImage(
+        spriteImage,
+        sx, sy, cellW, cellH,
+        0, 0, canvas.width, canvas.height
+      );
+    } catch (error) {
+      console.warn('[ForgeUI] 绘制物品图标失败:', error);
+      return null;
+    }
+    
+    return canvas;
   }
 
   /**
@@ -1162,13 +672,40 @@ export class ForgeUI {
     this.selectedItem = item;
     this.selectedSlot = slot;
 
-    // 更新选中状态
-    const allCards = this.elements.itemList.querySelectorAll('.forge-item-card');
-    allCards.forEach(card => card.classList.remove('selected'));
+    // 更新选中状态 - 查找卡片所在的容器
+    const container = cardElement.closest('.equipment-list') || this.elements.itemList;
+    if (container) {
+      const allCards = container.querySelectorAll('.forge-item-card');
+      allCards.forEach(card => card.classList.remove('selected'));
+    }
     cardElement.classList.add('selected');
 
-    // 渲染装备详情
-    this.renderItemDetails(item);
+    // 渲染装备详情 - 根据当前面板确定详情容器
+    const detailsContainer = this.getDetailsContainer();
+    if (detailsContainer) {
+      this.renderItemDetailsToContainer(item, detailsContainer);
+    } else {
+      // 兼容旧系统
+      this.renderItemDetails(item);
+    }
+  }
+
+  /**
+   * 获取当前详情容器
+   */
+  getDetailsContainer() {
+    // 尝试从动态面板中获取详情容器
+    const enhanceDetails = document.getElementById('enhance-equipment-details');
+    if (enhanceDetails) return enhanceDetails;
+    
+    const socketSlots = document.getElementById('socket-slots');
+    if (socketSlots) return socketSlots;
+    
+    const dismantleDetails = document.getElementById('dismantle-equipment-details');
+    if (dismantleDetails) return dismantleDetails;
+    
+    // 返回旧系统的详情容器
+    return this.elements.itemDetails;
   }
 
   /**
@@ -1177,15 +714,24 @@ export class ForgeUI {
   switchMode(mode) {
     this.currentMode = mode;
     
-    // 更新 Tab 按钮状态
-    const tabButtons = this.elements.overlay.querySelectorAll('.forge-tab-btn');
-    tabButtons.forEach(btn => {
-      if (btn.dataset.mode === mode) {
+    // 更新导航按钮状态
+    const navButtons = this.elements.overlay.querySelectorAll('.forge-nav-btn');
+    navButtons.forEach(btn => {
+      if (btn.dataset.page === mode) {
         btn.classList.add('active');
       } else {
         btn.classList.remove('active');
       }
     });
+    
+    // 添加页面切换动画
+    const detailsPanel = this.elements.itemDetails;
+    if (detailsPanel) {
+      detailsPanel.classList.add('page-transition');
+      setTimeout(() => {
+        detailsPanel.classList.remove('page-transition');
+      }, 300);
+    }
     
     // 重新渲染详情面板
     this.renderItemDetails(this.selectedItem);
@@ -1197,9 +743,21 @@ export class ForgeUI {
   renderItemDetails(item) {
     if (!this.elements.itemDetails) return;
 
+    // 批量操作模式
+    if (this.currentMode === 'batch') {
+      this.renderBatchPanel();
+      return;
+    }
+
     // 宝石合成模式 (不需要选中装备)
     if (this.currentMode === 'synthesis') {
       this.renderSynthesisPanel();
+      return;
+    }
+    
+    // 装备拆解模式
+    if (this.currentMode === 'dismantle') {
+      this.renderDismantlePanel(item);
       return;
     }
 
@@ -1213,6 +771,254 @@ export class ForgeUI {
       this.renderSocketPanel(item);
     } else {
       this.renderEnhancePanel(item);
+    }
+  }
+
+  /**
+   * 渲染装备详情到指定容器（新面板系统）
+   */
+  renderItemDetailsToContainer(item, container) {
+    if (!container) return;
+
+    // 根据容器ID判断当前面板类型
+    const containerId = container.id;
+    
+    if (containerId === 'enhance-equipment-details') {
+      // 强化面板
+      this.renderEnhancePanelToContainer(item, container);
+    } else if (containerId === 'socket-slots') {
+      // 宝石镶嵌面板
+      this.renderSocketPanelToContainer(item, container);
+    } else if (containerId === 'dismantle-equipment-details') {
+      // 拆解面板
+      this.renderDismantlePanelToContainer(item, container);
+    } else {
+      // 默认显示装备信息
+      if (!item) {
+        container.innerHTML = '<p class="panel-placeholder">请选择一件装备</p>';
+      } else {
+        this.renderEnhancePanelToContainer(item, container);
+      }
+    }
+  }
+
+  /**
+   * 渲染强化面板到指定容器
+   */
+  renderEnhancePanelToContainer(item, container) {
+    if (!item) {
+      container.innerHTML = '<p class="panel-placeholder">请选择一件装备</p>';
+      return;
+    }
+
+    const details = this.blacksmithSystem.getItemDetails(item);
+    
+    // 获取玩家背包中的幸运石
+    const luckyStones = this.getLuckyStones();
+    
+    // 初始化幸运石槽位（如果不存在）
+    if (!item.luckyStoneSlots) {
+      item.luckyStoneSlots = [];
+    }
+    
+    // 计算总成功率加成
+    let totalLuckyBonus = 0;
+    item.luckyStoneSlots.forEach(stone => {
+      totalLuckyBonus += stone.successRateBonus || 0;
+    });
+    
+    // 计算最终成功率
+    const baseSuccessRate = details.successRate || 1.0;
+    const finalSuccessRate = Math.min(baseSuccessRate + totalLuckyBonus, 0.95); // 上限95%
+    
+    container.innerHTML = `
+      <div class="detail-section">
+        <h4 style="color: ${details.qualityColor};">${details.name}</h4>
+        <div class="stat-row">
+          <span class="stat-label">品质:</span>
+          <span class="stat-value" style="color: ${details.qualityColor};">${details.quality}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">强化等级:</span>
+          <span class="stat-value">+${details.enhanceLevel} / +${details.maxLevel}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">成功率:</span>
+          <span class="stat-value" style="color: ${finalSuccessRate >= 0.7 ? '#4caf50' : finalSuccessRate >= 0.4 ? '#ff9800' : '#e74c3c'};">
+            ${(finalSuccessRate * 100).toFixed(2)}%
+            ${totalLuckyBonus > 0 ? `<small style="color: #4caf50;">(+${(totalLuckyBonus * 100).toFixed(2)}%)</small>` : ''}
+          </span>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h4>当前属性</h4>
+        ${this.renderStats(details.stats)}
+      </div>
+
+      <div class="detail-section">
+        <h4>基础属性</h4>
+        ${this.renderStats(details.baseStats)}
+      </div>
+
+      <div class="forge-actions">
+        <button class="forge-btn forge-btn-enhance" id="forge-enhance-btn" ${!details.canEnhance ? 'disabled' : ''}>
+          强化 (+${details.enhanceLevel + 1})<br>
+          <small>费用: ${details.enhanceCost} 金币</small>
+        </button>
+        <button class="forge-btn forge-btn-reforge" id="forge-reforge-btn">
+          重铸品质<br>
+          <small>费用: ${details.reforgeCost} 金币</small>
+        </button>
+        <button class="forge-btn forge-btn-dismantle" id="forge-dismantle-btn">
+          分解<br>
+          <small>获得: ${details.dismantleValue} 金币</small>
+        </button>
+      </div>
+    `;
+
+    // 添加按钮事件监听器
+    const enhanceBtn = container.querySelector('#forge-enhance-btn');
+    const reforgeBtn = container.querySelector('#forge-reforge-btn');
+    const dismantleBtn = container.querySelector('#forge-dismantle-btn');
+
+    if (enhanceBtn) {
+      enhanceBtn.addEventListener('click', () => this.handleEnhance());
+    }
+
+    if (reforgeBtn) {
+      reforgeBtn.addEventListener('click', () => this.handleReforge());
+    }
+
+    if (dismantleBtn) {
+      dismantleBtn.addEventListener('click', () => this.handleDismantle());
+    }
+  }
+
+  /**
+   * 渲染宝石镶嵌面板到指定容器
+   */
+  renderSocketPanelToContainer(item, container) {
+    if (!item) {
+      container.innerHTML = '<p class="panel-placeholder">请选择一件装备</p>';
+      return;
+    }
+
+    const game = window.game;
+    const loader = game?.loader;
+    const sockets = item.meta?.sockets || [];
+    
+    const itemName = this.blacksmithSystem.getItemDisplayName(item);
+    const itemColor = this.blacksmithSystem.getItemQualityColor(item);
+    
+    let socketHtml = '';
+    if (sockets.length === 0) {
+      socketHtml = '<p class="panel-placeholder">该装备没有镶嵌槽</p>';
+    } else {
+      socketHtml = '<div class="socket-list">';
+      sockets.forEach((socket, index) => {
+        socketHtml += this.renderSocketSlot(socket, index, loader);
+      });
+      socketHtml += '</div>';
+    }
+    
+    // 检查是否可以打孔
+    const currentSockets = sockets.length;
+    const canUnlock = true; 
+    const unlockCost = currentSockets + 1;
+    
+    // 检查玩家拥有的钻头数量
+    let drillCount = 0;
+    if (this.player.inventory) {
+      this.player.inventory.forEach(invItem => {
+        if (invItem && (invItem.itemId === 'ITEM_STARDUST_DRILL' || invItem.id === 'ITEM_STARDUST_DRILL')) {
+          drillCount += (invItem.count || 1);
+        }
+      });
+    }
+
+    if (canUnlock) {
+      socketHtml += `
+        <div class="socket-unlock-section" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="color: #aaa;">解锁第 ${currentSockets + 1} 个槽位</span>
+            <span style="color: ${drillCount >= unlockCost ? '#4caf50' : '#e74c3c'};">
+              钻头: ${drillCount} / ${unlockCost}
+            </span>
+          </div>
+          <button class="forge-btn forge-btn-enhance" id="btn-unlock-socket" ${drillCount < unlockCost ? 'disabled' : ''}>
+            使用钻头打孔
+          </button>
+        </div>
+      `;
+    }
+    
+    container.innerHTML = `
+      <div class="detail-section">
+        <h4 style="color: ${itemColor}; margin: 0;">${itemName}</h4>
+        <div style="font-size: 12px; color: #aaa; margin-top: 5px;">
+          镶嵌槽: ${sockets.length} 个
+        </div>
+      </div>
+
+      <div class="detail-section socket-panel">
+        ${socketHtml}
+      </div>
+    `;
+    
+    // 绑定 socket 点击事件
+    this.bindSocketEvents(item);
+    
+    // 绑定打孔按钮事件
+    const unlockBtn = container.querySelector('#btn-unlock-socket');
+    if (unlockBtn) {
+      unlockBtn.addEventListener('click', () => this.handleUnlockSocket(item));
+    }
+  }
+
+  /**
+   * 渲染拆解面板到指定容器
+   */
+  renderDismantlePanelToContainer(item, container) {
+    if (!item) {
+      container.innerHTML = '<p class="panel-placeholder">请选择要拆解的装备</p>';
+      return;
+    }
+
+    const details = this.blacksmithSystem.getItemDetails(item);
+    
+    container.innerHTML = `
+      <div class="detail-section">
+        <h4 style="color: ${details.qualityColor};">${details.name}</h4>
+        <div class="stat-row">
+          <span class="stat-label">品质:</span>
+          <span class="stat-value" style="color: ${details.qualityColor};">${details.quality}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">强化等级:</span>
+          <span class="stat-value">+${details.enhanceLevel}</span>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h4>拆解收益</h4>
+        <div class="stat-row">
+          <span class="stat-label">金币:</span>
+          <span class="stat-value" style="color: #ffd700;">${details.dismantleValue}</span>
+        </div>
+      </div>
+
+      <div class="forge-actions">
+        <button class="forge-btn forge-btn-dismantle" id="forge-dismantle-btn">
+          确认拆解
+        </button>
+      </div>
+    `;
+
+    // 添加按钮事件监听器
+    const dismantleBtn = container.querySelector('#forge-dismantle-btn');
+    if (dismantleBtn) {
+      dismantleBtn.addEventListener('click', () => this.handleDismantle());
     }
   }
 
@@ -1239,6 +1045,9 @@ export class ForgeUI {
     // 计算最终成功率
     const baseSuccessRate = details.successRate || 1.0;
     const finalSuccessRate = Math.min(baseSuccessRate + totalLuckyBonus, 0.95); // 上限95%
+    
+    // 渲染材料库存
+    const materialInventoryHtml = this.materialInventory ? this.materialInventory.render(this.player) : '';
     
     this.elements.itemDetails.innerHTML = `
       <div class="detail-section">
@@ -1269,6 +1078,9 @@ export class ForgeUI {
         <h4>基础属性</h4>
         ${this.renderStats(details.baseStats)}
       </div>
+      
+      <!-- 材料库存显示 -->
+      ${materialInventoryHtml}
 
       <!-- 幸运石槽位区域 -->
       <div class="detail-section lucky-stone-section">
@@ -1433,13 +1245,18 @@ export class ForgeUI {
     if (!this.player || !item) return;
     
     // 播放音效
-    if (AudioManager && typeof AudioManager.playForge === 'function') {
-      AudioManager.playForge();
+    if (this.soundManager) {
+      this.soundManager.playForge();
     }
     
     const result = this.blacksmithSystem.unlockSocket(item, this.player);
     
     if (result.success) {
+      // 触发自动保存
+      if (this.autoSave) {
+        this.autoSave.save();
+      }
+      
       this.showMessage(result.message, 'success');
       // 刷新详情
       this.renderItemDetails(item);
@@ -1627,13 +1444,23 @@ export class ForgeUI {
     if (!this.player || !gemItem) return;
 
     // 播放音效
-    if (AudioManager && typeof AudioManager.playForge === 'function') {
-      AudioManager.playForge();
+    if (this.soundManager) {
+      this.soundManager.playSynthesis();
     }
 
     const result = this.blacksmithSystem.synthesizeGem(gemItem, this.player);
 
     if (result.success) {
+      // 记录历史
+      if (this.historyTracker && result.resultGem) {
+        this.historyTracker.recordSynthesis(gemItem, result.resultGem, 3);
+      }
+      
+      // 触发自动保存
+      if (this.autoSave) {
+        this.autoSave.save();
+      }
+      
       this.showMessage(result.message, 'success');
       // 刷新合成面板
       this.renderSynthesisPanel();
@@ -1945,6 +1772,21 @@ export class ForgeUI {
     const result = this.blacksmithSystem.socketGem(item, socketIndex, gemItem, this.player);
     
     if (result.success) {
+      // 播放镶嵌音效
+      if (this.soundManager) {
+        this.soundManager.playSocketGem();
+      }
+      
+      // 记录历史
+      if (this.historyTracker) {
+        this.historyTracker.recordSocket(item, gemItem, socketIndex, 0);
+      }
+      
+      // 触发自动保存
+      if (this.autoSave) {
+        this.autoSave.save();
+      }
+      
       this.showMessage(result.message, 'success');
       // ✅ 刷新左侧列表和右侧详情
       this.renderItemList();
@@ -1978,9 +1820,34 @@ export class ForgeUI {
       return;
     }
     
+    // 获取宝石信息用于记录历史
+    const socket = item.meta?.sockets?.[socketIndex];
+    let gemInfo = null;
+    if (socket && socket.gemId) {
+      import('../constants.js').then(module => {
+        const EQUIPMENT_DB = module.EQUIPMENT_DB;
+        gemInfo = EQUIPMENT_DB[socket.gemId];
+      });
+    }
+    
     const result = this.blacksmithSystem.unsocketGem(item, socketIndex, this.player, unsocketCost);
     
     if (result.success) {
+      // 播放拆除音效
+      if (this.soundManager) {
+        this.soundManager.playUnsocketGem();
+      }
+      
+      // 记录历史
+      if (this.historyTracker && gemInfo) {
+        this.historyTracker.recordUnsocket(item, gemInfo, socketIndex, unsocketCost);
+      }
+      
+      // 触发自动保存
+      if (this.autoSave) {
+        this.autoSave.save();
+      }
+      
       this.showMessage(result.message, 'success');
       // ✅ FIX: 拆除宝石后立即刷新左侧列表，确保拆下来的宝石能立即显示
       this.renderItemList();
@@ -2113,6 +1980,11 @@ export class ForgeUI {
     // 从背包移除
     this.player.inventory.splice(stoneIndex, 1);
     
+    // 触发自动保存
+    if (this.autoSave) {
+      this.autoSave.save();
+    }
+    
     // 刷新显示
     this.renderItemDetails(item);
     this.showMessage(`添加了 ${stone.name}`, 'success');
@@ -2143,6 +2015,11 @@ export class ForgeUI {
     // 从槽位移除
     item.luckyStoneSlots.splice(slotIndex, 1);
     
+    // 触发自动保存
+    if (this.autoSave) {
+      this.autoSave.save();
+    }
+    
     // 刷新显示
     this.renderItemDetails(item);
     this.showMessage(`移除了 ${stone.name}`, 'info');
@@ -2172,6 +2049,11 @@ export class ForgeUI {
     
     // 清空槽位
     item.luckyStoneSlots = [];
+    
+    // 触发自动保存
+    if (this.autoSave) {
+      this.autoSave.save();
+    }
     
     // 刷新显示
     this.renderItemDetails(item);
@@ -2255,70 +2137,136 @@ export class ForgeUI {
   handleEnhance() {
     if (!this.selectedItem || !this.player) return;
 
-    // 强化/锻造按钮点击时，播放锻造音效
-    if (AudioManager && typeof AudioManager.playForge === 'function') {
-      AudioManager.playForge();
-    }
+    try {
+      // 强化/锻造按钮点击时，播放锻造音效
+      if (this.soundManager) {
+        this.soundManager.playForge();
+      }
 
-    // 计算幸运石加成
-    let luckyStoneBonus = 0;
-    if (this.selectedItem.luckyStoneSlots && this.selectedItem.luckyStoneSlots.length > 0) {
-      this.selectedItem.luckyStoneSlots.forEach(stone => {
-        luckyStoneBonus += stone.successRateBonus || 0;
-      });
-    }
+      // 计算幸运石加成
+      let luckyStoneBonus = 0;
+      if (this.selectedItem.luckyStoneSlots && this.selectedItem.luckyStoneSlots.length > 0) {
+        this.selectedItem.luckyStoneSlots.forEach(stone => {
+          luckyStoneBonus += stone.successRateBonus || 0;
+        });
+      }
 
-    // 传递幸运石加成给强化系统
-    const options = {
-      luckyStoneBonus: luckyStoneBonus
-    };
-
-    const result = this.blacksmithSystem.enhanceItem(this.selectedItem, this.player, options);
-
-    // 播放强化特效（成功或失败）
-    const game = window.game;
-    if (game && game.enhancementEffects) {
-      const canvas = game.canvas;
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
+      // 传递幸运石加成给强化系统
+      const options = {
+        luckyStoneBonus: luckyStoneBonus
+      };
       
+      // 记录强化前的等级
+      const fromLevel = this.selectedItem.enhanceLevel || 0;
+      const details = this.blacksmithSystem.getItemDetails(this.selectedItem);
+      const cost = details.enhanceCost || 0;
+
+      const result = this.blacksmithSystem.enhanceItem(this.selectedItem, this.player, options);
+
+      // 播放强化特效（成功或失败）
+      const game = window.game;
+      if (game && game.enhancementEffects) {
+        try {
+          const canvas = game.canvas;
+          const centerX = canvas.width / 2;
+          const centerY = canvas.height / 2;
+          
+          if (result.success) {
+            // 播放成功特效（金色闪光）
+            game.enhancementEffects.playSuccessEffect(centerX, centerY);
+          } else {
+            // 播放失败特效（红色烟雾）
+            game.enhancementEffects.playFailureEffect(centerX, centerY);
+          }
+        } catch (animError) {
+          if (this.errorHandler) {
+            this.errorHandler.handleAnimationError('enhance', animError);
+          }
+        }
+      }
+
       if (result.success) {
-        // 播放成功特效（金色闪光）
-        game.enhancementEffects.playSuccessEffect(centerX, centerY);
+        // 强化成功，消耗所有幸运石
+        if (this.selectedItem.luckyStoneSlots) {
+          this.selectedItem.luckyStoneSlots = [];
+        }
+        
+        // 记录历史
+        const toLevel = this.selectedItem.enhanceLevel || 0;
+        if (this.historyTracker) {
+          this.historyTracker.recordEnhance(this.selectedItem, true, cost, fromLevel, toLevel);
+        }
+        
+        // 添加经验
+        if (this.blacksmithLevelDisplay) {
+          this.blacksmithLevelDisplay.addExperience(5, '强化装备');
+        }
+        
+        // 触发自动保存
+        if (this.autoSave) {
+          try {
+            this.autoSave.save();
+          } catch (saveError) {
+            if (this.errorHandler) {
+              this.errorHandler.handleSyncError('enhance', saveError);
+            }
+          }
+        }
+        
+        // 播放成功音效
+        if (this.soundManager) {
+          this.soundManager.playEnhanceSuccess();
+        }
+        
+        // 显示成功消息
+        this.showMessage(result.message, 'success');
+        
+        // 更新UI
+        this.renderItemList();
+        this.renderItemDetails(this.selectedItem);
+        
+        // 更新游戏UI
+        if (game && game.ui) {
+          game.ui.updateStats(this.player);
+        }
       } else {
-        // 播放失败特效（红色烟雾）
-        game.enhancementEffects.playFailureEffect(centerX, centerY);
+        // 强化失败，也消耗所有幸运石
+        if (this.selectedItem.luckyStoneSlots) {
+          this.selectedItem.luckyStoneSlots = [];
+        }
+        
+        // 记录历史
+        if (this.historyTracker) {
+          this.historyTracker.recordEnhance(this.selectedItem, false, cost, fromLevel, fromLevel);
+        }
+        
+        // 触发自动保存
+        if (this.autoSave) {
+          try {
+            this.autoSave.save();
+          } catch (saveError) {
+            if (this.errorHandler) {
+              this.errorHandler.handleSyncError('enhance', saveError);
+            }
+          }
+        }
+        
+        // 播放失败音效
+        if (this.soundManager) {
+          this.soundManager.playEnhanceFailure();
+        }
+        
+        // 显示失败消息
+        this.showMessage(result.message, 'error');
+        
+        // 刷新UI以显示幸运石已被消耗
+        this.renderItemDetails(this.selectedItem);
       }
-    }
-
-    if (result.success) {
-      // 强化成功，消耗所有幸运石
-      if (this.selectedItem.luckyStoneSlots) {
-        this.selectedItem.luckyStoneSlots = [];
+    } catch (error) {
+      if (this.errorHandler) {
+        this.errorHandler.logError('ENHANCE_ERROR', '强化操作失败', error);
+        this.errorHandler.showErrorMessage('强化失败', '执行强化操作时发生错误，请重试。', 'error');
       }
-      
-      // 显示成功消息
-      this.showMessage(result.message, 'success');
-      
-      // 更新UI
-      this.renderItemList();
-      this.renderItemDetails(this.selectedItem);
-      
-      // 更新游戏UI
-      if (game && game.ui) {
-        game.ui.updateStats(this.player);
-      }
-    } else {
-      // 强化失败，也消耗所有幸运石
-      if (this.selectedItem.luckyStoneSlots) {
-        this.selectedItem.luckyStoneSlots = [];
-      }
-      
-      // 显示失败消息
-      this.showMessage(result.message, 'error');
-      
-      // 刷新UI以显示幸运石已被消耗
-      this.renderItemDetails(this.selectedItem);
     }
   }
 
@@ -2327,13 +2275,34 @@ export class ForgeUI {
    */
   handleReforge() {
     if (!this.selectedItem || !this.player) return;
+    
+    // 记录重铸前的品质
+    const fromQuality = this.selectedItem.quality || 'COMMON';
+    const details = this.blacksmithSystem.getItemDetails(this.selectedItem);
+    const cost = details.reforgeCost || 0;
 
     const result = this.blacksmithSystem.reforgeItem(this.selectedItem, this.player);
 
     if (result.success) {
       // ✅ 重铸成功后播放锻造音效
-      if (AudioManager && typeof AudioManager.playForge === 'function') {
-        AudioManager.playForge();
+      if (this.soundManager) {
+        this.soundManager.playReforge();
+      }
+      
+      // 记录历史
+      const toQuality = this.selectedItem.quality || 'COMMON';
+      if (this.historyTracker) {
+        this.historyTracker.recordReforge(this.selectedItem, cost, fromQuality, toQuality);
+      }
+      
+      // 添加经验
+      if (this.blacksmithLevelDisplay) {
+        this.blacksmithLevelDisplay.addExperience(3, '重铸品质');
+      }
+      
+      // 触发自动保存
+      if (this.autoSave) {
+        this.autoSave.save();
       }
       
       // 显示成功消息
@@ -2354,6 +2323,77 @@ export class ForgeUI {
     }
   }
 
+  /**
+   * 渲染装备拆解面板
+   */
+  renderDismantlePanel(item) {
+    if (!item) {
+      this.elements.itemDetails.innerHTML = '<p class="forge-placeholder">选择一件装备来拆解</p>';
+      return;
+    }
+    
+    const itemName = this.blacksmithSystem.getItemDisplayName(item);
+    const itemColor = this.blacksmithSystem.getItemQualityColor(item);
+    const dismantleValue = this.blacksmithSystem.calculateDismantleValue(item);
+    const enhanceLevel = item.enhanceLevel || 0;
+    const quality = item.quality || 'COMMON';
+    
+    this.elements.itemDetails.innerHTML = `
+      <div class="detail-section">
+        <h4 style="color: ${itemColor};">${itemName}</h4>
+        <div class="stat-row">
+          <span class="stat-label">品质:</span>
+          <span class="stat-value" style="color: ${itemColor};">${quality}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">强化等级:</span>
+          <span class="stat-value">+${enhanceLevel}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">拆解价值:</span>
+          <span class="stat-value" style="color: #ffd700;">${dismantleValue} 金币</span>
+        </div>
+      </div>
+      
+      <div class="detail-section">
+        <h4>拆解说明</h4>
+        <p style="color: #aaa; font-size: 14px; line-height: 1.6;">
+          拆解装备将永久销毁该装备，并获得金币。<br>
+          拆解价值基于装备品质和强化等级计算。<br>
+          <span style="color: #ff5722;">此操作无法撤销！</span>
+        </p>
+      </div>
+      
+      <div class="forge-actions">
+        <button class="forge-btn forge-btn-dismantle" id="forge-dismantle-btn">
+          确认拆解<br>
+          <small>获得: ${dismantleValue} 金币</small>
+        </button>
+      </div>
+    `;
+    
+    // 添加按钮事件监听器
+    const dismantleBtn = document.getElementById('forge-dismantle-btn');
+    if (dismantleBtn) {
+      dismantleBtn.addEventListener('click', () => this.handleDismantle());
+    }
+  }
+  
+  /**
+   * 渲染批量操作面板
+   */
+  renderBatchPanel() {
+    if (!this.elements.itemDetails || !this.batchOperationPanel) return;
+
+    // 默认显示批量强化面板
+    const mode = 'enhance'; // 可以扩展为支持切换
+    
+    this.elements.itemDetails.innerHTML = this.batchOperationPanel.render(mode);
+    
+    // 绑定事件
+    this.batchOperationPanel.bindEvents();
+  }
+  
   /**
    * 处理分解
    */
@@ -2383,16 +2423,23 @@ export class ForgeUI {
 
     if (result.success) {
       // 播放音效
-      const game = window.game;
-      if (game && game.audio) {
-        if (game.audio.playCoins) {
-          game.audio.playCoins();
-        } else if (game.audio.playMetalClick) {
-          game.audio.playMetalClick();
-        }
+      if (this.soundManager) {
+        this.soundManager.playDismantle();
+        this.soundManager.playCoins();
+      }
+      
+      // 记录历史
+      if (this.historyTracker) {
+        this.historyTracker.recordDismantle(this.selectedItem, result.value || dismantleValue);
+      }
+      
+      // 触发自动保存
+      if (this.autoSave) {
+        this.autoSave.save();
       }
       
       // 显示浮动文字
+      const game = window.game;
       if (game && game.floatingTextPool) {
         const canvas = game.canvas;
         const text = game.floatingTextPool.create(
@@ -2474,10 +2521,10 @@ export class ForgeUI {
       ctx.fillStyle = '#333';
       ctx.fillRect(0, 0, 64, 64);
       ctx.fillStyle = '#d4af37';
-      ctx.font = '40px Arial';
+      ctx.font = '20px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('🔨', 32, 32);
+      ctx.fillText('NPC', 32, 32);
       
       // 图片加载完成后重新渲染
       if (blacksmithImg) {
@@ -2527,6 +2574,230 @@ export class ForgeUI {
     this.selectedItem = null;
     this.selectedSlot = null;
     console.log('✓ ForgeUI 已销毁');
+  }
+  
+  /**
+   * 初始化NPC渲染器
+   */
+  async initializeNPCRenderer() {
+    try {
+      // 动态导入BlacksmithNPCRenderer
+      const { BlacksmithNPCRenderer } = await import('./forge/BlacksmithNPCRenderer.js');
+      
+      // 创建NPC渲染器实例
+      this.npcRenderer = new BlacksmithNPCRenderer(this);
+      
+      // 找到forge-modal容器
+      const forgeModal = this.elements.overlay.querySelector('.forge-modal');
+      if (!forgeModal) {
+        console.warn('找不到forge-modal容器');
+        return;
+      }
+      
+      // 初始化NPC渲染器
+      this.npcRenderer.initialize(forgeModal);
+      
+      console.log('✓ NPC渲染器已初始化');
+    } catch (error) {
+      console.error('✗ NPC渲染器初始化失败:', error);
+    }
+  }
+  
+  /**
+   * 启动火花特效（使用Canvas绘制，类似主菜单）
+   */
+  startSparkleEffect() {
+    // 创建Canvas用于绘制火花
+    const forgeModal = this.elements.overlay.querySelector('.forge-modal');
+    if (!forgeModal) {
+      console.warn('[ForgeUI] 找不到 forge-modal，无法启动火花特效');
+      return;
+    }
+    
+    // 检查是否已存在canvas
+    let sparkleCanvas = forgeModal.querySelector('#forge-sparkle-canvas');
+    if (!sparkleCanvas) {
+      sparkleCanvas = document.createElement('canvas');
+      sparkleCanvas.id = 'forge-sparkle-canvas';
+      sparkleCanvas.style.position = 'absolute';
+      sparkleCanvas.style.top = '0';
+      sparkleCanvas.style.left = '0';
+      sparkleCanvas.style.width = '100%';
+      sparkleCanvas.style.height = '100%';
+      sparkleCanvas.style.pointerEvents = 'none';
+      sparkleCanvas.style.zIndex = '2'; // 在遮罩层之上，但在交互元素之下
+      forgeModal.appendChild(sparkleCanvas);
+    }
+    
+    // 设置canvas尺寸
+    const rect = forgeModal.getBoundingClientRect();
+    sparkleCanvas.width = rect.width;
+    sparkleCanvas.height = rect.height;
+    
+    const ctx = sparkleCanvas.getContext('2d');
+    
+    // 初始化火星粒子
+    const emberCount = 40;
+    const embers = [];
+    
+    console.log(`[ForgeUI] 初始化 ${emberCount} 个粒子...`);
+    
+    for (let i = 0; i < emberCount; i++) {
+      embers.push({
+        x: Math.random() * sparkleCanvas.width,
+        y: Math.random() * sparkleCanvas.height,
+        vx: (Math.random() - 0.5) * 1,
+        vy: -0.5 - Math.random() * 1,
+        size: 2 + Math.random() * 3,
+        opacity: 0.6 + Math.random() * 0.4,
+        life: 0,
+        maxLife: 2.5 + Math.random() * 2,
+        swayFreq: 1 + Math.random(),
+        swayAmp: 15 + Math.random() * 15,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+    
+    let lastTime = performance.now();
+    let totalTime = 0;
+    
+    // 重置粒子函数
+    const resetParticle = (particle) => {
+      particle.life = 0;
+      particle.maxLife = 2.5 + Math.random() * 2;
+      particle.x = Math.random() * sparkleCanvas.width;
+      particle.vx = (Math.random() - 0.5) * 1;
+      particle.vy = -0.5 - Math.random() * 1;
+      particle.size = 2 + Math.random() * 3;
+      particle.opacity = 0.6 + Math.random() * 0.4;
+      particle.swayFreq = 1 + Math.random();
+      particle.swayAmp = 15 + Math.random() * 15;
+      particle.phase = Math.random() * Math.PI * 2;
+      
+      if (Math.random() < 0.8) {
+        particle.y = sparkleCanvas.height + particle.size;
+      } else {
+        const lowerRegionStart = sparkleCanvas.height * 0.4;
+        particle.y = lowerRegionStart + Math.random() * (sparkleCanvas.height - lowerRegionStart);
+      }
+    };
+    
+    // 动画循环
+    const animate = () => {
+      if (!this.isOpen) return;
+      
+      const currentTime = performance.now();
+      const dt = Math.min((currentTime - lastTime) / 1000, 0.1);
+      lastTime = currentTime;
+      totalTime += dt;
+      
+      // 更新粒子
+      for (let particle of embers) {
+        particle.life += dt;
+        
+        if (particle.life > particle.maxLife) {
+          resetParticle(particle);
+          continue;
+        }
+        
+        // 湍流效果
+        const offset = Math.sin(totalTime * particle.swayFreq + particle.phase) * particle.swayAmp * dt;
+        particle.x += offset;
+        
+        // 基础移动
+        particle.x += particle.vx * dt * 40;
+        particle.y += particle.vy * dt * 40;
+        
+        // 边界处理
+        if (particle.y < -particle.size) {
+          resetParticle(particle);
+          continue;
+        }
+        
+        if (particle.x < -particle.size * 2) {
+          particle.x = sparkleCanvas.width + particle.size * 2;
+        } else if (particle.x > sparkleCanvas.width + particle.size * 2) {
+          particle.x = -particle.size * 2;
+        }
+        
+        // 随机速度变化
+        particle.vx += (Math.random() - 0.5) * 0.2 * dt;
+        particle.vx = Math.max(-2, Math.min(2, particle.vx));
+      }
+      
+      // 绘制
+      ctx.clearRect(0, 0, sparkleCanvas.width, sparkleCanvas.height);
+      ctx.globalCompositeOperation = 'lighter';
+      
+      for (let particle of embers) {
+        if (particle.x < -particle.size * 2 || particle.x > sparkleCanvas.width + particle.size * 2 ||
+            particle.y < -particle.size * 2 || particle.y > sparkleCanvas.height + particle.size * 2) {
+          continue;
+        }
+        
+        const lifeProgress = particle.life / particle.maxLife;
+        let r, g, b, alpha;
+        
+        if (lifeProgress <= 0.2) {
+          r = 255; g = 240; b = 150;
+          alpha = particle.opacity;
+        } else if (lifeProgress <= 0.6) {
+          const t = (lifeProgress - 0.2) / 0.4;
+          r = 255;
+          g = Math.round(240 * (1 - t) + 100 * t);
+          b = Math.round(150 * (1 - t) + 50 * t);
+          alpha = particle.opacity;
+        } else {
+          const t = (lifeProgress - 0.6) / 0.4;
+          r = Math.round(255 * (1 - t) + 150 * t);
+          g = Math.round(100 * (1 - t) + 50 * t);
+          b = Math.round(50 * (1 - t) + 50 * t);
+          alpha = particle.opacity * (1 - t);
+        }
+        
+        ctx.globalAlpha = alpha;
+        
+        const gradient = ctx.createRadialGradient(
+          particle.x, particle.y, 0,
+          particle.x, particle.y, particle.size
+        );
+        
+        gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alpha})`);
+        gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${alpha * 0.6})`);
+        gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1.0;
+      
+      this.sparkleAnimationFrame = requestAnimationFrame(animate);
+    };
+    
+    animate();
+  }
+  
+  /**
+   * 停止火花特效
+   */
+  stopSparkleEffect() {
+    if (this.sparkleAnimationFrame) {
+      cancelAnimationFrame(this.sparkleAnimationFrame);
+      this.sparkleAnimationFrame = null;
+    }
+    
+    // 移除canvas
+    const forgeModal = this.elements.overlay?.querySelector('.forge-modal');
+    if (forgeModal) {
+      const sparkleCanvas = forgeModal.querySelector('#forge-sparkle-canvas');
+      if (sparkleCanvas) {
+        sparkleCanvas.remove();
+      }
+    }
   }
 }
 

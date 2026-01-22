@@ -599,6 +599,46 @@ export class AudioManager {
    * 楼梯 / 上下楼：使用更沉重的脚步声
    */
   playStairs() {
+    return this.play('footstep', { volume: 0.5, playbackRate: 0.8, forceCategory: 'gameplay' });
+  }
+
+  /**
+   * 铁匠铺专用音效
+   */
+  
+  // UI打开/关闭
+  playUIOpen() {
+    return this.playBookOpen();
+  }
+  
+  playUIClose() {
+    return this.playBookClose();
+  }
+  
+  // 锻造音效
+  playForge() {
+    return this.play('chop', { volume: 0.7, pitchVar: 0.1, forceCategory: 'gameplay' });
+  }
+  
+  playChop() {
+    return this.play('chop', { volume: 0.8, pitchVar: 0.15, forceCategory: 'gameplay' });
+  }
+  
+  // 材料操作
+  playLeatherDrop() {
+    return this.play('leatherDrop', { volume: 0.5, forceCategory: 'gameplay' });
+  }
+  
+  // 送礼音效
+  playGift() {
+    return this.playCoins({ volume: 0.6 });
+  }
+  
+  // 金属闩锁（用于失败/拆解）
+  playMetalLatch() {
+    return this.play('metalLatch', { volume: 0.6, forceCategory: 'gameplay' });
+  }
+  playStairs() {
     const steps = [
       'footstep',
       'footstep2',
