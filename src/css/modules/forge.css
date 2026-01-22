@@ -573,7 +573,7 @@
 
 .forge-item-type {
   font-size: 12px;
-  color: #aaa;
+  color: #d4a574; /* 亮原木色 */
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -602,7 +602,7 @@
 .panel-subtitle {
   font-family: var(--font-header);
   font-size: 16px;
-  color: #d4af37;
+  color: #5c4033; /* 深棕色 */
   margin: 10px 0;
   text-align: center;
   text-transform: uppercase;
