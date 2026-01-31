@@ -42,6 +42,7 @@ export class LeaderboardUI {
           <!-- Leaderboard Header -->
           <div class="leaderboard-header">
             <h2 class="leaderboard-title">排行榜</h2>
+            <div id="season-countdown" class="season-countdown-header hidden">-</div>
             <button class="leaderboard-close-btn" onclick="game.closeLeaderboard()" aria-label="关闭"></button>
           </div>
           
@@ -50,7 +51,6 @@ export class LeaderboardUI {
             <div class="leaderboard-main-panel">
               <div id="season-info" class="season-info hidden">
                 <div class="season-name" id="season-name">-</div>
-                <div class="season-countdown" id="season-countdown">-</div>
               </div>
               
               <div id="leaderboard-global-content">
@@ -211,6 +211,10 @@ export class LeaderboardUI {
       // 显示每日挑战内容
       if (dailyContent) dailyContent.classList.remove('hidden');
       
+      // 隐藏赛季倒计时
+      const countdownHeader = document.getElementById('season-countdown');
+      if (countdownHeader) countdownHeader.classList.add('hidden');
+      
       // 停止赛季倒计时
       this.stopSeasonCountdown();
       
@@ -221,6 +225,10 @@ export class LeaderboardUI {
       if (seasonalContent) seasonalContent.classList.remove('hidden');
       if (seasonInfo) seasonInfo.classList.remove('hidden');
       
+      // 显示赛季倒计时
+      const countdownHeader = document.getElementById('season-countdown');
+      if (countdownHeader) countdownHeader.classList.remove('hidden');
+      
       // 加载赛季排行榜
       this.loadSeasonalLeaderboard();
       
@@ -229,6 +237,10 @@ export class LeaderboardUI {
     } else {
       // 显示全局排行榜内容
       if (globalContent) globalContent.classList.remove('hidden');
+      
+      // 隐藏赛季倒计时
+      const countdownHeader = document.getElementById('season-countdown');
+      if (countdownHeader) countdownHeader.classList.add('hidden');
       
       // 停止赛季倒计时
       this.stopSeasonCountdown();
@@ -988,6 +1000,11 @@ export class LeaderboardUI {
     tbody.innerHTML = '<tr><td colspan="9" class="loading-row">⏳ 加载中...</td></tr>';
 
     try {
+      // 先获取当前赛季（如果还没有获取）
+      if (!supabaseService.currentSeason) {
+        await supabaseService.fetchCurrentSeason();
+      }
+      
       // 获取当前赛季
       const currentSeason = supabaseService.currentSeason;
       
@@ -1175,11 +1192,19 @@ export class LeaderboardUI {
       }
 
       const now = new Date();
+      const startDate = new Date(currentSeason.start_at);
       const endDate = new Date(currentSeason.end_at);
       const diff = endDate - now;
 
+      // 格式化日期显示
+      const formatDate = (date) => {
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        return `${month}月${day}日`;
+      };
+
       if (diff <= 0) {
-        countdownEl.textContent = '赛季已结束';
+        countdownEl.textContent = `${formatDate(startDate)} - ${formatDate(endDate)} (已结束)`;
         this.stopSeasonCountdown();
         return;
       }
@@ -1189,15 +1214,18 @@ export class LeaderboardUI {
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
+      let countdownText = '';
       if (days > 0) {
-        countdownEl.textContent = `剩余 ${days}天 ${hours}小时`;
+        countdownText = `剩余 ${days}天 ${hours}小时`;
       } else if (hours > 0) {
-        countdownEl.textContent = `剩余 ${hours}小时 ${minutes}分钟`;
+        countdownText = `剩余 ${hours}小时 ${minutes}分钟`;
       } else if (minutes > 0) {
-        countdownEl.textContent = `剩余 ${minutes}分钟 ${seconds}秒`;
+        countdownText = `剩余 ${minutes}分钟 ${seconds}秒`;
       } else {
-        countdownEl.textContent = `剩余 ${seconds}秒`;
+        countdownText = `剩余 ${seconds}秒`;
       }
+
+      countdownEl.textContent = `${formatDate(startDate)} - ${formatDate(endDate)} | ${countdownText}`;
     };
 
     // 立即更新一次

@@ -520,8 +520,16 @@ class Game {
         this.loadingUI.setProgress(visualPercent);
       });
 
-      // 音频加载任务 (并行进行)
-      const audioTask = this.audio.preloadCritical();
+      // 音频加载任务 (并行进行) - 包含BGM预加载
+      const audioTask = (async () => {
+        await this.audio.preloadCritical();
+        // 预加载第一首BGM，确保用户交互后能立即播放
+        const firstBgmKey = this.audio.bgmPlaylist[0];
+        if (firstBgmKey) {
+          await this.audio._ensureAudioLoaded(firstBgmKey);
+          console.log('[Game] 首个BGM已预加载');
+        }
+      })();
 
       // 3. 等待所有关键任务并行完成
       // 这里我们使用 Promise.all，意味着只有当所有 CSS/字体/关键图片/UI音效都就绪后才继续
