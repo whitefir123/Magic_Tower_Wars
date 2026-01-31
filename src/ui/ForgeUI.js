@@ -405,14 +405,48 @@ export class ForgeUI {
     
     console.log('[ForgeUI] ✓ player 存在');
     
+    // ✅ FIX: 如果没有指定容器ID，同时刷新所有可能的装备列表容器
+    if (!containerId) {
+      // 刷新默认容器
+      if (this.elements.itemList) {
+        this._renderItemListToContainer(this.elements.itemList);
+      }
+      
+      // 刷新新面板系统的所有装备列表容器
+      const panelContainers = [
+        'enhance-equipment-list',
+        'socket-equipment-list',
+        'dismantle-equipment-list'
+      ];
+      
+      panelContainers.forEach(id => {
+        const container = document.getElementById(id);
+        if (container) {
+          this._renderItemListToContainer(container);
+        }
+      });
+      
+      return;
+    }
+    
     // 确定要渲染到哪个容器
-    const container = containerId ? document.getElementById(containerId) : this.elements.itemList;
-    console.log('[ForgeUI] 容器查找结果:', container ? '找到' : '未找到', containerId || 'itemList');
+    const container = document.getElementById(containerId);
+    console.log('[ForgeUI] 容器查找结果:', container ? '找到' : '未找到', containerId);
     
     if (!container) {
       console.log('[ForgeUI] ✗ 容器不存在，退出渲染');
       return;
     }
+
+    this._renderItemListToContainer(container);
+  }
+
+  /**
+   * 渲染装备列表到指定容器（内部方法）
+   * @param {HTMLElement} container - 容器元素
+   */
+  _renderItemListToContainer(container) {
+    if (!container) return;
 
     console.log('[ForgeUI] ✓ 开始渲染物品列表');
     container.innerHTML = '';
@@ -831,6 +865,20 @@ export class ForgeUI {
     const baseSuccessRate = details.successRate || 1.0;
     const finalSuccessRate = Math.min(baseSuccessRate + totalLuckyBonus, 0.95); // 上限95%
     
+    // 检查玩家拥有的钻头数量
+    let drillCount = 0;
+    if (this.player.inventory) {
+      this.player.inventory.forEach(invItem => {
+        if (invItem && (invItem.itemId === 'ITEM_STARDUST_DRILL' || invItem.id === 'ITEM_STARDUST_DRILL')) {
+          drillCount += (invItem.count || 1);
+        }
+      });
+    }
+    
+    const sockets = item.meta?.sockets || [];
+    const currentSockets = sockets.length;
+    const unlockCost = currentSockets + 1;
+    
     container.innerHTML = `
       <div class="detail-section">
         <h4 style="color: ${details.qualityColor};">${details.name}</h4>
@@ -861,6 +909,26 @@ export class ForgeUI {
         ${this.renderStats(details.baseStats)}
       </div>
 
+      <!-- 钻头槽位区域 -->
+      <div class="detail-section drill-slot-section">
+        <h4>钻头槽位 <small style="color: #8B6F47; font-size: 12px;">(用于打孔)</small></h4>
+        <div class="drill-slot-container">
+          <div class="drill-slot" id="drill-slot-container" data-has-drill="false">
+            <div class="drill-slot-placeholder">
+              ${drillCount > 0 ? '点击放置钻头' : '背包中无钻头'}
+            </div>
+          </div>
+          <div class="drill-info">
+            <div style="color: #A0826D; font-size: 12px;">
+              背包中的钻头: <span style="color: ${drillCount > 0 ? '#4caf50' : '#e74c3c'};">${drillCount}</span>
+            </div>
+            <div style="color: #8B6F47; font-size: 11px; margin-top: 5px;">
+              解锁第 ${currentSockets + 1} 个槽位需要: ${unlockCost} 个钻头
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="forge-actions">
         <button class="forge-btn forge-btn-enhance" id="forge-enhance-btn" ${!details.canEnhance ? 'disabled' : ''}>
           强化 (+${details.enhanceLevel + 1})<br>
@@ -869,6 +937,10 @@ export class ForgeUI {
         <button class="forge-btn forge-btn-reforge" id="forge-reforge-btn">
           重铸品质<br>
           <small>费用: ${details.reforgeCost} 金币</small>
+        </button>
+        <button class="forge-btn forge-btn-unlock-socket" id="forge-unlock-socket-btn-container" ${drillCount < unlockCost ? 'disabled' : ''}>
+          使用钻头打孔<br>
+          <small>消耗: ${unlockCost} 个钻头</small>
         </button>
         <button class="forge-btn forge-btn-dismantle" id="forge-dismantle-btn">
           分解<br>
@@ -880,6 +952,7 @@ export class ForgeUI {
     // 添加按钮事件监听器
     const enhanceBtn = container.querySelector('#forge-enhance-btn');
     const reforgeBtn = container.querySelector('#forge-reforge-btn');
+    const unlockSocketBtn = container.querySelector('#forge-unlock-socket-btn-container');
     const dismantleBtn = container.querySelector('#forge-dismantle-btn');
 
     if (enhanceBtn) {
@@ -890,9 +963,16 @@ export class ForgeUI {
       reforgeBtn.addEventListener('click', () => this.handleReforge());
     }
 
+    if (unlockSocketBtn) {
+      unlockSocketBtn.addEventListener('click', () => this.handleUnlockSocket(item));
+    }
+
     if (dismantleBtn) {
       dismantleBtn.addEventListener('click', () => this.handleDismantle());
     }
+    
+    // 钻头槽位事件监听器
+    this.setupDrillSlotListeners(item);
   }
 
   /**
@@ -941,7 +1021,7 @@ export class ForgeUI {
       socketHtml += `
         <div class="socket-unlock-section" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <span style="color: #aaa;">解锁第 ${currentSockets + 1} 个槽位</span>
+            <span style="color: #A0826D;">解锁第 ${currentSockets + 1} 个槽位</span>
             <span style="color: ${drillCount >= unlockCost ? '#4caf50' : '#e74c3c'};">
               钻头: ${drillCount} / ${unlockCost}
             </span>
@@ -956,7 +1036,7 @@ export class ForgeUI {
     container.innerHTML = `
       <div class="detail-section">
         <h4 style="color: ${itemColor}; margin: 0;">${itemName}</h4>
-        <div style="font-size: 12px; color: #aaa; margin-top: 5px;">
+        <div style="font-size: 12px; color: #A0826D; margin-top: 5px;">
           镶嵌槽: ${sockets.length} 个
         </div>
       </div>
@@ -1049,6 +1129,20 @@ export class ForgeUI {
     // 渲染材料库存
     const materialInventoryHtml = this.materialInventory ? this.materialInventory.render(this.player) : '';
     
+    // 检查玩家拥有的钻头数量
+    let drillCount = 0;
+    if (this.player.inventory) {
+      this.player.inventory.forEach(invItem => {
+        if (invItem && (invItem.itemId === 'ITEM_STARDUST_DRILL' || invItem.id === 'ITEM_STARDUST_DRILL')) {
+          drillCount += (invItem.count || 1);
+        }
+      });
+    }
+    
+    const sockets = item.meta?.sockets || [];
+    const currentSockets = sockets.length;
+    const unlockCost = currentSockets + 1;
+    
     this.elements.itemDetails.innerHTML = `
       <div class="detail-section">
         <h4 style="color: ${details.qualityColor};">${details.name}</h4>
@@ -1082,14 +1176,34 @@ export class ForgeUI {
       <!-- 材料库存显示 -->
       ${materialInventoryHtml}
 
+      <!-- 钻头槽位区域 -->
+      <div class="detail-section drill-slot-section">
+        <h4>钻头槽位 <small style="color: #8B6F47; font-size: 12px;">(用于打孔)</small></h4>
+        <div class="drill-slot-container">
+          <div class="drill-slot" id="drill-slot" data-has-drill="false">
+            <div class="drill-slot-placeholder">
+              ${drillCount > 0 ? '点击放置钻头' : '背包中无钻头'}
+            </div>
+          </div>
+          <div class="drill-info">
+            <div style="color: #A0826D; font-size: 12px;">
+              背包中的钻头: <span style="color: ${drillCount > 0 ? '#4caf50' : '#e74c3c'};">${drillCount}</span>
+            </div>
+            <div style="color: #8B6F47; font-size: 11px; margin-top: 5px;">
+              解锁第 ${currentSockets + 1} 个槽位需要: ${unlockCost} 个钻头
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 幸运石槽位区域 -->
       <div class="detail-section lucky-stone-section">
-        <h4>幸运石槽位 <small style="color: #888; font-size: 12px;">(同品质可叠加)</small></h4>
+        <h4>幸运石槽位 <small style="color: #8B6F47; font-size: 12px;">(同品质可叠加)</small></h4>
         <div class="lucky-stone-slots" id="lucky-stone-slots">
           ${this.renderLuckyStoneSlots(item)}
         </div>
         <div class="lucky-stone-inventory" style="margin-top: 10px;">
-          <div style="color: #888; font-size: 12px; margin-bottom: 5px;">背包中的幸运石:</div>
+          <div style="color: #8B6F47; font-size: 12px; margin-bottom: 5px;">背包中的幸运石:</div>
           <div class="lucky-stone-list" id="lucky-stone-list">
             ${this.renderLuckyStoneInventory(luckyStones, item)}
           </div>
@@ -1105,6 +1219,10 @@ export class ForgeUI {
           重铸品质<br>
           <small>费用: ${details.reforgeCost} 金币</small>
         </button>
+        <button class="forge-btn forge-btn-unlock-socket" id="forge-unlock-socket-btn" ${drillCount < unlockCost ? 'disabled' : ''}>
+          使用钻头打孔<br>
+          <small>消耗: ${unlockCost} 个钻头</small>
+        </button>
         <button class="forge-btn forge-btn-dismantle" id="forge-dismantle-btn">
           分解<br>
           <small>获得: ${details.dismantleValue} 金币</small>
@@ -1115,6 +1233,7 @@ export class ForgeUI {
     // 添加按钮事件监听器
     const enhanceBtn = document.getElementById('forge-enhance-btn');
     const reforgeBtn = document.getElementById('forge-reforge-btn');
+    const unlockSocketBtn = document.getElementById('forge-unlock-socket-btn');
     const dismantleBtn = document.getElementById('forge-dismantle-btn');
 
     if (enhanceBtn) {
@@ -1125,9 +1244,16 @@ export class ForgeUI {
       reforgeBtn.addEventListener('click', () => this.handleReforge());
     }
 
+    if (unlockSocketBtn) {
+      unlockSocketBtn.addEventListener('click', () => this.handleUnlockSocket(item));
+    }
+
     if (dismantleBtn) {
       dismantleBtn.addEventListener('click', () => this.handleDismantle());
     }
+    
+    // 钻头槽位事件监听器
+    this.setupDrillSlotListeners(item);
     
     // 幸运石相关事件监听器
     this.setupLuckyStoneListeners(item);
@@ -1197,7 +1323,7 @@ export class ForgeUI {
       socketHtml += `
         <div class="socket-unlock-section" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <span style="color: #aaa;">解锁第 ${currentSockets + 1} 个槽位</span>
+            <span style="color: #A0826D;">解锁第 ${currentSockets + 1} 个槽位</span>
             <span style="color: ${drillCount >= unlockCost ? '#4caf50' : '#e74c3c'};">
               钻头: ${drillCount} / ${unlockCost}
             </span>
@@ -1215,7 +1341,7 @@ export class ForgeUI {
           ${itemIconHtml}
           <div>
             <h4 style="color: ${itemColor}; margin: 0;">${itemName}</h4>
-            <div style="font-size: 12px; color: #aaa; margin-top: 5px;">
+            <div style="font-size: 12px; color: #A0826D; margin-top: 5px;">
               镶嵌槽: ${sockets.length} 个
             </div>
           </div>
@@ -1244,32 +1370,83 @@ export class ForgeUI {
   handleUnlockSocket(item) {
     if (!this.player || !item) return;
     
+    const sockets = item.meta?.sockets || [];
+    const currentSockets = sockets.length;
+    const unlockCost = currentSockets + 1;
+    
+    // 检查玩家拥有的钻头数量
+    let drillCount = 0;
+    let drillIndices = [];
+    if (this.player.inventory) {
+      this.player.inventory.forEach((invItem, index) => {
+        if (invItem && (invItem.itemId === 'ITEM_STARDUST_DRILL' || invItem.id === 'ITEM_STARDUST_DRILL')) {
+          drillCount += (invItem.count || 1);
+          drillIndices.push({ index, count: invItem.count || 1 });
+        }
+      });
+    }
+    
+    // 检查钻头数量是否足够
+    if (drillCount < unlockCost) {
+      this.showMessage(`钻头不足！需要 ${unlockCost} 个，当前只有 ${drillCount} 个`, 'error');
+      return;
+    }
+    
     // 播放音效
     if (this.soundManager) {
       this.soundManager.playForge();
     }
     
-    const result = this.blacksmithSystem.unlockSocket(item, this.player);
+    // 消耗钻头
+    let remainingCost = unlockCost;
+    for (let i = 0; i < drillIndices.length && remainingCost > 0; i++) {
+      const { index, count } = drillIndices[i];
+      const invItem = this.player.inventory[index];
+      
+      if (count <= remainingCost) {
+        // 完全消耗这个堆叠
+        this.player.inventory[index] = null;
+        remainingCost -= count;
+      } else {
+        // 部分消耗
+        invItem.count -= remainingCost;
+        remainingCost = 0;
+      }
+    }
     
-    if (result.success) {
-      // 触发自动保存
-      if (this.autoSave) {
-        this.autoSave.save();
-      }
-      
-      this.showMessage(result.message, 'success');
-      // 刷新详情
-      this.renderItemDetails(item);
-      // 刷新左侧列表（可能显示变化）
-      this.renderItemList();
-      
-      // 更新游戏UI
-      const game = window.game;
-      if (game && game.ui) {
-        game.ui.renderInventory?.(this.player);
-      }
-    } else {
-      this.showMessage(result.message, 'error');
+    // 清理背包中的null项
+    this.player.inventory = this.player.inventory.filter(item => item !== null);
+    
+    // 添加新的镶嵌槽
+    if (!item.meta) {
+      item.meta = {};
+    }
+    if (!item.meta.sockets) {
+      item.meta.sockets = [];
+    }
+    item.meta.sockets.push({ gemId: null });
+    
+    // 清空钻头槽位
+    if (item.drillSlot) {
+      item.drillSlot = null;
+    }
+    
+    // 触发自动保存
+    if (this.autoSave) {
+      this.autoSave.save();
+    }
+    
+    this.showMessage(`成功打孔！消耗了 ${unlockCost} 个钻头，解锁了第 ${currentSockets + 1} 个槽位`, 'success');
+    
+    // 刷新详情
+    this.renderItemDetails(item);
+    // 刷新左侧列表
+    this.renderItemList();
+    
+    // 更新游戏UI
+    const game = window.game;
+    if (game && game.ui) {
+      game.ui.renderInventory?.(this.player);
     }
   }
 
@@ -1308,7 +1485,7 @@ export class ForgeUI {
       contentHtml = `
         <div class="forge-placeholder">
           <p>没有可合成的宝石</p>
-          <small style="color: #666;">需要 3 颗相同的宝石才能合成更高一级的宝石</small>
+          <small style="color: #8B6F47;">需要 3 颗相同的宝石才能合成更高一级的宝石</small>
         </div>
       `;
     } else {
@@ -1362,7 +1539,7 @@ export class ForgeUI {
     this.elements.itemDetails.innerHTML = `
       <div class="detail-section">
         <h4>宝石合成</h4>
-        <p style="color: #aaa; font-size: 14px; margin-bottom: 15px;">
+        <p style="color: #A0826D; font-size: 14px; margin-bottom: 15px;">
           消耗 3 颗相同的宝石，合成 1 颗更高等级的宝石。
           <br>最高可合成至 5 级 (Mythic)。
         </p>
@@ -1587,7 +1764,7 @@ export class ForgeUI {
       return `
         <div class="socket-slot empty" data-socket-index="${index}">
           ${socketBgHtml}
-          <div style="text-align: center; color: #888; font-size: 12px;">空槽位</div>
+          <div style="text-align: center; color: #8B6F47; font-size: 12px;">空槽位</div>
           <div class="socket-slot-label">槽位 ${index + 1}</div>
         </div>
       `;
@@ -1880,16 +2057,40 @@ export class ForgeUI {
       p_def: '物理防御',
       m_def: '魔法防御',
       hp: '生命值',
-      maxHp: '最大生命值'
+      maxHp: '最大生命值',
+      attack: '攻击力',
+      defense: '防御力',
+      crit_rate: '暴击率',
+      crit_damage: '暴击伤害',
+      dodge: '闪避率',
+      lifesteal: '生命偷取',
+      speed: '速度',
+      accuracy: '命中率',
+      resistance: '抗性',
+      penetration: '穿透',
+      block: '格挡率',
+      parry: '招架率'
     };
 
     return Object.entries(stats)
-      .map(([key, value]) => `
+      .map(([key, value]) => {
+        // 格式化数值显示
+        let displayValue = value;
+        if (key.includes('rate') || key.includes('dodge') || key.includes('lifesteal') || key.includes('accuracy') || key.includes('block') || key.includes('parry')) {
+          // 百分比属性
+          displayValue = `${(value * 100).toFixed(1)}%`;
+        } else if (typeof value === 'number') {
+          // 整数属性
+          displayValue = Math.floor(value);
+        }
+        
+        return `
         <div class="stat-row">
           <span class="stat-label">${statNames[key] || key}:</span>
-          <span class="stat-value">+${value}</span>
+          <span class="stat-value">+${displayValue}</span>
         </div>
-      `)
+      `;
+      })
       .join('');
   }
 
@@ -1902,6 +2103,153 @@ export class ForgeUI {
     return this.player.inventory.filter(item => 
       item && item.type === 'trash' && item.name && item.name.includes('幸运石')
     );
+  }
+
+  /**
+   * 设置钻头槽位的事件监听器
+   */
+  setupDrillSlotListeners(item) {
+    // 支持两个不同的ID（旧系统和新系统）
+    const drillSlot = document.getElementById('drill-slot') || document.getElementById('drill-slot-container');
+    if (!drillSlot) return;
+    
+    // 检查玩家是否有钻头
+    let drillCount = 0;
+    if (this.player.inventory) {
+      this.player.inventory.forEach(invItem => {
+        if (invItem && (invItem.itemId === 'ITEM_STARDUST_DRILL' || invItem.id === 'ITEM_STARDUST_DRILL')) {
+          drillCount += (invItem.count || 1);
+        }
+      });
+    }
+    
+    if (drillCount === 0) {
+      drillSlot.style.cursor = 'not-allowed';
+      return;
+    }
+    
+    drillSlot.style.cursor = 'pointer';
+    
+    // 点击槽位放置/移除钻头
+    drillSlot.addEventListener('click', () => {
+      const hasDrill = drillSlot.dataset.hasDrill === 'true';
+      
+      if (hasDrill) {
+        // 移除钻头
+        this.removeDrillFromSlot(item);
+      } else {
+        // 放置钻头
+        this.placeDrillInSlot(item);
+      }
+    });
+  }
+
+  /**
+   * 放置钻头到槽位
+   */
+  placeDrillInSlot(item) {
+    if (!this.player || !this.player.inventory) return;
+    
+    // 查找背包中的钻头
+    const drillIndex = this.player.inventory.findIndex(invItem => 
+      invItem && (invItem.itemId === 'ITEM_STARDUST_DRILL' || invItem.id === 'ITEM_STARDUST_DRILL')
+    );
+    
+    if (drillIndex === -1) {
+      this.showMessage('背包中没有钻头！', 'error');
+      return;
+    }
+    
+    const drill = this.player.inventory[drillIndex];
+    
+    // 初始化钻头槽位
+    if (!item.drillSlot) {
+      item.drillSlot = null;
+    }
+    
+    // 放置钻头（不从背包移除，只是标记）
+    item.drillSlot = {
+      itemId: drill.itemId || drill.id,
+      name: drill.nameZh || drill.name || '钻头',
+      count: 1
+    };
+    
+    // 更新UI
+    const drillSlot = document.getElementById('drill-slot') || document.getElementById('drill-slot-container');
+    if (drillSlot) {
+      drillSlot.dataset.hasDrill = 'true';
+      
+      // 渲染钻头图标
+      const game = window.game;
+      const loader = game?.loader;
+      const consImg = loader?.getImage('ICONS_CONSUMABLES');
+      
+      if (consImg && consImg.complete) {
+        const iconIndex = drill.iconIndex || 20;
+        const cols = 5;
+        const rows = 5;
+        const cellW = consImg.width / cols;
+        const cellH = consImg.height / rows;
+        const col = iconIndex % cols;
+        const row = Math.floor(iconIndex / cols);
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = 48;
+        canvas.height = 48;
+        canvas.className = 'drill-icon';
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(consImg, col * cellW, row * cellH, cellW, cellH, 0, 0, 48, 48);
+        
+        drillSlot.innerHTML = '';
+        drillSlot.appendChild(canvas);
+        
+        // 添加移除按钮
+        const removeBtn = document.createElement('div');
+        removeBtn.className = 'drill-remove-btn';
+        removeBtn.innerHTML = '×';
+        removeBtn.title = '移除钻头';
+        drillSlot.appendChild(removeBtn);
+      } else {
+        drillSlot.innerHTML = '<div class="drill-icon-placeholder">钻头</div>';
+      }
+    }
+    
+    this.showMessage('已放置钻头到槽位', 'success');
+  }
+
+  /**
+   * 从槽位移除钻头
+   */
+  removeDrillFromSlot(item) {
+    if (!item.drillSlot) return;
+    
+    // 移除钻头槽位数据
+    item.drillSlot = null;
+    
+    // 更新UI
+    const drillSlot = document.getElementById('drill-slot') || document.getElementById('drill-slot-container');
+    if (drillSlot) {
+      drillSlot.dataset.hasDrill = 'false';
+      
+      // 检查背包中的钻头数量
+      let drillCount = 0;
+      if (this.player.inventory) {
+        this.player.inventory.forEach(invItem => {
+          if (invItem && (invItem.itemId === 'ITEM_STARDUST_DRILL' || invItem.id === 'ITEM_STARDUST_DRILL')) {
+            drillCount += (invItem.count || 1);
+          }
+        });
+      }
+      
+      drillSlot.innerHTML = `
+        <div class="drill-slot-placeholder">
+          ${drillCount > 0 ? '点击放置钻头' : '背包中无钻头'}
+        </div>
+      `;
+    }
+    
+    this.showMessage('已移除钻头', 'info');
   }
 
   /**
@@ -2067,7 +2415,7 @@ export class ForgeUI {
     const slots = item.luckyStoneSlots || [];
     
     if (slots.length === 0) {
-      return '<div style="color: #888; font-size: 14px; padding: 10px; text-align: center;">暂无幸运石</div>';
+      return '<div style="color: #8B6F47; font-size: 14px; padding: 10px; text-align: center;">暂无幸运石</div>';
     }
     
     return `
@@ -2092,7 +2440,7 @@ export class ForgeUI {
    */
   renderLuckyStoneInventory(luckyStones, item) {
     if (luckyStones.length === 0) {
-      return '<div style="color: #888; font-size: 12px; padding: 5px;">背包中没有幸运石</div>';
+      return '<div style="color: #8B6F47; font-size: 12px; padding: 5px;">背包中没有幸运石</div>';
     }
     
     // 按品质分组
@@ -2225,6 +2573,12 @@ export class ForgeUI {
         this.renderItemList();
         this.renderItemDetails(this.selectedItem);
         
+        // ✅ FIX: 同时刷新新面板系统的详情容器
+        const detailsContainer = this.getDetailsContainer();
+        if (detailsContainer && detailsContainer !== this.elements.itemDetails) {
+          this.renderItemDetailsToContainer(this.selectedItem, detailsContainer);
+        }
+        
         // 更新游戏UI
         if (game && game.ui) {
           game.ui.updateStats(this.player);
@@ -2261,6 +2615,12 @@ export class ForgeUI {
         
         // 刷新UI以显示幸运石已被消耗
         this.renderItemDetails(this.selectedItem);
+        
+        // ✅ FIX: 同时刷新新面板系统的详情容器
+        const detailsContainer = this.getDetailsContainer();
+        if (detailsContainer && detailsContainer !== this.elements.itemDetails) {
+          this.renderItemDetailsToContainer(this.selectedItem, detailsContainer);
+        }
       }
     } catch (error) {
       if (this.errorHandler) {
@@ -2312,6 +2672,12 @@ export class ForgeUI {
       this.renderItemList();
       this.renderItemDetails(this.selectedItem);
       
+      // ✅ FIX: 同时刷新新面板系统的详情容器
+      const detailsContainer = this.getDetailsContainer();
+      if (detailsContainer && detailsContainer !== this.elements.itemDetails) {
+        this.renderItemDetailsToContainer(this.selectedItem, detailsContainer);
+      }
+      
       // 更新游戏UI
       const game = window.game;
       if (game && game.ui) {
@@ -2357,7 +2723,7 @@ export class ForgeUI {
       
       <div class="detail-section">
         <h4>拆解说明</h4>
-        <p style="color: #aaa; font-size: 14px; line-height: 1.6;">
+        <p style="color: #A0826D; font-size: 14px; line-height: 1.6;">
           拆解装备将永久销毁该装备，并获得金币。<br>
           拆解价值基于装备品质和强化等级计算。<br>
           <span style="color: #ff5722;">此操作无法撤销！</span>
@@ -2463,6 +2829,12 @@ export class ForgeUI {
       this.selectedSlot = null;
       this.renderItemList();
       this.renderItemDetails(null);
+      
+      // ✅ FIX: 同时刷新新面板系统的详情容器
+      const detailsContainer = this.getDetailsContainer();
+      if (detailsContainer && detailsContainer !== this.elements.itemDetails) {
+        this.renderItemDetailsToContainer(null, detailsContainer);
+      }
       
       // 更新游戏UI
       if (game && game.ui) {

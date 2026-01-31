@@ -1698,6 +1698,7 @@ export class CombatSystem {
       let skillUsed = false; // 标记是否使用了技能
       let activeSkillId = null; // 当前使用的主动技能 ID
       let ultSkillId = null; // 当前使用的大招技能 ID
+      let isCrit = false; // ✅ FIX: 提前声明暴击变量，避免在backstab中使用前未定义
       let gemInfusionApplied = false; // 标记是否应用了宝石注灵
       
       // ✅ FIX: 通用技能状态检查 - 根据 player.skills 动态判断
@@ -1934,7 +1935,7 @@ export class CombatSystem {
       }
       
       // ========== STEP C: 暴击逻辑 (含共鸣暴伤加成) ==========
-      let isCrit = false;
+      // isCrit 已在前面声明
       let critChance = pTotals.crit_rate || COMBAT_CONFIG.BASE_CRIT_RATE || 0.2;
       
       // 检查EDGE的ASSASSINATE终结技（强制暴击）
@@ -2070,6 +2071,44 @@ export class CombatSystem {
       
       // 应用伤害（使用最终计算后的伤害值）
       monster.stats.hp -= dmgToMon;
+
+      // ========== 影分身技能：下三次攻击触发背刺 ==========
+      if (player.buffs && player.buffs.shadowClone && player.buffs.shadowClone.active && player.buffs.shadowClone.stacks > 0) {
+        // 计算影分身的背刺伤害（基于玩家攻击力的80%）
+        const shadowDamage = Math.floor(dmgToMon * 0.8);
+        
+        // 对怪物造成额外伤害
+        monster.stats.hp -= shadowDamage;
+        
+        // 累加伤害统计
+        if (game.totalDamageDealt !== undefined) {
+          game.totalDamageDealt += shadowDamage;
+        }
+        
+        // 显示影分身伤害飘字
+        if (game.floatingTextPool && game.settings && game.settings.showDamageNumbers !== false) {
+          const pos = monster.getFloatingTextPosition();
+          const microScatterY = VISUAL_CONFIG.ENABLE_MICRO_SCATTER ? Math.random() * 5 : 0;
+          const shadowText = game.floatingTextPool.create(
+            pos.x,
+            pos.y - 20 + microScatterY,
+            `影分身 -${shadowDamage}`,
+            '#9400D3' // 紫色
+          );
+          game.floatingTexts.push(shadowText);
+        }
+        
+        // 减少影分身次数
+        player.buffs.shadowClone.stacks--;
+        
+        // 如果次数用完，清除buff
+        if (player.buffs.shadowClone.stacks <= 0) {
+          player.buffs.shadowClone.active = false;
+          if (game.ui) {
+            game.ui.logMessage('影分身已消失', 'info');
+          }
+        }
+      }
 
       // 普攻命中时基于 mp_on_hit 恢复魔力（技能攻击不触发）
       if (!skillUsed && player.stats && typeof player.stats.mp_on_hit === 'number') {

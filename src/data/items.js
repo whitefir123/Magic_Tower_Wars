@@ -957,9 +957,9 @@ export const EQUIPMENT_DB = {
     rarity: 'RARE',
     iconIndex: 20, // 假设使用索引20
     maxStack: 99,
-    desc: 'A sturdy drill used to create new sockets in equipment.',
-    descZh: '坚固的钻头，可以给装备打孔，增加镶嵌槽位。',
-    effect: { kind: 'special' }
+    desc: 'A sturdy drill used to create new sockets in equipment. Can only be used at the Blacksmith.',
+    descZh: '坚固的钻头，可以给装备打孔，增加镶嵌槽位。只能在铁匠铺使用。',
+    effect: { kind: 'forge_tool' } // 标记为铁匠铺专用工具
   },
 
   // ========== FORGE PROTECTION ITEMS (铁匠铺保护道具) ==========

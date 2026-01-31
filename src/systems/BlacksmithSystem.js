@@ -1649,9 +1649,9 @@ export class BlacksmithSystem {
     let removedSlot = null;
     
     for (const [slot, equippedItem] of Object.entries(equipment)) {
-      if (equippedItem === item || 
+      if (equippedItem && (equippedItem === item || 
           (typeof equippedItem === 'object' && equippedItem.uid && item.uid && equippedItem.uid === item.uid) ||
-          (typeof equippedItem === 'object' && equippedItem.itemId && item.itemId && equippedItem.itemId === item.itemId)) {
+          (typeof equippedItem === 'object' && equippedItem.itemId && item.itemId && equippedItem.itemId === item.itemId))) {
         equipment[slot] = null;
         removedFromEquipment = true;
         removedSlot = slot;
@@ -1667,7 +1667,8 @@ export class BlacksmithSystem {
         if (invItem === item ||
             (typeof invItem === 'object' && invItem.uid && item.uid && invItem.uid === item.uid) ||
             (typeof invItem === 'object' && invItem.itemId && item.itemId && invItem.itemId === item.itemId)) {
-          inventory[i] = null;
+          // ✅ FIX: 使用 splice 真正移除装备，而不是设置为 null
+          inventory.splice(i, 1);
           break;
         }
       }

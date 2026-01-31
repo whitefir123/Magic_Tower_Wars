@@ -2378,13 +2378,11 @@ export class Player extends Entity {
     
     // Update Shadow Clone timer
     if (this.buffs && this.buffs.shadowClone) {
-      if (this.buffs.shadowClone.active && this.buffs.shadowClone.timer > 0) {
-        this.buffs.shadowClone.timer -= dt;
-        if (this.buffs.shadowClone.timer <= 0) {
-          this.buffs.shadowClone.active = false;
-          if (window.game && window.game.ui) {
-            window.game.ui.logMessage('影分身已消失', 'info');
-          }
+      if (this.buffs.shadowClone.active && this.buffs.shadowClone.stacks <= 0) {
+        this.buffs.shadowClone.active = false;
+        this.buffs.shadowClone.stacks = 0;
+        if (window.game && window.game.ui) {
+          window.game.ui.logMessage('影分身已消失', 'info');
         }
       }
     }
@@ -2667,12 +2665,12 @@ export class Player extends Entity {
   
   activateShadowClone() {
     if (!this.buffs) this.buffs = {};
-    if (!this.buffs.shadowClone) this.buffs.shadowClone = { active: false, timer: 0 };
+    if (!this.buffs.shadowClone) this.buffs.shadowClone = { active: false, timer: 0, stacks: 0 };
     
     this.buffs.shadowClone.active = true;
-    this.buffs.shadowClone.timer = 10000; // 10 seconds
+    this.buffs.shadowClone.stacks = 3; // 下三次攻击
     if (window.game && window.game.ui) {
-      window.game.ui.logMessage('影分身已激活！闪避大幅提升。', 'ultimate');
+      window.game.ui.logMessage('影分身已激活！下三次攻击将触发背刺。', 'ultimate');
     }
   }
 
@@ -3201,6 +3199,13 @@ export class Player extends Entity {
       const eff = def.effect || {};
       // 获取物品的中文名称，在 switch 之前声明，避免重复声明
       const itemName = def.nameZh || def.name;
+      
+      // 阻止铁匠铺专用工具在背包中使用
+      if (eff.kind === 'forge_tool') {
+        ui?.logMessage(`${itemName} 只能在铁匠铺的强化功能处使用`, 'info');
+        return false;
+      }
+      
       switch (eff.kind) {
         case 'heal':
           this.heal(eff.amount || 0);

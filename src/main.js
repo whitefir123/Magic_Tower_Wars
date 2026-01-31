@@ -32,6 +32,7 @@ import { VisualEffectsSystem } from './systems/VisualEffectsSystem.js';
 import { MenuVisuals } from './ui/MenuVisuals.js';
 import { RUNES } from './data/Runes.js';
 import { EnhancementEffects } from './systems/EnhancementEffects.js'; // 铁匠铺强化特效系统
+import { ENV_CONFIG } from './config/environment.js'; // 环境配置
 
 class Game {
   constructor() {
@@ -169,8 +170,19 @@ class Game {
       document.body.appendChild(fpsCounter);
     }
     
-    // 初始化开发者模式管理器
-    window.devModeManager = getDevModeManager();
+    // 初始化开发者模式管理器（仅在开发环境）
+    if (ENV_CONFIG.enableDevMode) {
+      window.devModeManager = getDevModeManager();
+      console.log('[DevMode] 开发者模式功能已启用');
+    } else {
+      console.log('[Production] 开发者模式已禁用');
+    }
+    
+    // 根据环境显示/隐藏开发者模式入口
+    const devModeSection = document.getElementById('dev-mode-section');
+    if (devModeSection) {
+      devModeSection.style.display = ENV_CONFIG.enableDevMode ? 'block' : 'none';
+    }
     
     // 视觉特效系统（粒子 / 掉落飞行 / 屏幕闪烁）
     this.vfx = new VisualEffectsSystem(this);
@@ -1216,6 +1228,11 @@ class Game {
       }
     }
 
+    // ✅ FIX: 确保BGM持续播放（不受游戏暂停影响）
+    if (this.audio && typeof this.audio.ensureBgmPlaying === 'function') {
+      this.audio.ensureBgmPlaying();
+    }
+
     // Update mascot animation every frame (使用真实时间)
     try { 
       if (this.ui && this.ui.mascot) {
@@ -1416,16 +1433,19 @@ class Game {
 
         const def = (typeof itemToAdd === 'object') ? itemToAdd : getItemDefinition(itemToAdd);
         // 调试日志
-        // console.log('[Main] Pickup item:', it.type, it.itemId);
+        console.log('[Main] Pickup item:', it.type, it.itemId, 'itemToAdd:', itemToAdd);
         let picked = false;
 
         if (def && !this.player.equipment[def.type]) {
+          console.log('[Main] 装备到装备栏');
           this.player.equip(itemToAdd);
           this.map.removeItem(it);
           if (this.audio) this.audio.playCloth();
           picked = true;
         } else {
+          console.log('[Main] 添加到背包');
           const added = this.player.addToInventory(itemToAdd);
+          console.log('[Main] addToInventory 返回:', added);
           if (added) {
             this.map.removeItem(it);
             if (def) {
@@ -3435,6 +3455,10 @@ class Game {
     } else if (this.player.charConfig && this.player.charConfig.id === 'MAGE') {
       if (this.player.castUltimateSkill) {
         this.player.castUltimateSkill();
+      }
+    } else if (this.player.charConfig && this.player.charConfig.id === 'ROGUE') {
+      if (this.player.activateShadowClone) {
+        this.player.activateShadowClone();
       }
     } else {
       this.ui.logMessage('终极技能已激活！', 'ultimate');

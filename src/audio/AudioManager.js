@@ -473,6 +473,34 @@ export class AudioManager {
     }
   }
   
+  /**
+   * 恢复BGM播放（如果被暂停）
+   */
+  resumeBgm() {
+    if (this.currentBgm && this.currentBgm.paused) {
+      const playPromise = this.currentBgm.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.warn('[AudioManager] BGM 恢复播放失败:', error);
+        });
+      }
+    }
+  }
+  
+  /**
+   * 确保BGM持续播放（用于游戏循环中调用）
+   */
+  ensureBgmPlaying() {
+    // 如果有BGM但被暂停了，尝试恢复
+    if (this.currentBgm && this.currentBgm.paused && this.masterVolume > 0) {
+      this.resumeBgm();
+    }
+    // 如果没有BGM在播放，启动随机播放
+    else if (!this.currentBgm && this.masterVolume > 0) {
+      this.playRandomBgm();
+    }
+  }
+  
   // ================= 快捷播放方法 (Sound Mapping) =================
   
   playFootstep() {

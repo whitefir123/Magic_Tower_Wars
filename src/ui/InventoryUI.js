@@ -703,13 +703,13 @@ export class InventoryUI {
       // 计算图标尺寸
       const natWEquip = imgEquip ? (imgEquip.naturalWidth || imgEquip.width) : 0;
       const natHEquip = imgEquip ? (imgEquip.naturalHeight || imgEquip.height) : 0;
-      const cellWEquip = imgEquip ? (natWEquip / cols) : 0;
-      const cellHEquip = imgEquip ? (natHEquip / ICON_GRID_ROWS) : 0;
+      const cellWEquip = imgEquip ? (natWEquip / defaultCols) : 0;
+      const cellHEquip = imgEquip ? (natHEquip / defaultRows) : 0;
 
       const natWCons = imgCons ? (imgCons.naturalWidth || imgCons.width) : 0;
       const natHCons = imgCons ? (imgCons.naturalHeight || imgCons.height) : 0;
-      const cellWCons = imgCons ? (natWCons / cols) : 0;
-      const cellHCons = imgCons ? (natHCons / ICON_GRID_ROWS) : 0;
+      const cellWCons = imgCons ? (natWCons / defaultCols) : 0;
+      const cellHCons = imgCons ? (natHCons / defaultRows) : 0;
 
       // 拖拽辅助函数
       const setDragOver = (el, on) => {

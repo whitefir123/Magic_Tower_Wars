@@ -220,24 +220,24 @@
 .achievement-notification {
   position: absolute;
   left: 50%;
-  bottom: 100px;
+  bottom: 180px; /* 调整到技能栏上方 */
   transform: translateX(-50%);
   min-width: 420px;
   max-width: 620px;
-  min-height: 110px; /* 确保背景框完整显示 */
-  padding: 18px 40px; /* 让文字远离边缘装饰 */
+  min-height: 110px;
+  padding: 18px 40px;
   background-image: url('https://i.postimg.cc/263YdzcK/achievementkuang1.png');
   background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center;
   color: #fff;
-  z-index: 20001; /* 高于所有界面，确保在任何界面打开时都能看到 */
+  z-index: 20001;
   text-align: center;
   pointer-events: none;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center; /* 垂直居中内容 */
+  justify-content: center;
 }
 
 .achievement-notification.hidden {
