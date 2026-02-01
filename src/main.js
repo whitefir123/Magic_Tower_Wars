@@ -450,7 +450,10 @@ class Game {
     const canvasWrapper = document.getElementById('canvas-wrapper');
     if (canvasWrapper) {
       canvasWrapper.addEventListener('wheel', (e) => {
-        if (!this.gameStarted) return;
+        if (!this.gameStarted) {
+          console.warn('[Wheel] 游戏未开始，无法缩放, gameStarted =', this.gameStarted);
+          return;
+        }
         
         // 检查鼠标是否在日志容器内，且日志已锁定
         const logContainer = document.getElementById('system-log-container');
@@ -2495,7 +2498,9 @@ class Game {
 
   // INVENTORY
   openInventory() {
+    console.log('[OpenInventory] 尝试打开背包, gameStarted =', this.gameStarted, ', isPaused =', this.isPaused);
     if (!this.gameStarted) {
+      console.warn('[OpenInventory] 游戏未开始，无法打开背包');
       return;
     }
     
@@ -4624,7 +4629,7 @@ class Game {
       newIcon.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('🎒 Backpack icon clicked!');
+        console.log('🎒 Backpack icon clicked! gameStarted =', this.gameStarted, ', isPaused =', this.isPaused);
         this.openInventory();
       });
       
@@ -5016,6 +5021,32 @@ class Game {
     try {
       console.log('[DailyChallenge] Starting daily challenge...');
       
+      // 🔴 关键修复：强制隐藏所有可能阻挡点击/滚轮的覆盖层
+      // 确保游戏开始时，没有任何隐形弹窗遮挡 Canvas
+      const blockers = [
+        'draft-overlay', 
+        'shrine-overlay', 
+        'gambler-overlay', 
+        'shop-overlay', 
+        'inventory-overlay', 
+        'bestiary-overlay',
+        'settings-overlay',
+        'achievement-overlay',
+        'leaderboard-overlay',
+        'item-action-menu' // 右键菜单也一并清理
+      ];
+      
+      blockers.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.remove('overlay-fade-in'); // 移除可能的动画类
+          el.classList.add('hidden');
+          el.style.setProperty('display', 'none', 'important'); // 强制隐藏
+          el.style.pointerEvents = 'none'; // 确保不阻挡交互
+          console.log(`[DailyChallenge] 已清理覆盖层: ${id}`);
+        }
+      });
+      
       // 1. 强制设置每日挑战难度
       this.selectedAscensionLevel = 1;
       this.isDailyMode = true; // 尽早设置标志位
@@ -5161,6 +5192,11 @@ class Game {
           // 生成第一层（使用 RNG）
           await this.nextLevel();
           
+          // 🔴 CRITICAL FIX: nextLevel 会解锁 isPaused，但我们需要确保游戏状态正确
+          // 在每日挑战模式下，确保游戏完全解锁
+          this.isPaused = false;
+          this.gameStarted = true;
+          
           // 更新UI
           this.ui.updateStats(this.player);
           this.ui.updateEquipmentSockets(this.player);
@@ -5201,6 +5237,12 @@ class Game {
           window.scrollTo(0, 0);
         }
       });
+      
+      // 🔴 CRITICAL FIX: 确保游戏状态完全解锁（双重保险）
+      // performTransition 结束后，再次确认游戏状态
+      this.isPaused = false;
+      this.gameStarted = true;
+      console.log('[DailyChallenge] 游戏状态已解锁: isPaused =', this.isPaused, ', gameStarted =', this.gameStarted);
       
       // CRITICAL FIX: 确保主UI可见（双重保险）
       const mainUIFinal = document.getElementById('main-ui');
